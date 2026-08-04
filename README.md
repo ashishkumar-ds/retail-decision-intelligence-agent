@@ -1,4 +1,4 @@
-# retail-decision-intelligence-agent
+# Retail Decision Intelligence Agent
 
 ## Project Summary
 
