@@ -14,6 +14,7 @@ class StoreSignal:
     days_elapsed: int
     days_remaining: int
     forecast_signal_available: bool
+    forecast_status: str = "AVAILABLE"
 
 
 def compute_recovery_pct(signal: StoreSignal) -> float:

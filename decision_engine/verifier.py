@@ -1,5 +1,6 @@
 # Verifier - checks recommendation output against concrete, checkable
 # rules (not a subjective "is this a good recommendation").
+from guardrails import requires_human_approval
 
 VALID_RECOMMENDATIONS = {"CONTINUE", "MONITOR", "EXTEND_INTERVENTION", "ESCALATE", "NEEDS_REVIEW"}
 
@@ -9,10 +10,8 @@ def verify_recommendation(rec: dict) -> dict:
         "valid_recommendation_label": rec.get("recommendation") in VALID_RECOMMENDATIONS,
         "confidence_in_range": 0.0 <= rec.get("confidence", -1) <= 1.0,
         "has_reason": bool(rec.get("reason")),
-        "approval_flag_matches_recommendation": (
-            rec.get("requires_human_approval") is True
-            if rec.get("recommendation") in {"ESCALATE", "EXTEND_INTERVENTION", "NEEDS_REVIEW"}
-            else rec.get("requires_human_approval") is False
+        "approval_flag_matches_recommendation": rec.get("requires_human_approval") is requires_human_approval(
+            rec.get("recommendation")
         ),
     }
     return {"passed": all(checks.values()), "details": checks}
