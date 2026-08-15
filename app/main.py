@@ -32,6 +32,7 @@ RUN_LOG_PATH = Path("logs/run_log.jsonl")
 
 app = FastAPI(title="Retail Decision Intelligence Agent", version="2.0.0")
 
+# Pending approval state is intentionally separate from the durable log and is lost on restart.
 _pending_approvals: dict[int, dict] = {}
 
 
@@ -63,14 +64,14 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
             # Genuine business no-data, not a technical failure.
             log_run_step(store_id, "forecast_fetch", "no_data",
                          "Forecast API responded successfully but has no data for this store.")
-            return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False)
+            return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False, "NO_DATA")
 
         baseline_day = store_info["last_day"]
         baseline = get_prediction(store_id, baseline_day)
         current = get_prediction(store_id, baseline_day + days_elapsed)
 
         log_run_step(store_id, "forecast_fetch", "success", f"baseline={baseline}, current={current}")
-        return StoreSignal(store_id, baseline, current, days_elapsed, days_remaining, True)
+        return StoreSignal(store_id, baseline, current, days_elapsed, days_remaining, True, "AVAILABLE")
 
     except (requests.RequestException, TimeoutError) as e:
         # Technical failure (network/HTTP) - must not be treated as no-data.
@@ -78,7 +79,7 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
                      f"{type(e).__name__}: {e}")
         log_run_step(store_id, "forecast_fetch", "technical_error",
                      f"{type(e).__name__}: {e}")
-        return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False)
+        return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False, "ERROR")
 
     except (KeyError, ValueError, TypeError) as e:
         # Technical failure (malformed response) - also not no-data.
@@ -86,7 +87,7 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
                      f"{type(e).__name__}: {e}")
         log_run_step(store_id, "forecast_fetch", "technical_error",
                      f"malformed response - {type(e).__name__}: {e}")
-        return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False)
+        return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False, "ERROR")
 
     except Exception as e:
         # Last-resort catch: log loudly and continue, don't crash the batch.
@@ -94,7 +95,7 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
                      f"{type(e).__name__}: {e}", exc_info=True)
         log_run_step(store_id, "forecast_fetch", "unexpected_error",
                      f"{type(e).__name__}: {e}")
-        return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False)
+        return StoreSignal(store_id, 0, 0, days_elapsed, days_remaining, False, "ERROR")
 
 
 def evaluate_store(store_id: int, audit_runs: list) -> dict | None:
@@ -125,6 +126,7 @@ def evaluate_store(store_id: int, audit_runs: list) -> dict | None:
 
     # Guardrails is the single source of truth for approval requirements.
     rec["requires_human_approval"] = requires_human_approval(rec["recommendation"])
+    rec["forecast_status"] = signal.forecast_status
     log_run_step(store_id, "approval_check", "done", f"requires_approval={rec['requires_human_approval']}")
 
     return rec
@@ -144,7 +146,7 @@ def get_recommendations():
         raise HTTPException(
             status_code=400,
             detail="No store_ids found in the audit log. Requires Project 2's "
-                   "run_campaign() to log 'store_ids' - see docs/DESIGN_SPEC.md.",
+                   "run_campaign() to log 'store_ids' - see README.md.",
         )
 
     results = []
