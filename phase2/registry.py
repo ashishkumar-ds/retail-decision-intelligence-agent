@@ -58,32 +58,51 @@ class InterventionRegistry:
         self.path = Path(path or os.getenv("PHASE_2_INTERVENTION_LOG_PATH", str(DEFAULT_REGISTRY_PATH)))
 
     def append_event(self, event: InterventionEvent) -> None:
+        if any(existing.event_id == event.event_id for existing in self.read_events()):
+            raise ValueError(f"duplicate event_id {event.event_id}")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(event.to_record(), default=str, ensure_ascii=False) + "\n")
 
     def read_events(self) -> list[InterventionEvent]:
+        events, _ = self._read_events_with_diagnostics()
+        return events
+
+    def _read_events_with_diagnostics(self) -> tuple[list[InterventionEvent], tuple[InvalidEvent, ...]]:
         if not self.path.exists():
-            return []
+            return [], ()
         events: list[InterventionEvent] = []
+        diagnostics: list[InvalidEvent] = []
         with self.path.open(encoding="utf-8") as handle:
-            for line in handle:
+            for line_number, line in enumerate(handle, start=1):
                 if not line.strip():
                     continue
                 try:
                     record = json.loads(line)
                 except json.JSONDecodeError:
+                    diagnostics.append(InvalidEvent(
+                        event={"line_number": line_number, "raw": line.rstrip("\n")},
+                        reason="malformed JSONL record",
+                    ))
                     continue
                 if not isinstance(record, dict):
+                    diagnostics.append(InvalidEvent(
+                        event={"line_number": line_number, "raw": record},
+                        reason="registry record must be an object",
+                    ))
                     continue
                 try:
                     events.append(InterventionEvent.from_record(record))
                 except (KeyError, TypeError, ValueError):
-                    continue
-        return events
+                    diagnostics.append(InvalidEvent(
+                        event={"line_number": line_number, "record": record},
+                        reason="invalid intervention event record",
+                    ))
+        return events, tuple(diagnostics)
 
     def reconstruct(self) -> ReconstructionResult:
-        return reconstruct_interventions(self.read_events())
+        events, diagnostics = self._read_events_with_diagnostics()
+        return reconstruct_interventions(events, diagnostics=diagnostics)
 
     def record_definition(
         self,
@@ -111,13 +130,22 @@ class InterventionRegistry:
         return event
 
 
-def reconstruct_interventions(events: Sequence[InterventionEvent]) -> ReconstructionResult:
+def reconstruct_interventions(
+    events: Sequence[InterventionEvent],
+    *,
+    diagnostics: Sequence[InvalidEvent] = (),
+) -> ReconstructionResult:
     ordered = sorted(enumerate(events), key=lambda item: (item[1].occurred_at.astimezone(timezone.utc), item[0]))
     snapshots: dict[str, InterventionSnapshot] = {}
-    invalid_events: list[InvalidEvent] = []
+    invalid_events: list[InvalidEvent] = list(diagnostics)
     checkpoint_ids_by_intervention: dict[str, list[str]] = defaultdict(list)
+    seen_event_ids: set[str] = set()
 
     for _, event in ordered:
+        if event.event_id in seen_event_ids:
+            invalid_events.append(InvalidEvent(event=event.to_record(), reason="duplicate event_id"))
+            continue
+        seen_event_ids.add(event.event_id)
         reason = _apply_event(snapshots, checkpoint_ids_by_intervention, event)
         if reason is not None:
             invalid_events.append(InvalidEvent(event=event.to_record(), reason=reason))
@@ -195,6 +223,13 @@ def _apply_event(
     if current is None:
         return "transition without intervention definition"
 
+    if event.key != current.key:
+        return "event InterventionKey conflicts with established intervention identity"
+    if current.campaign_id is not None and event.campaign_id is not None and current.campaign_id != event.campaign_id:
+        return "event campaign_id conflicts with established provenance"
+    if current.timing_window is not None and event.timing_window is not None and current.timing_window != event.timing_window:
+        return "event timing_window conflicts with established provenance"
+
     state = current.lifecycle_state
     new_state = state
     started_at = current.started_at
@@ -204,6 +239,7 @@ def _apply_event(
     campaign_id = current.campaign_id if current.campaign_id is not None else event.campaign_id
     timing_window = current.timing_window if current.timing_window is not None else event.timing_window
     outcome_id = current.outcome_id
+    execution_evidence = current.execution_evidence
 
     if event.event_type == "approve" and state == RECOMMENDED:
         new_state = APPROVED
@@ -221,6 +257,7 @@ def _apply_event(
     elif event.event_type == "fail" and state in {ACTIVE, PAUSED}:
         new_state = FAILED
         ended_at = event.occurred_at
+        execution_evidence = _execution_evidence(event)
     elif event.event_type == "reject" and state in {RECOMMENDED, APPROVED}:
         new_state = REJECTED
         ended_at = event.occurred_at
@@ -231,8 +268,11 @@ def _apply_event(
         new_state = CANCELLED
         ended_at = event.occurred_at
     elif event.event_type == "outcome_pending" and state in {COMPLETED, FAILED}:
+        if state == FAILED and execution_evidence is None and _execution_evidence(event) is None:
+            return "failed intervention lacks valid execution evidence"
         new_state = OUTCOME_PENDING
         outcome_id = event.outcome_id or outcome_id
+        execution_evidence = execution_evidence or _execution_evidence(event)
     elif event.event_type == "evaluate" and state == OUTCOME_PENDING:
         new_state = EVALUATED
         outcome_id = event.outcome_id or outcome_id
@@ -255,6 +295,13 @@ def _apply_event(
         started_at=started_at,
         ended_at=ended_at,
         outcome_id=outcome_id,
+        execution_evidence=execution_evidence,
         updated_at=event.occurred_at,
     )
     return None
+
+
+def _execution_evidence(event: InterventionEvent) -> dict[str, Any] | None:
+    """MVP evidence marker; domain-specific execution validation is unresolved."""
+    evidence = event.payload.get("execution_evidence")
+    return evidence if isinstance(evidence, dict) and bool(evidence) else None

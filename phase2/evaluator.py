@@ -17,6 +17,8 @@ import uuid
 from .contracts import (
     APPROVED,
     CheckpointRecord,
+    CHECKPOINT_STATUSES,
+    EVIDENCE_STATES,
     CONTRADICTORY,
     DUE,
     EVALUATED,
@@ -165,6 +167,7 @@ def build_weekly_checkpoints(
                     source=provided[0].source,
                     campaign_id=provided[0].campaign_id,
                     timing_window=provided[0].timing_window,
+                    intervention_key=provided[0].intervention_key,
                 )
             )
             continue
@@ -183,6 +186,7 @@ def build_weekly_checkpoints(
                     source=record.source,
                     campaign_id=record.campaign_id,
                     timing_window=record.timing_window,
+                    intervention_key=record.intervention_key,
                 )
             )
             continue
@@ -208,19 +212,41 @@ def build_intervention_outcome_join(
 ) -> JoinValidationResult:
     if approval.recommendation_id != recommendation.recommendation_id:
         return JoinValidationResult("INVALID", None, "approval does not reference the recommendation")
+    if not approval.approved:
+        return JoinValidationResult("INVALID", None, "approval is rejected or unapproved")
     if intervention.approval_id != approval.approval_id:
         return JoinValidationResult("INVALID", None, "intervention does not reference the approval")
     if intervention.recommendation_id != recommendation.recommendation_id:
         return JoinValidationResult("INVALID", None, "intervention does not reference the recommendation")
+    if outcome.intervention_id != intervention.intervention_id:
+        return JoinValidationResult("INVALID", None, "outcome does not reference the intervention")
+    if intervention.lifecycle_state not in {APPROVED, "ACTIVE", "PAUSED", "COMPLETED", FAILED, OUTCOME_PENDING, EVALUATED}:
+        return JoinValidationResult("INVALID", None, "intervention lifecycle state is not outcome-evaluable")
+    if intervention.started_at is None:
+        return JoinValidationResult("INVALID", None, "outcome-evaluable intervention has no start timestamp")
+    if outcome.evidence_state not in EVIDENCE_STATES:
+        return JoinValidationResult("INVALID", None, "unsupported outcome evidence state")
+    if outcome.evidence_state != SUFFICIENT:
+        return JoinValidationResult(outcome.evidence_state, None, "outcome evidence is not sufficient")
 
     conflicts = _join_conflicts(recommendation, intervention, outcome)
     if conflicts:
         evidence_state = "CONTRADICTORY" if any(field in {"campaign_id", "timing_window"} for field in conflicts) else "INVALID"
         return JoinValidationResult(evidence_state, None, "provenance conflict", conflicts=conflicts)
 
+    temporal_error = _temporal_join_error(recommendation, approval, intervention, checkpoints, outcome)
+    if temporal_error is not None:
+        return JoinValidationResult("INVALID", None, temporal_error)
+
     for checkpoint in checkpoints:
         if checkpoint.intervention_id != intervention.intervention_id:
             return JoinValidationResult("INVALID", None, "checkpoint does not reference the intervention")
+        if checkpoint.status not in CHECKPOINT_STATUSES or checkpoint.status == INVALID:
+            return JoinValidationResult("INVALID", None, "checkpoint evidence is invalid")
+        checkpoint_conflicts = _checkpoint_conflicts(checkpoint, recommendation, intervention, outcome)
+        if checkpoint_conflicts:
+            checkpoint_state = "CONTRADICTORY" if any(field in {"campaign_id", "timing_window"} for field in checkpoint_conflicts) else "INVALID"
+            return JoinValidationResult(checkpoint_state, None, "checkpoint provenance conflict", conflicts=checkpoint_conflicts)
 
     return JoinValidationResult(
         "SUFFICIENT",
@@ -261,6 +287,62 @@ def _conflicting_shared_value(*values: str | None) -> bool:
         return False
     return any(value != provided[0] for value in provided[1:])
 
+
+
+def _checkpoint_conflicts(
+    checkpoint: CheckpointRecord,
+    recommendation: RecommendationRecord,
+    intervention: InterventionRecord,
+    outcome: OutcomeEvaluation,
+) -> tuple[str, ...]:
+    conflicts: list[str] = []
+    if checkpoint.intervention_key is not None and checkpoint.intervention_key != intervention.intervention_key:
+        conflicts.append("checkpoint canonical InterventionKey")
+    if _checkpoint_field_conflict(
+        checkpoint.campaign_id, recommendation.campaign_id, intervention.campaign_id, outcome.campaign_id
+    ):
+        conflicts.append("campaign_id")
+    if _checkpoint_field_conflict(
+        checkpoint.timing_window, recommendation.timing_window, intervention.timing_window, outcome.timing_window
+    ):
+        conflicts.append("timing_window")
+    return tuple(conflicts)
+
+
+def _checkpoint_field_conflict(checkpoint_value: str | None, *other_values: str | None) -> bool:
+    if checkpoint_value is None:
+        return False
+    provided = [value for value in other_values if value is not None]
+    return not provided or any(value != checkpoint_value for value in provided)
+
+
+def _temporal_join_error(
+    recommendation: RecommendationRecord,
+    approval: ApprovalRecord,
+    intervention: InterventionRecord,
+    checkpoints: Sequence[CheckpointRecord],
+    outcome: OutcomeEvaluation,
+) -> str | None:
+    generated_at = _utc(recommendation.generated_at)
+    decided_at = _utc(approval.decided_at)
+    started_at = _utc(intervention.started_at)
+    if generated_at > decided_at:
+        return "approval precedes recommendation"
+    if started_at < decided_at:
+        return "intervention starts before approval"
+    if _utc(outcome.baseline_window_end) > started_at:
+        return "outcome baseline extends past intervention start"
+    if _utc(outcome.evaluation_due_at) < started_at:
+        return "outcome evaluation precedes intervention start"
+    if _utc(outcome.recent_window_start) < _utc(outcome.baseline_window_end):
+        return "outcome windows overlap or are reversed"
+    for checkpoint in checkpoints:
+        due_at = _utc(checkpoint.due_at)
+        if due_at < started_at:
+            return "checkpoint is due before intervention start"
+        if checkpoint.observed_at is not None and _utc(checkpoint.observed_at) < due_at:
+            return "checkpoint observed before due timestamp"
+    return None
 
 def _bucket_observations(
     observations: Sequence[OutcomeObservation],

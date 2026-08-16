@@ -35,6 +35,9 @@ SUFFICIENT = "SUFFICIENT"
 INSUFFICIENT = "INSUFFICIENT"
 CONTRADICTORY = "CONTRADICTORY"
 
+EVIDENCE_STATES = frozenset({NOT_DUE, PARTIAL, SUFFICIENT, INSUFFICIENT, INVALID, CONTRADICTORY})
+CHECKPOINT_STATUSES = frozenset({DUE, OBSERVED, MISSED, INVALID})
+
 ACTIVE_INTERVENTION_STATES = frozenset({APPROVED, ACTIVE, PAUSED})
 TERMINAL_INTERVENTION_STATES = frozenset({REJECTED, EXPIRED, CANCELLED, COMPLETED, FAILED, EVALUATED})
 
@@ -240,6 +243,7 @@ class CheckpointRecord:
     source: str = "project2"
     campaign_id: str | None = None
     timing_window: str | None = None
+    intervention_key: InterventionKey | None = None
 
     def __post_init__(self) -> None:
         _validate_nonblank_text(self.checkpoint_id, "checkpoint_id")
@@ -253,6 +257,8 @@ class CheckpointRecord:
             raise TypeError("metric_value must be numeric or None")
         _validate_optional_text(self.campaign_id, "campaign_id")
         _validate_optional_text(self.timing_window, "timing_window")
+        if self.intervention_key is not None and not isinstance(self.intervention_key, InterventionKey):
+            raise TypeError("intervention_key must be an InterventionKey or None")
 
 
 @dataclass(frozen=True)
@@ -299,6 +305,8 @@ class OutcomeEvaluation:
         _validate_nonblank_text(self.outcome_id, "outcome_id")
         _validate_nonblank_text(self.intervention_id, "intervention_id")
         _validate_nonblank_text(self.evidence_state, "evidence_state")
+        if self.evidence_state not in EVIDENCE_STATES:
+            raise ValueError(f"unsupported evidence_state {self.evidence_state}")
         _validate_aware_datetime(self.evaluation_due_at, "evaluation_due_at")
         _validate_optional_aware_datetime(self.observed_at, "observed_at")
         _validate_aware_datetime(self.baseline_window_start, "baseline_window_start")
@@ -342,6 +350,7 @@ class InterventionSnapshot:
     ended_at: datetime | None = None
     checkpoint_ids: tuple[str, ...] = ()
     outcome_id: str | None = None
+    execution_evidence: dict[str, Any] | None = None
 
     @property
     def is_active(self) -> bool:
