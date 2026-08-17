@@ -38,6 +38,7 @@ from .contracts import (
     OutcomeEvaluation,
     OutcomeObservation,
     JoinedInterventionTimeline,
+    _validate_aware_datetime,
 )
 
 BASELINE_DAYS = 56
@@ -288,7 +289,6 @@ def _conflicting_shared_value(*values: str | None) -> bool:
     return any(value != provided[0] for value in provided[1:])
 
 
-
 def _checkpoint_conflicts(
     checkpoint: CheckpointRecord,
     recommendation: RecommendationRecord,
@@ -343,6 +343,7 @@ def _temporal_join_error(
         if checkpoint.observed_at is not None and _utc(checkpoint.observed_at) < due_at:
             return "checkpoint observed before due timestamp"
     return None
+
 
 def _bucket_observations(
     observations: Sequence[OutcomeObservation],
@@ -405,13 +406,6 @@ def _checkpoint_status(record: CheckpointRecord, current_time: datetime, due_at:
     except (TypeError, ValueError):
         return INVALID
     return OBSERVED
-
-
-def _validate_aware_datetime(value: datetime, field_name: str) -> None:
-    if not isinstance(value, datetime):
-        raise TypeError(f"{field_name} must be a datetime")
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError(f"{field_name} must be timezone-aware")
 
 
 def _utc(value: datetime) -> datetime:
