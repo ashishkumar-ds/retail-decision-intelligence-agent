@@ -256,3 +256,129 @@ def test_api_forecast_statuses_and_error_review_behavior(tmp_path, monkeypatch):
     malformed = client.get("/recommendations").json()["recommendations"][0]
     assert malformed["forecast_status"] == "ERROR"
     assert malformed["recommendation"] == "NEEDS_REVIEW"
+
+
+
+def test_campaign_api_preserves_campaign_as_a_label_and_flags_missing_stable_provenance(monkeypatch):
+    requested = {}
+
+    def fake_get(url, **kwargs):
+        requested["url"] = url
+        requested.update(kwargs)
+        return FakeResponse({
+            "total_runs": 1,
+            "runs": [{
+                "campaign": "campaign-api-1",
+                "timing": "2026-W01",
+                "run_timestamp": "2026-01-01T00:00:00+00:00",
+                "store_ids": [7],
+            }],
+        })
+
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
+    monkeypatch.setattr(campaign_tool.requests, "get", fake_get)
+    runs = campaign_tool.get_audit_log()
+    assert requested == {
+        "url": campaign_tool.DEFAULT_AUDIT_API_URL,
+        "timeout": campaign_tool.REQUEST_TIMEOUT_SECONDS,
+    }
+    assert runs == [{
+        "campaign_label": "campaign-api-1",
+        "campaign_id": None,
+        "campaign_provenance_status": campaign_tool.MISSING_STABLE_CAMPAIGN_ID,
+        "timing_window": "2026-W01",
+        "run_timestamp": "2026-01-01T00:00:00+00:00",
+        "store_ids": [7],
+    }]
+    assert campaign_tool.first_run_for_store(7, runs) == runs[0]
+
+
+def test_campaign_api_does_not_promote_campaign_18_or_rollout_status_to_delivery_evidence(monkeypatch):
+    payload = {
+        "total_runs": 1,
+        "runs": [{
+            "campaign": "Campaign 18",
+            "timing": "2026-W01",
+            "run_timestamp": "2026-01-01T00:00:00+00:00",
+            "store_ids": [7],
+            "action": "ADVANCE_PHASE",
+            "rollout_status": "SUCCESS",
+        }],
+    }
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
+    monkeypatch.setattr(campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse(payload))
+    with pytest.raises(campaign_tool.CampaignAuditResponseError, match="unexpected"):
+        campaign_tool.get_audit_log()
+
+
+@pytest.mark.parametrize("payload", [
+    [],
+    {"runs": []},
+    {"total_runs": 1, "runs": []},
+    {"total_runs": 1, "runs": ["not-an-object"]},
+])
+def test_campaign_api_rejects_schema_invalid_responses(monkeypatch, payload):
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
+    monkeypatch.setattr(campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse(payload))
+    with pytest.raises(campaign_tool.CampaignAuditResponseError):
+        campaign_tool.get_audit_log()
+
+
+@pytest.mark.parametrize("run", [
+    {"campaign": "Campaign 18", "timing": "2026-W01", "run_timestamp": "2026-01-01T00:00:00", "store_ids": [7]},
+    {"campaign": "Campaign 18", "timing": "2026-W01", "run_timestamp": "2026-01-01T00:00:00+00:00", "store_ids": [0]},
+    {"campaign": "Campaign 18", "timing": " ", "run_timestamp": "2026-01-01T00:00:00+00:00", "store_ids": [7]},
+    {"campaign": "Campaign 18", "timing": "2026-W01", "run_timestamp": "2026-01-01T00:00:00+00:00", "store_ids": [7, 7]},
+])
+def test_campaign_api_strictly_validates_audit_run_fields(monkeypatch, run):
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
+    monkeypatch.setattr(
+        campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse({"total_runs": 1, "runs": [run]})
+    )
+    with pytest.raises(campaign_tool.CampaignAuditResponseError):
+        campaign_tool.get_audit_log()
+
+
+@pytest.mark.parametrize("api_url", [
+    "https://retail-campaign-automation.onrender.com/run-campaign",
+    "https://retail-campaign-automation.onrender.com/advance-phase",
+    "https://retail-campaign-automation.onrender.com/rollback-phase",
+])
+def test_campaign_api_refuses_non_audit_endpoints(monkeypatch, api_url):
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", api_url)
+    monkeypatch.setattr(
+        campaign_tool.requests,
+        "get",
+        lambda *args, **kwargs: pytest.fail("non-audit endpoints must never be requested"),
+    )
+    with pytest.raises(campaign_tool.CampaignAuditResponseError, match="/audit"):
+        campaign_tool.get_audit_log()
+
+
+def test_campaign_api_surfaces_http_and_malformed_json_failures(monkeypatch):
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
+    monkeypatch.setattr(
+        campaign_tool.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse({}, status_error=requests.HTTPError("503")),
+    )
+    with pytest.raises(requests.HTTPError):
+        campaign_tool.get_audit_log()
+    monkeypatch.setattr(campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse(None, json_error=True))
+    with pytest.raises(campaign_tool.CampaignAuditResponseError):
+        campaign_tool.get_audit_log()
+
+
+def test_campaign_local_jsonl_source_is_unchanged_when_api_is_not_configured(tmp_path, monkeypatch):
+    path = tmp_path / "audit.jsonl"
+    path.write_text(json.dumps({"store_ids": [9]}) + "\n")
+    monkeypatch.setenv("CAMPAIGN_AUDIT_LOG_PATH", str(path))
+    monkeypatch.delenv("CAMPAIGN_AUDIT_API_URL", raising=False)
+    monkeypatch.setattr(
+        campaign_tool.requests,
+        "get",
+        lambda *args, **kwargs: pytest.fail("local source must not make an HTTP request"),
+    )
+    before = path.read_text()
+    assert campaign_tool.get_audit_log() == [{"store_ids": [9]}]
+    assert path.read_text() == before

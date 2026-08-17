@@ -9,11 +9,11 @@ not contain decision logic itself.
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
-import uuid
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.encoders import jsonable_encoder
 
@@ -23,7 +23,12 @@ from decision_engine.scorer import StoreSignal, score_and_recommend, no_data_rec
 from decision_engine.verifier import verify_recommendation, verify_batch
 from guardrails import requires_human_approval
 from memory.history import append_log, read_log
-from tools.campaign_tool import get_audit_log, get_store_ids_from_audit_log, first_run_for_store
+from tools.campaign_tool import (
+    CampaignAuditResponseError,
+    get_audit_log,
+    get_store_ids_from_audit_log,
+    first_run_for_store,
+)
 from tools.forecast_tool import get_store_info, get_prediction
 from phase2.contracts import (
     ACTIVE, APPROVED, CANCELLED, COMPLETED, EVALUATED, FAILED, OUTCOME_PENDING, PAUSED,
@@ -154,7 +159,14 @@ def health():
 
 @app.get("/recommendations")
 def get_recommendations():
-    audit_runs = get_audit_log()
+    try:
+        audit_runs = get_audit_log()
+    except requests.RequestException as error:
+        logger.error("[CAMPAIGN AUDIT INTEGRATION ERROR] HTTP/network failure: %s", error)
+        raise HTTPException(status_code=502, detail="Campaign audit API is unavailable.") from error
+    except CampaignAuditResponseError as error:
+        logger.error("[CAMPAIGN AUDIT INTEGRATION ERROR] invalid response: %s", error)
+        raise HTTPException(status_code=502, detail="Campaign audit API returned an invalid response.") from error
     all_store_ids = get_store_ids_from_audit_log(audit_runs)
 
     if not all_store_ids:
@@ -194,12 +206,13 @@ def approve_recommendation(store_id: int):
     rec = _pending_approvals.pop(store_id, None)
     if rec is None:
         raise HTTPException(status_code=404, detail=f"No pending recommendation for store {store_id}.")
+    decided_at = utcnow_iso()
     rec = {
         **rec,
         "approved": True,
         "approval_id": f"approval-{uuid.uuid4().hex}",
-        "approved_at": utcnow_iso(),
-        "decided_at": utcnow_iso(),
+        "approved_at": decided_at,
+        "decided_at": decided_at,
     }
     append_log(rec)
     return {"message": f"Recommendation for store {store_id} approved.", "recommendation": rec}
@@ -210,16 +223,16 @@ def reject_recommendation(store_id: int):
     rec = _pending_approvals.pop(store_id, None)
     if rec is None:
         raise HTTPException(status_code=404, detail=f"No pending recommendation for store {store_id}.")
+    decided_at = utcnow_iso()
     rec = {
         **rec,
         "approved": False,
         "approval_id": f"approval-{uuid.uuid4().hex}",
-        "rejected_at": utcnow_iso(),
-        "decided_at": utcnow_iso(),
+        "rejected_at": decided_at,
+        "decided_at": decided_at,
     }
     append_log(rec)
     return {"message": f"Recommendation for store {store_id} rejected.", "recommendation": rec}
-
 
 
 def _parse_phase2_timestamp(value, field_name: str) -> datetime:
@@ -232,6 +245,10 @@ def _parse_phase2_timestamp(value, field_name: str) -> datetime:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise HTTPException(status_code=400, detail=f"{field_name} must be timezone-aware")
     return parsed
+
+
+def _phase2_as_of_or_now(payload: dict) -> datetime:
+    return _parse_phase2_timestamp(payload["as_of"], "as_of") if payload.get("as_of") else datetime.now(timezone.utc)
 
 
 def _phase2_key(payload: dict, store_id: int) -> InterventionKey:
@@ -364,7 +381,7 @@ def record_phase2_checkpoints(intervention_id: str, payload: dict = Body(default
     if not isinstance(raw_observed, list):
         raise HTTPException(status_code=400, detail="observed_checkpoints must be a list")
     observed = tuple(_checkpoint_from_payload(item) for item in raw_observed if isinstance(item, dict))
-    as_of = _parse_phase2_timestamp(payload["as_of"], "as_of") if payload.get("as_of") else datetime.now(timezone.utc)
+    as_of = _phase2_as_of_or_now(payload)
     checkpoints = build_weekly_checkpoints(
         intervention_id=intervention_id, intervention_started_at=snapshot.started_at,
         observed_checkpoints=observed, as_of=as_of, weeks=payload.get("weeks", 8),
@@ -423,7 +440,7 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
     if snapshot.lifecycle_state in {COMPLETED, FAILED}:
         pending = InterventionEvent(
             event_id=f"outcome-pending-{uuid.uuid4().hex}", intervention_id=intervention_id, event_type="outcome_pending",
-            occurred_at=datetime.now(timezone.utc), key=snapshot.key, campaign_id=snapshot.campaign_id,
+            occurred_at=_phase2_as_of_or_now(payload), key=snapshot.key, campaign_id=snapshot.campaign_id,
             timing_window=snapshot.timing_window, outcome_id=payload.get("outcome_id"),
             payload={"execution_evidence": snapshot.execution_evidence} if snapshot.execution_evidence else {},
         )
@@ -448,21 +465,20 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
         )
     except (KeyError, TypeError, ValueError) as error:
         raise HTTPException(status_code=400, detail=f"invalid outcome input: {error}") from error
-    if calculation.evidence_state == "SUFFICIENT" and snapshot.lifecycle_state != EVALUATED:
-        evaluated = InterventionEvent(
-            event_id=f"evaluate-{uuid.uuid4().hex}", intervention_id=intervention_id, event_type="evaluate",
-            occurred_at=datetime.now(timezone.utc), key=snapshot.key, campaign_id=snapshot.campaign_id,
-            timing_window=snapshot.timing_window, outcome_id=calculation.outcome.outcome_id,
-            payload=jsonable_encoder(calculation.outcome),
-        )
-        _phase2_registry.append_event(evaluated)
-        snapshot = _snapshot_or_404(intervention_id)
     join_inputs, join_error = _phase2_join_records(snapshot, calculation.outcome)
     if join_error is not None:
         join_state, join_reason = join_error
         return {"evidence_state": join_state, "reason": join_reason, "outcome": jsonable_encoder(calculation.outcome)}
     recommendation, approval, intervention, checkpoints, outcome = join_inputs
     join = build_intervention_outcome_join(recommendation, approval, intervention, checkpoints, outcome)
+    if join.evidence_state == "SUFFICIENT" and snapshot.lifecycle_state != EVALUATED:
+        evaluated = InterventionEvent(
+            event_id=f"evaluate-{uuid.uuid4().hex}", intervention_id=intervention_id, event_type="evaluate",
+            occurred_at=_phase2_as_of_or_now(payload), key=snapshot.key, campaign_id=snapshot.campaign_id,
+            timing_window=snapshot.timing_window, outcome_id=calculation.outcome.outcome_id,
+            payload=jsonable_encoder(calculation.outcome),
+        )
+        _phase2_registry.append_event(evaluated)
     return {
         "evidence_state": join.evidence_state,
         "outcome": jsonable_encoder(calculation.outcome),

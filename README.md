@@ -46,11 +46,14 @@ uvicorn app.main:app --reload --port 8001
 
 Project 3 consumes the `audit_log.jsonl` emitted by Retail Campaign Automation (Project 2) through a read-only adapter. It never imports Project 2 `main.py` and does not recreate campaign records or campaign logic. Configure the Project 2 audit file path before starting Project 3. If the file is absent, Project 3 reports no campaign data rather than manufacturing input.
 
+As an opt-in alternative, set `CAMPAIGN_AUDIT_API_URL=https://retail-campaign-automation.onrender.com/audit`. Project 3 then makes only a `GET` request to that exact `/audit` endpoint; it never calls `/run-campaign`, `/advance-phase`, or `/rollback-phase`. The API must return `{"total_runs": <integer>, "runs": [<objects>]}` with a matching count. Each run must contain only non-empty `campaign` and `timing` text, a timezone-aware ISO-8601 `run_timestamp`, and unique positive integer `store_ids`. `campaign` is retained as `campaign_label`; it is not promoted to `campaign_id` (including labels such as `Campaign 18`) because Project 3 has no contract defining a stable external campaign identifier. API records therefore explicitly flag `MISSING_STABLE_CAMPAIGN_ID`. Rollout/action fields, including `ADVANCE_PHASE` and `rollout_status`, are outside this audit schema and cannot establish delivery success. HTTP, JSON, and schema failures are reported as campaign-audit integration errors; no records are invented.
+
 ## Environment variables
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `CAMPAIGN_AUDIT_LOG_PATH` | unset | Path to Project 2 `audit_log.jsonl`; unset/missing means no campaign data. |
+| `CAMPAIGN_AUDIT_API_URL` | unset | Opt-in Project 2 read-only audit endpoint. When set, takes precedence over the local JSONL source. |
 | `FORECAST_API_URL` | `https://retail-forecast-api-7sue.onrender.com/` | Shared deployed forecast API base URL. |
 | `RECOMMENDATION_LOG_PATH` | `logs/recommendation_log.jsonl` | Append-only recommendation JSONL location. |
 | `PORT` | `8001` | FastAPI listen port. |

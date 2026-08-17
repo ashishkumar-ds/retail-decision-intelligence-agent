@@ -45,7 +45,7 @@ def integration_context(tmp_path, monkeypatch):
     audit_path = tmp_path / "audit_log.jsonl"
     audit_path.write_text(json.dumps({"campaign_id": "camp-api", "timing_window": "window-api"}) + "\n")
     before = audit_path.read_text()
-    monkeypatch.setattr(main, "get_audit_log", lambda: json.loads(audit_path.read_text()))
+    monkeypatch.setattr(main, "get_audit_log", lambda: [json.loads(audit_path.read_text())])
     return registry, audit_path, before
 
 
