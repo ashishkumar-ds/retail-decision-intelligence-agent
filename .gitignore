@@ -10,3 +10,7 @@ venv/
 .ruff_cache/
 logs/
 .DS_Store
+
+# Local-only documentation
+CHANGES_FROM_REVIEW.md
+docs/
