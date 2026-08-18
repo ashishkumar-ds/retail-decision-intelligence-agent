@@ -300,6 +300,9 @@ class OutcomeEvaluation:
     forecast_status: str | None = None
     campaign_id: str | None = None
     timing_window: str | None = None
+    longitudinal_uplift_pct: float | None = None
+    counterfactual_uplift_pct: float | None = None
+    methodology: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _validate_nonblank_text(self.outcome_id, "outcome_id")
@@ -327,6 +330,12 @@ class OutcomeEvaluation:
             _validate_nonblank_text(self.forecast_status, "forecast_status")
         _validate_optional_text(self.campaign_id, "campaign_id")
         _validate_optional_text(self.timing_window, "timing_window")
+        if self.longitudinal_uplift_pct is not None and (isinstance(self.longitudinal_uplift_pct, bool) or not isinstance(self.longitudinal_uplift_pct, (int, float))):
+            raise TypeError("longitudinal_uplift_pct must be numeric or None")
+        if self.counterfactual_uplift_pct is not None and (isinstance(self.counterfactual_uplift_pct, bool) or not isinstance(self.counterfactual_uplift_pct, (int, float))):
+            raise TypeError("counterfactual_uplift_pct must be numeric or None")
+        if not isinstance(self.methodology, dict):
+            raise TypeError("methodology must be a dict")
 
 
 @dataclass(frozen=True)
