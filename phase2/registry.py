@@ -9,7 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from tools.campaign_tool import first_run_for_store
+from tools.campaign_tool import (
+    canonical_timing_window,
+    first_run_for_store,
+    normalize_campaign_id,
+)
 
 from .contracts import (
     ACTIVE,
@@ -189,9 +193,15 @@ def resolve_project2_provenance(store_id: int, audit_runs: list[dict[str, Any]])
     first_run = first_run_for_store(store_id, audit_runs)
     if first_run is None:
         return {"campaign_id": None, "timing_window": None}
+    raw_campaign = first_run.get("campaign_id") or first_run.get("campaign") or first_run.get("campaign_label")
+    normalized_campaign = normalize_campaign_id(raw_campaign) if raw_campaign is not None else None
+
+    raw_timing = first_run.get("timing_window") or first_run.get("timing")
+    normalized_timing = canonical_timing_window(raw_timing) if raw_timing is not None else None
+
     return {
-        "campaign_id": first_run.get("campaign_id"),
-        "timing_window": first_run.get("timing_window"),
+        "campaign_id": normalized_campaign if normalized_campaign is not None else raw_campaign,
+        "timing_window": normalized_timing if normalized_timing is not None else raw_timing,
     }
 
 

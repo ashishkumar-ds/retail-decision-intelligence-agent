@@ -52,6 +52,8 @@ from phase2.registry import (
 )
 from tools import campaign_tool
 
+pytestmark = pytest.mark.mock
+
 
 def key(**overrides):
     values = dict(
@@ -509,3 +511,251 @@ def test_valid_complete_join_remains_sufficient():
     result = build_intervention_outcome_join(recommendation, approval, intervention, checkpoints, outcome)
     assert result.evidence_state == SUFFICIENT
     assert result.joined is not None
+
+
+def test_campaign_id_normalization_and_timing_window_canonicalization():
+    # Campaign normalization
+    assert campaign_tool.normalize_campaign_id("Campaign 18") == "18"
+    assert campaign_tool.normalize_campaign_id("campaign-18") == "18"
+    assert campaign_tool.normalize_campaign_id("campaign_18") == "18"
+    assert campaign_tool.normalize_campaign_id("18") == "18"
+    assert campaign_tool.normalize_campaign_id(18) == "18"
+    assert campaign_tool.normalize_campaign_id("Campaign 1") == "1"
+    assert campaign_tool.normalize_campaign_id("campaign-api-1") is None
+    assert campaign_tool.normalize_campaign_id("Summer Promo") is None
+    assert campaign_tool.normalize_campaign_id("") is None
+    assert campaign_tool.normalize_campaign_id("   ") is None
+    assert campaign_tool.normalize_campaign_id(None) is None
+
+    # Timing canonicalization
+    assert campaign_tool.canonical_timing_window("12 PM - 6 PM") == "12 PM - 6 PM"
+    assert campaign_tool.canonical_timing_window("12:00-18:00") == "12 PM - 6 PM"
+    assert campaign_tool.canonical_timing_window("12-18") == "12 PM - 6 PM"
+    assert campaign_tool.canonical_timing_window("afternoon") == "12 PM - 6 PM"
+    assert campaign_tool.canonical_timing_window("1200-1759") == "12 PM - 6 PM"
+    assert campaign_tool.canonical_timing_window("2026-W01") == "2026-W01"
+    assert campaign_tool.canonical_timing_window(None) is None
+
+
+def test_dual_uplift_metrics_methodology_and_independence():
+    started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    observations = [
+        OutcomeObservation(started_at - timedelta(days=50), 100.0),
+        OutcomeObservation(started_at + timedelta(days=50), 130.0),
+    ]
+
+    # Without counterfactual reference: only longitudinal uplift
+    calc_no_fcst = evaluate_outcome(
+        intervention_id="int-dual-1",
+        intervention_key=key(),
+        intervention_started_at=started_at,
+        observations=observations,
+        as_of=started_at + timedelta(days=60),
+    )
+    outcome_1 = calc_no_fcst.outcome
+    assert outcome_1.actual_uplift_pct == pytest.approx(30.0)
+    assert outcome_1.longitudinal_uplift_pct == pytest.approx(30.0)
+    assert outcome_1.counterfactual_uplift_pct is None
+    assert "longitudinal_uplift" in outcome_1.methodology
+    assert "counterfactual_uplift" in outcome_1.methodology
+
+    # With counterfactual reference: both longitudinal and counterfactual are calculated independently
+    calc_with_fcst = evaluate_outcome(
+        intervention_id="int-dual-2",
+        intervention_key=key(),
+        intervention_started_at=started_at,
+        observations=observations,
+        as_of=started_at + timedelta(days=60),
+        forecast_reference_value=100.0, # ML counterfactual predicted $100 vs observed $130 -> +30.0%
+    )
+    outcome_2 = calc_with_fcst.outcome
+    assert outcome_2.longitudinal_uplift_pct == pytest.approx(30.0)
+    assert outcome_2.counterfactual_uplift_pct == pytest.approx(30.0)
+
+    # Different baseline ($120) vs forecast ($100) -> distinct metrics
+    obs_diff = [
+        OutcomeObservation(started_at - timedelta(days=50), 120.0), # baseline $120
+        OutcomeObservation(started_at + timedelta(days=50), 150.0), # observed $150
+    ]
+    calc_diff = evaluate_outcome(
+        intervention_id="int-dual-3",
+        intervention_key=key(),
+        intervention_started_at=started_at,
+        observations=obs_diff,
+        as_of=started_at + timedelta(days=60),
+        forecast_reference_value=100.0, # forecast $100
+    )
+    outcome_3 = calc_diff.outcome
+    # Longitudinal: (150 - 120) / 120 * 100 = +25.0%
+    assert outcome_3.longitudinal_uplift_pct == pytest.approx(25.0)
+    # Counterfactual: (150 - 100) / 100 * 100 = +50.0%
+    assert outcome_3.counterfactual_uplift_pct == pytest.approx(50.0)
+    assert outcome_3.longitudinal_uplift_pct != outcome_3.counterfactual_uplift_pct
+
+
+def test_store_campaign_exposure_derivation_and_metadata():
+    from phase2.exposure import compute_store_campaign_eligibility
+
+    txs = [
+        # Store 7 transactions during Campaign 18 window (Days 587..642)
+        {"STORE_ID": 7, "DAY": 590, "household_key": "hh-1", "SALES_VALUE": 60.0},
+        {"STORE_ID": 7, "DAY": 600, "household_key": "hh-2", "SALES_VALUE": 40.0},
+        {"STORE_ID": 7, "DAY": 610, "household_key": "hh-unexposed", "SALES_VALUE": 20.0},
+        # Other store
+        {"STORE_ID": 8, "DAY": 590, "household_key": "hh-1", "SALES_VALUE": 100.0},
+        # Outside window
+        {"STORE_ID": 7, "DAY": 500, "household_key": "hh-1", "SALES_VALUE": 100.0},
+    ]
+    campaign_hh = {"hh-1", "hh-2"}
+
+    res = compute_store_campaign_eligibility(
+        store_id=7,
+        transactions=txs,
+        campaign_households=campaign_hh,
+        start_day=587,
+        end_day=642,
+        min_exposed_revenue_share_pct=50.0,
+        min_exposed_households=2,
+    )
+
+    assert res["store_id"] == 7
+    assert res["derivation_type"] == "derived_store_eligibility"
+    assert res["direct_store_exposure_logged"] is False
+    assert res["total_store_sales"] == 120.0
+    assert res["exposed_household_sales"] == 100.0
+    assert res["exposed_revenue_share_pct"] == pytest.approx(83.33, abs=0.01)
+    assert res["exposed_household_count"] == 2
+    assert res["is_eligible"] is True
+    assert "household_key" in res["source_fields"]
+
+
+def test_provenance_join_with_normalized_campaign_and_timing_formats():
+    recommendation, approval, intervention, checkpoints, outcome = _join_fixture()
+
+    # recommendation has "Campaign 18", intervention has "18", checkpoint has "18"
+    rec_c18 = replace(recommendation, campaign_id="Campaign 18", timing_window="12:00-18:00")
+    int_18 = replace(intervention, campaign_id="18", timing_window="12 PM - 6 PM")
+    cp_18 = [replace(checkpoints[0], campaign_id="18", timing_window="12 PM - 6 PM")]
+    out_18 = replace(outcome, campaign_id="18", timing_window="12 PM - 6 PM")
+
+    result = build_intervention_outcome_join(rec_c18, approval, int_18, cp_18, out_18)
+    assert result.evidence_state == SUFFICIENT
+    assert result.joined is not None
+    assert result.conflicts == ()
+
+
+def test_forecast_reference_unit_and_horizon_consistency_with_pilot_stores():
+    """Verify that daily counterfactual forecast averages match recent observation daily means in scale ($/day)."""
+    started_at = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
+    # 14-day recent daily observations averaging $55/day
+    recent_obs = [
+        OutcomeObservation(started_at + timedelta(days=47 + i), 55.0)
+        for i in range(14)
+    ]
+    # 56-day baseline daily observations averaging $45/day
+    baseline_obs = [
+        OutcomeObservation(started_at - timedelta(days=56 - i), 45.0)
+        for i in range(56)
+    ]
+
+    # Counterfactual 14-day daily mean forecast: $42.0/day
+    daily_mean_forecast = 42.0
+
+    calc = evaluate_outcome(
+        intervention_id="int-scale-check",
+        intervention_key=key(store_id=299),
+        intervention_started_at=started_at,
+        observations=baseline_obs + recent_obs,
+        as_of=started_at + timedelta(days=60),
+        forecast_reference_value=daily_mean_forecast,
+    )
+    outcome = calc.outcome
+    assert outcome.baseline_value == pytest.approx(45.0)
+    assert outcome.recent_observation_value == pytest.approx(55.0)
+    assert outcome.forecast_reference_value == pytest.approx(42.0)
+
+    # Longitudinal uplift: (55 - 45) / 45 * 100 = +22.22%
+    assert outcome.longitudinal_uplift_pct == pytest.approx(22.22, abs=0.01)
+    # Counterfactual uplift: (55 - 42) / 42 * 100 = +30.95%
+    assert outcome.counterfactual_uplift_pct == pytest.approx(30.95, abs=0.01)
+    assert outcome.recovery_pct_of_target == pytest.approx(22.222 / 30.1 * 100, abs=0.1)
+
+    # Passing cumulative 56-day 3-store total ($9569) without daily averaging creates unit inconsistency:
+    calc_inconsistent = evaluate_outcome(
+        intervention_id="int-scale-err",
+        intervention_key=key(store_id=299),
+        intervention_started_at=started_at,
+        observations=baseline_obs + recent_obs,
+        as_of=started_at + timedelta(days=60),
+        forecast_reference_value=9569.0, # Multi-store 56-day cumulative sum
+    )
+    # Results in nonsensical negative lift because $55/day is compared to $9569
+    assert calc_inconsistent.outcome.counterfactual_uplift_pct == pytest.approx(-99.42, abs=0.01)
+
+
+def test_evaluate_store_portfolio_multi_store_success_and_error_aggregation(monkeypatch):
+    from phase2.portfolio import evaluate_store_portfolio
+    import tools.forecast_tool as forecast_tool
+
+    # Mock Forecast API
+    def fake_info(store_id):
+        if store_id == 999: # Unknown store
+            return None
+        return {"store_id": store_id, "last_day": 586}
+
+    def fake_pred(store_id, day, **kwargs):
+        # Return store-specific daily forecast:
+        # Store 299 -> $42/day, Store 317 -> $80/day, Store 448 -> $48/day
+        store_base = {299: 42.0, 317: 80.0, 448: 48.0}
+        return store_base.get(store_id, 50.0)
+
+    monkeypatch.setattr(forecast_tool, "get_store_info", fake_info)
+    monkeypatch.setattr(forecast_tool, "get_prediction", fake_pred)
+
+    # Build simulated transactions for 4 stores
+    txs = []
+    # Baseline days: 531..586 (56 days), Recent days: 634..647 (14 days)
+    for sid, base_sales, recent_sales in [(299, 50.0, 60.0), (317, 70.0, 90.0), (448, 40.0, 55.0), (999, 30.0, 35.0)]:
+        for d in range(531, 587):
+            txs.append({"STORE_ID": sid, "DAY": d, "SALES_VALUE": base_sales, "household_key": f"hh-{sid}"})
+        for d in range(634, 648):
+            txs.append({"STORE_ID": sid, "DAY": d, "SALES_VALUE": recent_sales, "household_key": f"hh-{sid}"})
+
+    hh_c18 = {f"hh-299", f"hh-317", f"hh-448", f"hh-999"}
+
+    report = evaluate_store_portfolio(
+        store_ids=[299, 317, 448, 999],
+        transactions=txs,
+        campaign_households=hh_c18,
+        campaign_start_day=587,
+        campaign_end_day=642,
+    )
+
+    assert report.total_stores == 4
+    assert report.eligible_stores_count == 4
+    assert report.sufficient_evidence_count == 4
+    assert report.available_forecast_count == 3
+    assert report.error_count == 0
+
+    # Inspect Store 299
+    r299 = next(r for r in report.store_results if r.store_id == 299)
+    assert r299.baseline_daily_mean == pytest.approx(50.0)
+    assert r299.recent_daily_mean == pytest.approx(60.0)
+    assert r299.forecast_reference_value == pytest.approx(42.0)
+    assert r299.longitudinal_uplift_pct == pytest.approx(20.0) # (60 - 50) / 50 * 100
+    assert r299.counterfactual_uplift_pct == pytest.approx(42.86, abs=0.01) # (60 - 42) / 42 * 100
+    assert r299.join_state == "SUFFICIENT"
+
+    # Inspect Store 999 (NO_DATA)
+    r999 = next(r for r in report.store_results if r.store_id == 999)
+    assert r999.forecast_status == "NO_DATA"
+    assert r999.forecast_reference_value is None
+    assert r999.counterfactual_uplift_pct is None
+    assert r999.longitudinal_uplift_pct == pytest.approx(16.67, abs=0.01) # (35 - 30) / 30 * 100
+
+    # Verify portfolio-level aggregations
+    assert report.mean_longitudinal_uplift_pct is not None
+    assert report.mean_counterfactual_uplift_pct is not None
+    assert report.pooled_actual_recent_sales > 0
+    assert report.pooled_counterfactual_forecast_sales > 0
+    assert report.pooled_counterfactual_uplift_pct is not None
