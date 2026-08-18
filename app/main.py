@@ -29,7 +29,12 @@ from tools.campaign_tool import (
     get_store_ids_from_audit_log,
     first_run_for_store,
 )
-from tools.forecast_tool import get_store_info, get_prediction
+from tools.forecast_tool import (
+    ForecastResponseError,
+    get_evaluation_window_forecast,
+    get_prediction,
+    get_store_info,
+)
 from phase2.contracts import (
     ACTIVE, APPROVED, CANCELLED, COMPLETED, EVALUATED, FAILED, OUTCOME_PENDING, PAUSED,
     CheckpointRecord, InterventionEvent, InterventionKey, InterventionRecord,
@@ -38,6 +43,7 @@ from phase2.contracts import (
 from phase2.evaluator import (
     build_intervention_outcome_join, build_weekly_checkpoints, evaluate_outcome,
 )
+from phase2.portfolio import evaluate_store_portfolio
 from phase2.registry import (
     InterventionRegistry, active_intervention_guard, exact_key_repetition_guard,
     resolve_project2_provenance,
@@ -455,12 +461,46 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
                 campaign_id=item.get("campaign_id"), timing_window=item.get("timing_window"),
             ) for item in raw_observations
         )
+        forecast_reference_value = payload.get("forecast_reference_value")
+        forecast_status = payload.get("forecast_status")
+
+        if forecast_reference_value is None and payload.get("auto_forecast", True):
+            store_id = snapshot.key.store_id
+            start_day = payload.get("start_day")
+            try:
+                if start_day is None:
+                    store_info = get_store_info(store_id)
+                    if store_info is not None:
+                        start_day = store_info.get("last_day")
+                if start_day is not None and isinstance(start_day, int):
+                    forecast_reference_value = get_evaluation_window_forecast(
+                        store_id=store_id,
+                        start_day=start_day,
+                        window_start_offset=47,
+                        window_end_offset=60,
+                    )
+                    if forecast_status is None:
+                        forecast_status = "AVAILABLE"
+                else:
+                    if forecast_status is None:
+                        forecast_status = "NO_DATA"
+            except (requests.RequestException, TimeoutError) as error:
+                logger.warning(f"Forecast API network error for store {store_id}: {error}")
+                if forecast_status is None:
+                    forecast_status = "ERROR"
+                forecast_reference_value = None
+            except (ForecastResponseError, ValueError, TypeError) as error:
+                logger.warning(f"Forecast API response/validation error for store {store_id}: {error}")
+                if forecast_status is None:
+                    forecast_status = "ERROR"
+                forecast_reference_value = None
+
         calculation = evaluate_outcome(
             intervention_id=intervention_id, intervention_key=snapshot.key,
             intervention_started_at=snapshot.started_at, observations=observations,
             as_of=_parse_phase2_timestamp(payload["as_of"], "as_of") if payload.get("as_of") else None,
-            outcome_id=payload.get("outcome_id"), forecast_reference_value=payload.get("forecast_reference_value"),
-            forecast_status=payload.get("forecast_status"), campaign_id=snapshot.campaign_id,
+            outcome_id=payload.get("outcome_id"), forecast_reference_value=forecast_reference_value,
+            forecast_status=forecast_status, campaign_id=snapshot.campaign_id,
             timing_window=snapshot.timing_window,
         )
     except (KeyError, TypeError, ValueError) as error:
@@ -486,8 +526,29 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
     }
 
 
+@app.post("/phase2/portfolio/evaluate")
+def evaluate_phase2_portfolio(payload: dict = Body(default={})):
+    store_ids = payload.get("store_ids", [])
+    if not isinstance(store_ids, list) or not store_ids:
+        raise HTTPException(status_code=400, detail="'store_ids' must be a non-empty list of integers")
+    for sid in store_ids:
+        if isinstance(sid, bool) or not isinstance(sid, int):
+            raise HTTPException(status_code=400, detail="Each store_id must be an integer")
+
+    report = evaluate_store_portfolio(
+        store_ids=store_ids,
+        transactions=payload.get("transactions", ()),
+        campaign_households=payload.get("campaign_households", ()),
+        campaign_start_day=int(payload.get("campaign_start_day", 587)),
+        campaign_end_day=int(payload.get("campaign_end_day", 642)),
+        auto_forecast=bool(payload.get("auto_forecast", True)),
+    )
+    return jsonable_encoder(report)
+
+
 @app.get("/log")
 def get_recommendation_log():
+
     log = read_log()
     return {"total_entries": len(log), "entries": log}
 

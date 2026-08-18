@@ -6,6 +6,7 @@ Project 2 campaign logic. Its optional HTTP source is limited to ``GET /audit``.
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,48 @@ MISSING_STABLE_CAMPAIGN_ID = "MISSING_STABLE_CAMPAIGN_ID"
 # external identifier. Execution and rollout fields are not audit evidence of
 # delivery and are therefore not part of the contract.
 _AUDIT_RUN_FIELDS = frozenset({"campaign", "timing", "run_timestamp", "store_ids"})
+
+
+def normalize_campaign_id(value: Any) -> str | None:
+    """Deterministically map campaign labels to stable integer string identifiers.
+
+    Maps 'Campaign 18', 'campaign-18', '18', 18 -> '18'.
+    Returns None for non-standard labels (e.g. 'campaign-api-1', 'Summer Promo')
+    or empty inputs without guessing.
+    """
+    if value is None:
+        return None
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    match = re.match(r"^(?:campaign\s*[-_]?\s*)?(\d+)$", cleaned, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
+def canonical_timing_window(value: Any) -> str | None:
+    """Standardize timing window representation across Project 2 and Project 3.
+
+    Normalizes common afternoon representations ('12 PM - 6 PM', '12:00-18:00',
+    '12-18', 'afternoon') to the canonical '12 PM - 6 PM' while preserving
+    other valid non-empty timing strings.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    lowered = cleaned.lower().replace(" ", "").replace(":", "")
+    if lowered in {"12pm-6pm", "1200-1800", "12-18", "afternoon", "12pm–6pm", "1200-1759"}:
+        return "12 PM - 6 PM"
+    return cleaned
 
 
 class CampaignAuditResponseError(ValueError):
@@ -121,13 +164,15 @@ def _normalise_api_audit_response(payload: Any) -> list[dict[str, Any]]:
                 f"missing={sorted(missing_fields)}, unexpected={sorted(unexpected_fields)}"
             )
         campaign_label = _required_nonempty_text(run["campaign"], "campaign", index)
-        timing_window = _required_nonempty_text(run["timing"], "timing", index)
+        campaign_id = normalize_campaign_id(campaign_label)
+        provenance_status = "NORMALIZED" if campaign_id is not None else MISSING_STABLE_CAMPAIGN_ID
+        timing_window = canonical_timing_window(_required_nonempty_text(run["timing"], "timing", index))
         run_timestamp = _required_timestamp(run["run_timestamp"], index)
         store_ids = _required_store_ids(run["store_ids"], index)
         normalised.append({
             "campaign_label": campaign_label,
-            "campaign_id": None,
-            "campaign_provenance_status": MISSING_STABLE_CAMPAIGN_ID,
+            "campaign_id": campaign_id,
+            "campaign_provenance_status": provenance_status,
             "timing_window": timing_window,
             "run_timestamp": run_timestamp,
             "store_ids": store_ids,

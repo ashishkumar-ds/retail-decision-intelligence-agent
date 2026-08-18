@@ -53,3 +53,9 @@ from .registry import (
     reconstruct_interventions,
     resolve_project2_provenance,
 )
+from .exposure import compute_store_campaign_eligibility
+from .portfolio import (
+    PortfolioEvaluationReport,
+    StoreEvaluationResult,
+    evaluate_store_portfolio,
+)

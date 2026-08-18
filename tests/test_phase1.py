@@ -11,6 +11,8 @@ from guardrails import requires_human_approval
 from memory.history import append_log, read_log
 from tools import campaign_tool, forecast_tool
 
+pytestmark = pytest.mark.mock
+
 
 def signal(**overrides):
     values = dict(store_id=1, baseline_forecast=100, current_forecast=110, days_elapsed=10,
@@ -221,6 +223,99 @@ def test_forecast_tool_http_malformed_store_and_timeout_paths(monkeypatch):
     )
     with pytest.raises(requests.Timeout):
         forecast_tool.get_prediction(7, 5)
+
+
+def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
+    called_days = []
+    def fake_post(url, json=None, timeout=None):
+        assert url.endswith("/predict")
+        assert timeout == forecast_tool.REQUEST_TIMEOUT_SECONDS
+        store_id = json["store_id"]
+        day = json["day"]
+        called_days.append(day)
+        return FakeResponse({"predicted_sales_value": float(day)})
+
+    monkeypatch.setattr(forecast_tool.requests, "post", fake_post)
+    mean_val = forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100)
+    assert called_days == list(range(147, 161)) # 14 days: 147..160
+    assert len(called_days) == 14
+    expected_mean = sum(range(147, 161)) / 14 # 153.5
+    assert mean_val == expected_mean
+
+    # Parameter validation
+    with pytest.raises(TypeError):
+        forecast_tool.get_evaluation_window_forecast(store_id="7", start_day=100)
+    with pytest.raises(TypeError):
+        forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=True)
+    with pytest.raises(TypeError):
+        forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100, window_start_offset="47")
+    with pytest.raises(ValueError):
+        forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100, window_start_offset=61, window_end_offset=60)
+
+    # Incomplete / malformed forecast on day 150
+    def malformed_post(url, json=None, timeout=None):
+        if json["day"] == 150:
+            return FakeResponse({"predicted_sales_value": None})
+        return FakeResponse({"predicted_sales_value": 50.0})
+
+    monkeypatch.setattr(forecast_tool.requests, "post", malformed_post)
+    with pytest.raises(forecast_tool.ForecastResponseError):
+        forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100)
+
+    # HTTP error on day 155
+    def error_post(url, json=None, timeout=None):
+        if json["day"] == 155:
+            return FakeResponse({}, status_error=requests.HTTPError("500 Server Error"))
+        return FakeResponse({"predicted_sales_value": 50.0})
+
+    monkeypatch.setattr(forecast_tool.requests, "post", error_post)
+    with pytest.raises(requests.HTTPError):
+        forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100, sleep_fn=lambda s: None)
+
+
+
+def test_forecast_tool_retries_and_exponential_backoff(monkeypatch):
+    sleep_calls = []
+    attempt_count = {"count": 0}
+
+    def transient_error_post(*args, **kwargs):
+        attempt_count["count"] += 1
+        if attempt_count["count"] < 3:
+            # First 2 attempts fail with 503 Service Unavailable (cold start)
+            return FakeResponse({}, status_error=requests.HTTPError("503 Service Unavailable"))
+        # Attempt 3 succeeds
+        return FakeResponse({"predicted_sales_value": 99.0})
+
+    monkeypatch.setattr(forecast_tool.requests, "post", transient_error_post)
+    val = forecast_tool.get_prediction(
+        store_id=7,
+        day=5,
+        retries=3,
+        backoffs=(2.0, 4.0, 8.0),
+        sleep_fn=lambda s: sleep_calls.append(s),
+    )
+    assert val == 99.0
+    assert attempt_count["count"] == 3
+    assert sleep_calls == [2.0, 4.0] # Slept 2s after attempt 1, 4s after attempt 2
+
+    # Test exhausted retries
+    exhausted_sleeps = []
+    def permanent_fail_post(*args, **kwargs):
+        raise requests.ConnectionError("Connection refused")
+
+    monkeypatch.setattr(forecast_tool.requests, "post", permanent_fail_post)
+    with pytest.raises(requests.ConnectionError):
+        forecast_tool.get_prediction(
+            store_id=7,
+            day=5,
+            retries=3,
+            backoffs=(2.0, 4.0, 8.0),
+            sleep_fn=lambda s: exhausted_sleeps.append(s),
+        )
+    assert exhausted_sleeps == [2.0, 4.0, 8.0]
+
+
+
 
 
 def test_api_forecast_statuses_and_error_review_behavior(tmp_path, monkeypatch):

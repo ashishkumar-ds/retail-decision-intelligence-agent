@@ -56,6 +56,7 @@ As an opt-in alternative, set `CAMPAIGN_AUDIT_API_URL=https://retail-campaign-au
 | `CAMPAIGN_AUDIT_API_URL` | unset | Opt-in Project 2 read-only audit endpoint. When set, takes precedence over the local JSONL source. |
 | `FORECAST_API_URL` | `https://retail-forecast-api-7sue.onrender.com/` | Shared deployed forecast API base URL. |
 | `RECOMMENDATION_LOG_PATH` | `logs/recommendation_log.jsonl` | Append-only recommendation JSONL location. |
+| `PHASE_2_INTERVENTION_LOG_PATH` | `logs/phase2/interventions.jsonl` | Append-only Phase 2 intervention event log. |
 | `PORT` | `8001` | FastAPI listen port. |
 
 Malformed JSONL lines in either log are skipped with a warning; valid lines remain readable and no source log is changed. Campaign timestamps must be ISO-8601 with a timezone; malformed or timezone-naive timestamps are ignored. Recommendations expose `forecast_status` as `AVAILABLE`, `NO_DATA`, or `ERROR`; technical details are logged but not exposed by the API. Forecast HTTP, network, and malformed-response failures are surfaced as technical failures and are not invented as business data.

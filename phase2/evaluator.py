@@ -40,6 +40,7 @@ from .contracts import (
     JoinedInterventionTimeline,
     _validate_aware_datetime,
 )
+from tools.campaign_tool import canonical_timing_window, normalize_campaign_id
 
 BASELINE_DAYS = 56
 RECENT_OBSERVATION_DAYS = 14
@@ -112,6 +113,17 @@ def evaluate_outcome(
                 actual_uplift_pct = (recent_value - baseline_value) / baseline_value * 100
                 recovery_pct_of_target = actual_uplift_pct / TARGET_UPLIFT_PCT * 100
 
+    longitudinal_uplift_pct = actual_uplift_pct
+    counterfactual_uplift_pct = None
+    if recent_value is not None and forecast_reference_value is not None and forecast_reference_value > 0:
+        counterfactual_uplift_pct = (recent_value - forecast_reference_value) / forecast_reference_value * 100
+
+    methodology = {
+        "longitudinal_uplift": "Empirical comparison: (recent_14d_mean - baseline_56d_mean) / baseline_56d_mean * 100",
+        "counterfactual_uplift": "Predictive comparison: (recent_14d_mean - forecast_reference_value) / forecast_reference_value * 100",
+        "target_benchmark": f"{TARGET_UPLIFT_PCT}% pooled pilot uplift from Project 1 LightGBM counterfactual evaluation",
+    }
+
     outcome = OutcomeEvaluation(
         outcome_id=outcome_id,
         intervention_id=intervention_id,
@@ -131,6 +143,9 @@ def evaluate_outcome(
         forecast_status=forecast_status,
         campaign_id=campaign_id,
         timing_window=timing_window,
+        longitudinal_uplift_pct=longitudinal_uplift_pct,
+        counterfactual_uplift_pct=counterfactual_uplift_pct,
+        methodology=methodology,
     )
     return OutcomeCalculation(outcome=outcome, evidence_state=evidence_state)
 
@@ -275,15 +290,22 @@ def _join_conflicts(
         conflicts.append("canonical InterventionKey")
     if intervention.intervention_key != outcome.intervention_key:
         conflicts.append("outcome canonical InterventionKey")
-    if _conflicting_shared_value(recommendation.campaign_id, intervention.campaign_id, outcome.campaign_id):
+    if _conflicting_campaign_value(recommendation.campaign_id, intervention.campaign_id, outcome.campaign_id):
         conflicts.append("campaign_id")
-    if _conflicting_shared_value(recommendation.timing_window, intervention.timing_window, outcome.timing_window):
+    if _conflicting_timing_value(recommendation.timing_window, intervention.timing_window, outcome.timing_window):
         conflicts.append("timing_window")
     return tuple(conflicts)
 
 
-def _conflicting_shared_value(*values: str | None) -> bool:
-    provided = [value for value in values if value is not None]
+def _conflicting_campaign_value(*values: str | None) -> bool:
+    provided = [normalize_campaign_id(v) or v for v in values if v is not None]
+    if len(provided) <= 1:
+        return False
+    return any(value != provided[0] for value in provided[1:])
+
+
+def _conflicting_timing_value(*values: str | None) -> bool:
+    provided = [canonical_timing_window(v) or v for v in values if v is not None]
     if len(provided) <= 1:
         return False
     return any(value != provided[0] for value in provided[1:])
@@ -298,22 +320,31 @@ def _checkpoint_conflicts(
     conflicts: list[str] = []
     if checkpoint.intervention_key is not None and checkpoint.intervention_key != intervention.intervention_key:
         conflicts.append("checkpoint canonical InterventionKey")
-    if _checkpoint_field_conflict(
+    if _checkpoint_campaign_conflict(
         checkpoint.campaign_id, recommendation.campaign_id, intervention.campaign_id, outcome.campaign_id
     ):
         conflicts.append("campaign_id")
-    if _checkpoint_field_conflict(
+    if _checkpoint_timing_conflict(
         checkpoint.timing_window, recommendation.timing_window, intervention.timing_window, outcome.timing_window
     ):
         conflicts.append("timing_window")
     return tuple(conflicts)
 
 
-def _checkpoint_field_conflict(checkpoint_value: str | None, *other_values: str | None) -> bool:
+def _checkpoint_campaign_conflict(checkpoint_value: str | None, *other_values: str | None) -> bool:
     if checkpoint_value is None:
         return False
-    provided = [value for value in other_values if value is not None]
-    return not provided or any(value != checkpoint_value for value in provided)
+    norm_cp = normalize_campaign_id(checkpoint_value) or checkpoint_value
+    provided = [normalize_campaign_id(v) or v for v in other_values if v is not None]
+    return not provided or any(value != norm_cp for value in provided)
+
+
+def _checkpoint_timing_conflict(checkpoint_value: str | None, *other_values: str | None) -> bool:
+    if checkpoint_value is None:
+        return False
+    norm_cp = canonical_timing_window(checkpoint_value) or checkpoint_value
+    provided = [canonical_timing_window(v) or v for v in other_values if v is not None]
+    return not provided or any(value != norm_cp for value in provided)
 
 
 def _temporal_join_error(
