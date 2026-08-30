@@ -3,8 +3,7 @@
 > **Version 4.0** — this release adds the **outcome feedback loop**: evaluated
 > intervention outcomes (measured from real observed sales) now feed back into
 > the next round of recommendations, closing the
-> **plan → execute → measure → re-decide** cycle. See `HANDOFF_NEXT_STEPS.md`
-> for the series-wide context and the prioritized roadmap.
+> **plan → execute → measure → re-decide** cycle.
 
 ## What's new in v4
 
