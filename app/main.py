@@ -58,6 +58,7 @@ from phase2.registry import (
     InterventionRegistry, active_intervention_guard, exact_key_repetition_guard,
     resolve_project2_provenance,
 )
+from app.monitor import is_campaign_working, rank_attention
 
 logger = logging.getLogger("retail_decision_agent")
 logging.basicConfig(level=logging.INFO)
@@ -350,6 +351,81 @@ def get_recommendations():
 @app.get("/pending-approvals")
 def get_pending_approvals():
     return {"count": len(_pending_approvals), "pending": list(_pending_approvals.values())}
+
+
+@app.get("/attention-queue")
+def get_attention_queue():
+    """
+    Ranked attention queue — best-practice store recovery view.
+
+    Answers: should it get attention? Sorted by tier (must-act first) then
+    urgency (low health, few days, low confidence, negative lift). Pure read
+    over the pending-approval queue; add ?store_id= to filter.
+    """
+    ranked = rank_attention(list(_pending_approvals.values()))
+    # Enrich each with is_campaign_working for the dashboard
+    for rec in ranked:
+        rec["campaign_working"] = is_campaign_working(rec)
+    return {"count": len(ranked), "queue": ranked}
+
+
+@app.post("/monitor/sweep")
+def monitor_sweep():
+    """
+    Store Recovery Agent sweep — monitors is campaign working for all stores
+    and refreshes the attention queue in one call.
+
+    This is the autonomous loop entry point: it re-evaluates every store
+    (same path as GET /recommendations) and returns the ranked queue.
+    Idempotent; safe to call on a cron (e.g. every 24h).
+    """
+    # Reuse recommendations logic without duplicating code — call directly
+    # via internal function to avoid HTTP recursion.
+    try:
+        audit_runs = get_audit_log()
+    except requests.RequestException as error:
+        raise HTTPException(status_code=502, detail="Campaign audit API is unavailable.") from error
+    except CampaignAuditResponseError as error:
+        raise HTTPException(status_code=502, detail="Campaign audit API returned an invalid response.") from error
+    all_store_ids = get_store_ids_from_audit_log(audit_runs)
+    if not all_store_ids:
+        raise HTTPException(status_code=400, detail="No store_ids found in the audit log.")
+    outcome_evidence_map = _outcome_evidence_by_store()
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        evaluated = list(pool.map(
+            lambda sid: evaluate_store(sid, audit_runs, outcome_evidence_map.get(sid)),
+            all_store_ids,
+        ))
+    results = []
+    for rec in evaluated:
+        if rec is None:
+            continue
+        rec["recommendation_id"] = _recommendation_id(rec)
+        results.append(rec)
+    batch_check = verify_batch(results)
+    if not batch_check["passed"]:
+        raise HTTPException(status_code=500, detail="Recommendation batch failed verification; nothing was persisted.")
+    log_records = read_log()
+    existing_ids = {r.get("recommendation_id") for r in log_records}
+    decided_store_ids = {r.get("store_id") for r in log_records if "decided_at" in r}
+    newly_logged = 0
+    for rec in results:
+        if rec["recommendation_id"] not in existing_ids:
+            append_log(rec)
+            newly_logged += 1
+        if rec["requires_human_approval"] and rec["store_id"] not in decided_store_ids:
+            _pending_approvals[rec["store_id"]] = rec
+    ranked = rank_attention(list(_pending_approvals.values()))
+    for rec in ranked:
+        rec["campaign_working"] = is_campaign_working(rec)
+    return {
+        "swept_at": utcnow_iso(),
+        "total_stores_evaluated": len(results),
+        "new_recommendations_logged": newly_logged,
+        "attention_queue_count": len(ranked),
+        "attention_queue": ranked[:10],  # top 10 for brevity — full via GET /attention-queue
+        "batch_verification": batch_check,
+    }
 
 
 def _latest_decided_record(store_id: int) -> dict | None:
