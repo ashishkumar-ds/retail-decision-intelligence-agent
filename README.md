@@ -28,7 +28,7 @@ Project 1 identified the most effective recovery strategy for underperforming st
 - RAG, LLM agents, vector retrieval, or agentic tool orchestration.
 - Long-term memory, production authentication, and a persistent approval database.
 
-### v4 improvement — outcome feedback loop
+### Improvement — outcome feedback loop
 
 This release closes the **plan → execute → measure → re-decide** cycle without changing Phase 1 contracts:
 
