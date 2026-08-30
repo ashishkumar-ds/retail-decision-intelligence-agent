@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retail-decision-intelligence-agent"
+version = "2.0.0"
+description = "Deterministic decision-intelligence engine for retail store recovery recommendations, with an event-sourced Phase 2 intervention lifecycle."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn==0.30.6",
+    "requests==2.32.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.3",
+    "httpx==0.27.2",
+]
+
+[tool.setuptools]
+packages = ["app", "decision_engine", "guardrails", "memory", "phase2", "tools"]

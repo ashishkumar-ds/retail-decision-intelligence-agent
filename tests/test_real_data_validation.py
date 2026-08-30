@@ -33,14 +33,14 @@ def test_real_data_validation_contracts_with_mocked_forecast(monkeypatch):
 
     monkeypatch.setattr("phase2.portfolio.get_evaluation_window_forecast", fake_eval_forecast)
 
-    transactions = [
-        # Store 31642: baseline (day 540) and recent (day 640)
-        {"STORE_ID": 31642, "DAY": 540, "household_key": "H1", "SALES_VALUE": 70.0},
-        {"STORE_ID": 31642, "DAY": 640, "household_key": "H1", "SALES_VALUE": 77.0},
-        # Store 317: baseline (day 540) and recent (day 640)
-        {"STORE_ID": 317, "DAY": 540, "household_key": "H2", "SALES_VALUE": 100.0},
-        {"STORE_ID": 317, "DAY": 640, "household_key": "H2", "SALES_VALUE": 50.0},
-    ]
+    # Dense transactions meeting the SUFFICIENT coverage bar (28 baseline + 7 recent per store)
+    transactions = []
+    for day in range(531, 559):  # 28 baseline days in [531, 587)
+        transactions.append({"STORE_ID": 31642, "DAY": day, "household_key": "H1", "SALES_VALUE": 70.0})
+        transactions.append({"STORE_ID": 317, "DAY": day, "household_key": "H2", "SALES_VALUE": 100.0})
+    for day in range(633, 640):  # 7 recent days in [633, 647)
+        transactions.append({"STORE_ID": 31642, "DAY": day, "household_key": "H1", "SALES_VALUE": 77.0})
+        transactions.append({"STORE_ID": 317, "DAY": day, "household_key": "H2", "SALES_VALUE": 50.0})
 
     report = evaluate_store_portfolio(
         store_ids=[31642, 317, 88888, 99999], # 88888 not in forecast API (NO_DATA), 99999 triggers error (ERROR)

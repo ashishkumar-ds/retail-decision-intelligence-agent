@@ -46,7 +46,7 @@ def test_scorer_calculations_and_edge_cases():
     (signal(current_forecast=200), "CONTINUE"),
     (signal(current_forecast=100, days_remaining=10), "ESCALATE"),
     (signal(current_forecast=100, days_remaining=30), "EXTEND_INTERVENTION"),
-    (signal(current_forecast=110, days_elapsed=30, days_remaining=30), "MONITOR"),
+    (signal(current_forecast=101, days_elapsed=30, days_remaining=30), "MONITOR"),
 ])
 def test_scorer_recommendation_boundaries_and_confidence(item, expected):
     rec = score_and_recommend(item)
@@ -123,7 +123,7 @@ def test_forecast_tool_success_and_failures(monkeypatch):
     assert forecast_tool.get_prediction(7, 5) == 42.5
     monkeypatch.setattr(forecast_tool.requests, "get", lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError()))
     with pytest.raises(requests.ConnectionError):
-        forecast_tool.get_store_info(7)
+        forecast_tool.get_store_info(7, sleep_fn=lambda s: None)
     monkeypatch.setattr(forecast_tool.requests, "post", lambda *a, **k: FakeResponse({"bad": 1}))
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_prediction(7, 5)
@@ -144,6 +144,8 @@ def test_api_endpoints(tmp_path, monkeypatch):
     import app.main as main
     main._pending_approvals.clear()
     monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "recommendation.jsonl"))
+    monkeypatch.setenv(main.APPROVAL_AUTH_TOKEN_ENV, "test-token")
+    auth_headers = {"Authorization": "Bearer test-token"}
     now = datetime.now(timezone.utc).isoformat()
     monkeypatch.setattr(main, "get_audit_log", lambda: [{"run_timestamp": now, "store_ids": [1]}])
     monkeypatch.setattr(main, "get_store_info", lambda store_id: {"last_day": 1})
@@ -154,12 +156,30 @@ def test_api_endpoints(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.json()["recommendations"][0]["recommendation"] == "EXTEND_INTERVENTION"
     assert client.get("/pending-approvals").json()["count"] == 1
-    assert client.post("/approve/1").status_code == 200
-    assert client.post("/approve/1").status_code == 404
+
+    # Approve/reject require auth: no header -> 401; wrong token -> 403; server with
+    # no token configured at all -> 503 (fails closed, see _require_approval_auth).
+    assert client.post("/approve/1").status_code == 401
+    assert client.post("/approve/1", headers={"Authorization": "Bearer wrong-token"}).status_code == 403
+    monkeypatch.delenv(main.APPROVAL_AUTH_TOKEN_ENV, raising=False)
+    assert client.post("/approve/1", headers=auth_headers).status_code == 503
+    monkeypatch.setenv(main.APPROVAL_AUTH_TOKEN_ENV, "test-token")
+
+    approve_response = client.post("/approve/1", json={"actor": "reviewer@example.com"}, headers=auth_headers)
+    assert approve_response.status_code == 200
+    assert approve_response.json()["recommendation"]["actor"] == "reviewer@example.com"
+
+    # Idempotent: a repeat decision for an already-decided store returns the
+    # existing decision (200), not a 404 - a retried request shouldn't read
+    # as "this never happened."
+    repeat_response = client.post("/approve/1", headers=auth_headers)
+    assert repeat_response.status_code == 200
+    assert repeat_response.json()["recommendation"]["approval_id"] == approve_response.json()["recommendation"]["approval_id"]
+
     assert client.get("/log").json()["total_entries"] == 2
     response = client.get("/recommendations")
     assert response.status_code == 200
-    assert client.post("/reject/1").status_code == 200
+    assert client.post("/reject/1", headers=auth_headers).status_code == 200
 
 
 
@@ -214,7 +234,7 @@ def test_forecast_tool_http_malformed_store_and_timeout_paths(monkeypatch):
         lambda *args, **kwargs: FakeResponse({}, status_error=requests.HTTPError("503")),
     )
     with pytest.raises(requests.HTTPError):
-        forecast_tool.get_prediction(7, 5)
+        forecast_tool.get_prediction(7, 5, sleep_fn=lambda s: None)
 
     monkeypatch.setattr(
         forecast_tool.requests,
@@ -222,7 +242,7 @@ def test_forecast_tool_http_malformed_store_and_timeout_paths(monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(requests.Timeout()),
     )
     with pytest.raises(requests.Timeout):
-        forecast_tool.get_prediction(7, 5)
+        forecast_tool.get_prediction(7, 5, sleep_fn=lambda s: None)
 
 
 def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
@@ -237,7 +257,10 @@ def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
 
     monkeypatch.setattr(forecast_tool.requests, "post", fake_post)
     mean_val = forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100)
-    assert called_days == list(range(147, 161)) # 14 days: 147..160
+    # Days are fetched concurrently (see get_evaluation_window_forecast), so
+    # call order isn't guaranteed - only that every day in the window was
+    # queried exactly once.
+    assert sorted(called_days) == list(range(147, 161)) # 14 days: 147..160
     assert len(called_days) == 14
     expected_mean = sum(range(147, 161)) / 14 # 153.5
     assert mean_val == expected_mean

@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from statistics import fmean
 from typing import Iterable, Sequence
-import uuid
+import hashlib
+
+from decision_engine.calibration import CAUSAL_BASELINE, REVIEW_ZONE_PCT, TARGET_UPLIFT_PCT
 
 from .contracts import (
     APPROVED,
@@ -45,7 +47,11 @@ from tools.campaign_tool import canonical_timing_window, normalize_campaign_id
 BASELINE_DAYS = 56
 RECENT_OBSERVATION_DAYS = 14
 EVALUATION_WINDOW_DAYS = 60
-TARGET_UPLIFT_PCT = 30.1
+# Minimum observation coverage per window for SUFFICIENT evidence: at least
+# half the days of the 56-day baseline and the 14-day recent window. A single
+# observation per window is noise, not evidence.
+MIN_BASELINE_OBS_DAYS = 28
+MIN_RECENT_OBS_DAYS = 7
 
 
 @dataclass(frozen=True)
@@ -60,6 +66,11 @@ class JoinValidationResult:
     joined: JoinedInterventionTimeline | None
     reason: str | None = None
     conflicts: tuple[str, ...] = ()
+
+
+def _stable_id(raw: str) -> str:
+    """Deterministic short id from the identifying fields (replay-safe)."""
+    return hashlib.sha256(raw.encode()).hexdigest()[:12]
 
 
 def evaluate_outcome(
@@ -82,7 +93,13 @@ def evaluate_outcome(
     evidence deterministically rather than inventing success.
     """
     if outcome_id is None:
-        outcome_id = f"outcome-{uuid.uuid4().hex}"
+        # Deterministic id: stable across replays/backfills for the same
+        # intervention, unlike a per-call uuid. getattr keeps it safe when
+        # callers pass a bare key without store/strategy fields.
+        key_id = getattr(intervention_key, "store_id", None)
+        strategy = getattr(intervention_key, "strategy_version", None)
+        outcome_id = f"outcome-{_stable_id(f'{intervention_id}|{key_id}|{strategy}')}"
+
     _validate_aware_datetime(intervention_started_at, "intervention_started_at")
     current_time = _utc(as_of or datetime.now(timezone.utc))
     started_at = _utc(intervention_started_at)
@@ -100,18 +117,31 @@ def evaluate_outcome(
     recent_value = None
     actual_uplift_pct = None
     recovery_pct_of_target = None
+    target_assessment = None
 
     try:
         baseline_value, recent_value = _summarize_windows(buckets)
     except ValueError:
+        # Contradictory data at the same timestamp outranks coverage concerns.
         evidence_state = CONTRADICTORY
     else:
         if evidence_state == SUFFICIENT:
-            if baseline_value is None or baseline_value <= 0:
+            if (_distinct_observation_days(buckets["baseline"]) < MIN_BASELINE_OBS_DAYS
+                    or _distinct_observation_days(buckets["recent"]) < MIN_RECENT_OBS_DAYS):
+                # Sparse windows are noise, not evidence - a single observation
+                # per window must not certify an outcome.
+                evidence_state = INSUFFICIENT
+            elif baseline_value is None or baseline_value <= 0:
                 evidence_state = INVALID
             else:
                 actual_uplift_pct = (recent_value - baseline_value) / baseline_value * 100
                 recovery_pct_of_target = actual_uplift_pct / TARGET_UPLIFT_PCT * 100
+                if actual_uplift_pct >= REVIEW_ZONE_PCT[1]:
+                    target_assessment = "MEETS_TARGET"
+                elif actual_uplift_pct >= REVIEW_ZONE_PCT[0]:
+                    target_assessment = "REVIEW_ZONE"
+                else:
+                    target_assessment = "NEGATIVE"
 
     longitudinal_uplift_pct = actual_uplift_pct
     counterfactual_uplift_pct = None
@@ -121,7 +151,9 @@ def evaluate_outcome(
     methodology = {
         "longitudinal_uplift": "Empirical comparison: (recent_14d_mean - baseline_56d_mean) / baseline_56d_mean * 100",
         "counterfactual_uplift": "Predictive comparison: (recent_14d_mean - forecast_reference_value) / forecast_reference_value * 100",
-        "target_benchmark": f"{TARGET_UPLIFT_PCT}% pooled pilot uplift from Project 1 LightGBM counterfactual evaluation",
+        "target_benchmark": (f"{TARGET_UPLIFT_PCT}% causal target from the Part 1 DiD validation "
+                             "(household ITT, 981 clean controls); 0-3% is a review zone, not success"),
+        "causal_baseline": str(CAUSAL_BASELINE),
     }
 
     outcome = OutcomeEvaluation(
@@ -139,6 +171,7 @@ def evaluate_outcome(
         recent_observation_value=recent_value,
         actual_uplift_pct=actual_uplift_pct,
         recovery_pct_of_target=recovery_pct_of_target,
+        target_assessment=target_assessment,
         forecast_reference_value=forecast_reference_value,
         forecast_status=forecast_status,
         campaign_id=campaign_id,
@@ -209,7 +242,7 @@ def build_weekly_checkpoints(
         status = DUE if current_time < due_at else MISSED
         checkpoints.append(
             CheckpointRecord(
-                checkpoint_id=f"checkpoint-{week}-{uuid.uuid4().hex}",
+                checkpoint_id=f"checkpoint-{week}-{_stable_id(f'{intervention_id}|{due_at.isoformat()}')}",
                 intervention_id=intervention_id,
                 due_at=due_at,
                 observed_at=None,
@@ -420,6 +453,10 @@ def _classify_evidence(current_time: datetime, due_at: datetime, buckets: dict[s
     if not buckets["baseline"] or not buckets["recent"]:
         return PARTIAL
     return SUFFICIENT
+
+
+def _distinct_observation_days(observations: Sequence[OutcomeObservation]) -> int:
+    return len({_utc(o.observed_at).date() for o in observations})
 
 
 def _latest_observation_time(buckets: dict[str, list[OutcomeObservation]]) -> datetime | None:

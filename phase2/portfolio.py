@@ -61,6 +61,7 @@ class StoreEvaluationResult:
     recovery_pct_of_target: float | None
     join_state: str
     eligibility_details: dict[str, Any] | None = None
+    eligibility_error: str | None = None
     outcome: OutcomeEvaluation | None = None
     error: str | None = None
 
@@ -100,10 +101,17 @@ def evaluate_store_portfolio(
     hh_set = set(str(hh) for hh in campaign_households)
     # Index transactions by store_id and day
     tx_by_store: dict[int, list[Mapping[str, Any]]] = {}
+    skipped_malformed_tx_count = 0
     for tx in transactions:
-        sid = int(tx.get("STORE_ID", tx.get("store_id", -1)))
+        try:
+            sid = int(tx.get("STORE_ID", tx.get("store_id", -1)))
+        except (TypeError, ValueError):
+            skipped_malformed_tx_count += 1
+            continue
         if sid > 0:
             tx_by_store.setdefault(sid, []).append(tx)
+    if skipped_malformed_tx_count:
+        logger.warning(f"Skipped {skipped_malformed_tx_count} transaction(s) with malformed store_id")
 
     results: list[StoreEvaluationResult] = []
     base_start_time = datetime(2018, 8, 10, 0, 0, tzinfo=timezone.utc)
@@ -119,6 +127,11 @@ def evaluate_store_portfolio(
     for sid in store_ids:
         store_tx = tx_by_store.get(sid, [])
         eligibility_details: dict[str, Any] | None = None
+        eligibility_error: str | None = None
+        # No exposure data provided for this store: eligibility can't be
+        # evaluated, so we don't gate on it (opt-in filtering, matching the
+        # rest of this module's opt-in defaults). This is distinct from a
+        # computation error below, which fails closed instead.
         is_eligible = True
 
         if hh_set and store_tx:
@@ -132,13 +145,24 @@ def evaluate_store_portfolio(
                 )
                 is_eligible = eligibility_details.get("is_eligible", True)
             except Exception as e:
+                # Fail closed: a store whose eligibility we tried and failed
+                # to compute is not silently treated as eligible. Distinct
+                # from the "no exposure data given" case above via
+                # eligibility_error, so callers can tell "not checked" apart
+                # from "checked and errored".
+                eligibility_error = str(e)
+                is_eligible = False
                 logger.warning(f"Store {sid} exposure calculation error: {e}")
 
         # Build daily observations
         daily_sales: dict[int, float] = {}
         for tx in store_tx:
-            day = int(tx.get("DAY", tx.get("day", -1)))
-            sales = float(tx.get("SALES_VALUE", tx.get("sales_value", 0.0)))
+            try:
+                day = int(tx.get("DAY", tx.get("day", -1)))
+                sales = float(tx.get("SALES_VALUE", tx.get("sales_value", 0.0)))
+            except (TypeError, ValueError):
+                logger.warning(f"Skipping malformed transaction record for store {sid}")
+                continue
             daily_sales[day] = daily_sales.get(day, 0.0) + sales
 
         # Baseline window: [campaign_start_day - 56, campaign_start_day)
@@ -156,9 +180,9 @@ def evaluate_store_portfolio(
             if d in daily_sales
         ]
 
-        # Recent 14-day window: [campaign_start_day + 47, campaign_start_day + 60]
+        # Recent 14-day window: [campaign_start_day + 46, campaign_start_day + 60] (or campaign_end_day - 14 to end)
+        recent_start_day = campaign_start_day + 46
         recent_end_day = campaign_start_day + EVALUATION_WINDOW_DAYS
-        recent_start_day = recent_end_day - RECENT_OBSERVATION_DAYS + 1
         recent_obs = [
             OutcomeObservation(
                 observed_at=base_start_time + timedelta(days=d - campaign_start_day),
@@ -271,6 +295,7 @@ def evaluate_store_portfolio(
                 recovery_pct_of_target=outcome.recovery_pct_of_target,
                 join_state=join.evidence_state,
                 eligibility_details=eligibility_details,
+                eligibility_error=eligibility_error,
                 outcome=outcome,
                 error=error_msg,
             )
