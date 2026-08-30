@@ -1,16 +1,5 @@
 __pycache__/
-*.py[cod]
-.venv/
-venv/
-.env
-.env.*
-!.env.example
+*.pyc
 .pytest_cache/
-.mypy_cache/
-.ruff_cache/
 logs/
-.DS_Store
-
-# Local-only documentation
-CHANGES_FROM_REVIEW.md
-docs/
+*.egg-info/

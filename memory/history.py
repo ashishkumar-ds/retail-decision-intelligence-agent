@@ -3,7 +3,11 @@
 Malformed lines are ignored by :func:`read_log` so one corrupted entry does
 not prevent valid historical entries from being read. They are logged as a
 warning and are never overwritten or removed.
+
+Appends take an exclusive file lock so concurrent workers (multiple uvicorn
+threads/processes) cannot interleave partial JSON lines.
 """
+import fcntl
 import json
 import logging
 import os
@@ -19,11 +23,18 @@ def _log_path() -> Path:
 
 
 def append_log(record: dict[str, Any]) -> None:
-    """Append one JSON-serializable record to the configured JSONL log."""
+    """Append one JSON-serializable record to the configured JSONL log (locked)."""
     path = _log_path()
     path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record, default=str) + "\n"
     with path.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(record, default=str) + "\n")
+        fcntl.flock(log_file.fileno(), fcntl.LOCK_EX)
+        try:
+            log_file.write(line)
+            log_file.flush()
+            os.fsync(log_file.fileno())
+        finally:
+            fcntl.flock(log_file.fileno(), fcntl.LOCK_UN)
 
 
 def read_log() -> list[dict[str, Any]]:

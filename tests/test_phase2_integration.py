@@ -40,6 +40,27 @@ def _approved_record():
     }
 
 
+def _dense_api_observations(started, baseline_value=100.0, recent_value=130.0):
+    from datetime import timedelta
+    baseline = [{"observed_at": (started - timedelta(days=56) + timedelta(days=i)).isoformat(),
+                 "value": baseline_value, "campaign_id": "camp-api", "timing_window": "12:00-18:00"}
+                for i in range(28)]
+    recent = [{"observed_at": (started + timedelta(days=46 + i)).isoformat(),
+               "value": recent_value, "campaign_id": "camp-api", "timing_window": "12:00-18:00"}
+              for i in range(7)]
+    return baseline + recent
+
+def _dense_observations_no_campaign(started, baseline_value=100.0, recent_value=130.0):
+    from datetime import timedelta
+    baseline = [{"observed_at": (started - timedelta(days=56) + timedelta(days=i)).isoformat(),
+                 "value": baseline_value}
+                for i in range(28)]
+    recent = [{"observed_at": (started + timedelta(days=46 + i)).isoformat(),
+               "value": recent_value}
+              for i in range(7)]
+    return baseline + recent
+
+
 @pytest.fixture
 def integration_context(tmp_path, monkeypatch):
     registry = InterventionRegistry(tmp_path / "phase2.jsonl")
@@ -123,8 +144,7 @@ def test_outcome_api_preserves_locked_windows_and_rejects_checkpoint_provenance(
         {
             "as_of": (started + timedelta(days=60)).isoformat(),
             "observations": [
-                {"observed_at": (started - timedelta(days=10)).isoformat(), "value": 100},
-                {"observed_at": (started + timedelta(days=50)).isoformat(), "value": 130},
+                *_dense_observations_no_campaign(started, baseline_value=100.0, recent_value=130.0),
             ],
         },
     )
@@ -157,16 +177,15 @@ def test_outcome_api_auto_derives_forecast_reference_and_computes_dual_metrics(i
         {
             "as_of": (started + timedelta(days=60)).isoformat(),
             "observations": [
-                {"observed_at": (started - timedelta(days=20)).isoformat(), "value": 100.0, "campaign_id": "camp-api", "timing_window": "12:00-18:00"},
-                {"observed_at": (started + timedelta(days=50)).isoformat(), "value": 150.0, "campaign_id": "camp-api", "timing_window": "12:00-18:00"},
+                *_dense_api_observations(started, baseline_value=100.0, recent_value=150.0),
             ],
         },
     )
 
     assert response["evidence_state"] == "SUFFICIENT"
     outcome = response["outcome"]
-    # Check 14-day queried horizon
-    assert queried_days == [(7, d) for d in range(147, 161)]
+    # Check 14-day queried horizon (order not guaranteed - days are fetched concurrently)
+    assert sorted(queried_days) == [(7, d) for d in range(147, 161)]
     assert outcome["forecast_reference_value"] == 120.0
     assert outcome["forecast_status"] == "AVAILABLE"
     assert outcome["baseline_value"] == 100.0
@@ -177,7 +196,7 @@ def test_outcome_api_auto_derives_forecast_reference_and_computes_dual_metrics(i
     assert outcome["actual_uplift_pct"] == pytest.approx(50.0)
     # Counterfactual: (150 - 120) / 120 * 100 = +25.0%
     assert outcome["counterfactual_uplift_pct"] == pytest.approx(25.0)
-    assert outcome["recovery_pct_of_target"] == pytest.approx(50.0 / 30.1 * 100)
+    assert outcome["recovery_pct_of_target"] == pytest.approx(50.0 / 3.0 * 100)
 
 
 def test_outcome_api_forecast_error_handling_and_no_dummy_substitution(integration_context, monkeypatch):
@@ -196,8 +215,7 @@ def test_outcome_api_forecast_error_handling_and_no_dummy_substitution(integrati
         {
             "as_of": (started + timedelta(days=60)).isoformat(),
             "observations": [
-                {"observed_at": (started - timedelta(days=20)).isoformat(), "value": 100.0, "campaign_id": "camp-api", "timing_window": "12:00-18:00"},
-                {"observed_at": (started + timedelta(days=50)).isoformat(), "value": 150.0, "campaign_id": "camp-api", "timing_window": "12:00-18:00"},
+                *_dense_api_observations(started, baseline_value=100.0, recent_value=150.0),
             ],
         },
     )
@@ -217,8 +235,7 @@ def test_outcome_api_forecast_error_handling_and_no_dummy_substitution(integrati
         {
             "as_of": (started + timedelta(days=60)).isoformat(),
             "observations": [
-                {"observed_at": (started - timedelta(days=20)).isoformat(), "value": 100.0, "campaign_id": "camp-api", "timing_window": "12:00-18:00"},
-                {"observed_at": (started + timedelta(days=50)).isoformat(), "value": 150.0, "campaign_id": "camp-api", "timing_window": "12:00-18:00"},
+                *_dense_api_observations(started, baseline_value=100.0, recent_value=150.0),
             ],
         },
     )

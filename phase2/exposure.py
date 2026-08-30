@@ -11,7 +11,10 @@ campaign delivery records.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Iterable, Mapping, Sequence
+
+logger = logging.getLogger("retail_decision_agent.exposure")
 
 
 def compute_store_campaign_eligibility(
@@ -51,17 +54,23 @@ def compute_store_campaign_eligibility(
     exposed_households_seen: set[str] = set()
     total_transactions_count = 0
     exposed_transactions_count = 0
+    skipped_malformed_count = 0
 
     for tx in transactions:
-        sid = int(tx.get("STORE_ID", tx.get("store_id", -1)))
-        if sid != store_id:
+        try:
+            sid = int(tx.get("STORE_ID", tx.get("store_id", -1)))
+            if sid != store_id:
+                continue
+            day = int(tx.get("DAY", tx.get("day", -1)))
+            sales = float(tx.get("SALES_VALUE", tx.get("sales_value", 0.0)))
+        except (TypeError, ValueError):
+            skipped_malformed_count += 1
+            logger.warning("Skipping malformed transaction record for store %s", store_id)
             continue
 
-        day = int(tx.get("DAY", tx.get("day", -1)))
         if not (start_day <= day <= end_day):
             continue
 
-        sales = float(tx.get("SALES_VALUE", tx.get("sales_value", 0.0)))
         hh = str(tx.get("household_key", tx.get("household_id", "")))
 
         total_store_sales += sales
@@ -100,6 +109,7 @@ def compute_store_campaign_eligibility(
         "exposed_household_count": len(exposed_households_seen),
         "exposed_transaction_count": exposed_transactions_count,
         "total_transaction_count": total_transactions_count,
+        "skipped_malformed_transaction_count": skipped_malformed_count,
         "derivation_method": (
             "Aggregated transactions from campaign-exposed households (campaign_table.csv) "
             "at the store during the campaign window (campaign_desc.csv). "

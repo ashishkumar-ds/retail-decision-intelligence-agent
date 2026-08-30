@@ -67,6 +67,17 @@ def key(**overrides):
     return InterventionKey(**values)
 
 
+def dense_observations(started_at: datetime, baseline_value: float = 100.0,
+                       recent_value: float = 130.0) -> list[OutcomeObservation]:
+    """Observation series meeting the SUFFICIENT coverage bar:
+    >=28 distinct baseline days (56-day window) and >=7 recent days (14-day window)."""
+    baseline = [OutcomeObservation(started_at - timedelta(days=56) + timedelta(days=i), baseline_value)
+                for i in range(28)]
+    recent = [OutcomeObservation(started_at + timedelta(days=46 + i), recent_value)
+              for i in range(7)]
+    return baseline + recent
+
+
 def dt(day: int, hour: int = 0) -> datetime:
     return datetime(2026, 1, day, hour, tzinfo=timezone.utc)
 
@@ -199,12 +210,7 @@ def test_weekly_checkpoint_lifecycle():
 def test_outcome_evaluator_sufficient_and_insufficient_paths():
     started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     intervention_key = key()
-    observations = [
-        OutcomeObservation(started_at - timedelta(days=56) + timedelta(days=1), 100),
-        OutcomeObservation(started_at - timedelta(days=56) + timedelta(days=2), 110),
-        OutcomeObservation(started_at + timedelta(days=47), 140),
-        OutcomeObservation(started_at + timedelta(days=52), 150),
-    ]
+    observations = dense_observations(started_at, baseline_value=100.0, recent_value=130.0)
     result = evaluate_outcome(
         intervention_id="int-6",
         intervention_key=intervention_key,
@@ -312,10 +318,8 @@ def test_recommendation_to_outcome_join_and_project2_read_only_boundary(tmp_path
         intervention_id="int-join",
         intervention_key=key(),
         intervention_started_at=datetime(2026, 1, 3, tzinfo=timezone.utc),
-        observations=[
-            OutcomeObservation(datetime(2026, 1, 3, tzinfo=timezone.utc) - timedelta(days=10), 100),
-            OutcomeObservation(datetime(2026, 2, 28, tzinfo=timezone.utc), 120),
-        ],
+        observations=dense_observations(datetime(2026, 1, 3, tzinfo=timezone.utc),
+                                        baseline_value=100.0, recent_value=120.0),
         as_of=datetime(2026, 3, 4, tzinfo=timezone.utc),
         campaign_id="camp-7",
         timing_window="window-7",
@@ -340,8 +344,8 @@ def test_recommendation_to_outcome_join_and_project2_read_only_boundary(tmp_path
             intervention_key=key(),
             intervention_started_at=datetime(2026, 1, 3, tzinfo=timezone.utc),
             observations=[
-                OutcomeObservation(datetime(2026, 1, 3, tzinfo=timezone.utc) - timedelta(days=10), 100),
-                OutcomeObservation(datetime(2026, 2, 28, tzinfo=timezone.utc), 120),
+                *dense_observations(datetime(2026, 1, 3, tzinfo=timezone.utc),
+                                    baseline_value=100.0, recent_value=120.0),
             ],
             as_of=datetime(2026, 3, 4, tzinfo=timezone.utc),
             campaign_id="camp-other",
@@ -361,8 +365,8 @@ def test_recommendation_to_outcome_join_and_project2_read_only_boundary(tmp_path
             intervention_key=key(),
             intervention_started_at=datetime(2026, 1, 3, tzinfo=timezone.utc),
             observations=[
-                OutcomeObservation(datetime(2026, 1, 3, tzinfo=timezone.utc) - timedelta(days=10), 100),
-                OutcomeObservation(datetime(2026, 2, 28, tzinfo=timezone.utc), 120),
+                *dense_observations(datetime(2026, 1, 3, tzinfo=timezone.utc),
+                                    baseline_value=100.0, recent_value=120.0),
             ],
             as_of=datetime(2026, 3, 4, tzinfo=timezone.utc),
             campaign_id="camp-7",
@@ -415,7 +419,7 @@ def _join_fixture():
     )]
     outcome = evaluate_outcome(
         intervention_id="int-integrity", intervention_key=key(), intervention_started_at=started_at,
-        observations=[OutcomeObservation(started_at - timedelta(days=10), 100), OutcomeObservation(started_at + timedelta(days=50), 130)],
+        observations=dense_observations(started_at, baseline_value=100.0, recent_value=130.0),
         as_of=started_at + timedelta(days=60),
     ).outcome
     return recommendation, approval, intervention, checkpoints, outcome
@@ -539,10 +543,7 @@ def test_campaign_id_normalization_and_timing_window_canonicalization():
 
 def test_dual_uplift_metrics_methodology_and_independence():
     started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    observations = [
-        OutcomeObservation(started_at - timedelta(days=50), 100.0),
-        OutcomeObservation(started_at + timedelta(days=50), 130.0),
-    ]
+    observations = dense_observations(started_at, baseline_value=100.0, recent_value=130.0)
 
     # Without counterfactual reference: only longitudinal uplift
     calc_no_fcst = evaluate_outcome(
@@ -573,10 +574,7 @@ def test_dual_uplift_metrics_methodology_and_independence():
     assert outcome_2.counterfactual_uplift_pct == pytest.approx(30.0)
 
     # Different baseline ($120) vs forecast ($100) -> distinct metrics
-    obs_diff = [
-        OutcomeObservation(started_at - timedelta(days=50), 120.0), # baseline $120
-        OutcomeObservation(started_at + timedelta(days=50), 150.0), # observed $150
-    ]
+    obs_diff = dense_observations(started_at, baseline_value=120.0, recent_value=150.0)
     calc_diff = evaluate_outcome(
         intervention_id="int-dual-3",
         intervention_key=key(),
@@ -678,7 +676,7 @@ def test_forecast_reference_unit_and_horizon_consistency_with_pilot_stores():
     assert outcome.longitudinal_uplift_pct == pytest.approx(22.22, abs=0.01)
     # Counterfactual uplift: (55 - 42) / 42 * 100 = +30.95%
     assert outcome.counterfactual_uplift_pct == pytest.approx(30.95, abs=0.01)
-    assert outcome.recovery_pct_of_target == pytest.approx(22.222 / 30.1 * 100, abs=0.1)
+    assert outcome.recovery_pct_of_target == pytest.approx(22.222 / TARGET_UPLIFT_PCT * 100, abs=0.1)
 
     # Passing cumulative 56-day 3-store total ($9569) without daily averaging creates unit inconsistency:
     calc_inconsistent = evaluate_outcome(
@@ -695,13 +693,16 @@ def test_forecast_reference_unit_and_horizon_consistency_with_pilot_stores():
 
 def test_evaluate_store_portfolio_multi_store_success_and_error_aggregation(monkeypatch):
     from phase2.portfolio import evaluate_store_portfolio
-    import tools.forecast_tool as forecast_tool
+    import phase2.portfolio as portfolio
 
-    # Mock Forecast API
-    def fake_info(store_id):
-        if store_id == 999: # Unknown store
-            return None
-        return {"store_id": store_id, "last_day": 586}
+    # Mock Forecast API. portfolio.py imports these names directly
+    # (`from tools.forecast_tool import ...`), so patches must target
+    # phase2.portfolio's own bindings, not tools.forecast_tool's - patching
+    # the source module alone leaves portfolio.py's already-bound references
+    # untouched and silently falls through to a real network call.
+    def fake_all_stores_info():
+        return {299: {"store_id": 299, "last_day": 586}, 317: {"store_id": 317, "last_day": 586},
+                448: {"store_id": 448, "last_day": 586}}
 
     def fake_pred(store_id, day, **kwargs):
         # Return store-specific daily forecast:
@@ -709,16 +710,16 @@ def test_evaluate_store_portfolio_multi_store_success_and_error_aggregation(monk
         store_base = {299: 42.0, 317: 80.0, 448: 48.0}
         return store_base.get(store_id, 50.0)
 
-    monkeypatch.setattr(forecast_tool, "get_store_info", fake_info)
-    monkeypatch.setattr(forecast_tool, "get_prediction", fake_pred)
+    monkeypatch.setattr(portfolio, "get_all_stores_info", fake_all_stores_info)
+    monkeypatch.setattr("tools.forecast_tool.get_prediction", fake_pred)
 
     # Build simulated transactions for 4 stores
     txs = []
-    # Baseline days: 531..586 (56 days), Recent days: 634..647 (14 days)
+    # Baseline days: 531..586 (56 days), Recent days: 633..646 (14 days)
     for sid, base_sales, recent_sales in [(299, 50.0, 60.0), (317, 70.0, 90.0), (448, 40.0, 55.0), (999, 30.0, 35.0)]:
         for d in range(531, 587):
             txs.append({"STORE_ID": sid, "DAY": d, "SALES_VALUE": base_sales, "household_key": f"hh-{sid}"})
-        for d in range(634, 648):
+        for d in range(633, 647):
             txs.append({"STORE_ID": sid, "DAY": d, "SALES_VALUE": recent_sales, "household_key": f"hh-{sid}"})
 
     hh_c18 = {f"hh-299", f"hh-317", f"hh-448", f"hh-999"}

@@ -33,6 +33,20 @@ def normalize_campaign_id(value: Any) -> str | None:
     Maps 'Campaign 18', 'campaign-18', '18', 18 -> '18'.
     Returns None for non-standard labels (e.g. 'campaign-api-1', 'Summer Promo')
     or empty inputs without guessing.
+
+    Rationale: campaign identity in the underlying Dunnhumby ground truth
+    (campaign_desc.csv, campaign_table.csv) is always a plain integer, with
+    no duplicate or alternate-format campaign IDs across either table -
+    verified against the full 30-campaign source data. Project 2's free-text
+    'campaign' label is a rendering of that same integer, not an
+    independently-assigned identifier. That justifies deriving campaign_id
+    from a cleanly-matching label, but it is still a derived value, not an
+    originally-stable one: callers get campaign_provenance_status=NORMALIZED
+    rather than treating it as equivalent to a directly-provided campaign_id.
+    Project 3 still has no formal contract with Project 2 guaranteeing this
+    labeling convention holds indefinitely, so this function fails closed
+    (returns None) for any label that doesn't cleanly match rather than
+    guessing.
     """
     if value is None:
         return None

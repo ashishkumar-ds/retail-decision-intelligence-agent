@@ -296,6 +296,7 @@ class OutcomeEvaluation:
     recent_observation_value: float | None
     actual_uplift_pct: float | None
     recovery_pct_of_target: float | None
+    target_assessment: str | None = None  # MEETS_TARGET / REVIEW_ZONE / NEGATIVE (None if not SUFFICIENT)
     forecast_reference_value: float | None = None
     forecast_status: str | None = None
     campaign_id: str | None = None
