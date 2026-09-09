@@ -239,8 +239,8 @@ assumptions or completed features.
 
 ## 11. Phase 2 handoff
 
-Future Codex or LLM contributors should begin by reading this blueprint and
-`docs/PHASE_1_COMPLETION.md`. Before changing code, they should agree on the
+Future Codex or LLM contributors should begin by reading this blueprint.
+Before changing code, they should agree on the
 Phase 2 intervention/outcome/evidence schemas and decide whether the Campaign
 boundary remains file-based or gains a formally supported read-only API.
 

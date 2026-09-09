@@ -208,6 +208,6 @@ No step introduces LLM/RAG, adaptive ML, autonomous decision-making, or changes 
 
 ## 12. Future contributor handoff
 
-Before writing code, read this specification, `docs/PROJECT_BLUEPRINT.md`, and `docs/PHASE_1_COMPLETION.md`. Obtain explicit policy approval for every unresolved item. The approved canonical `InterventionKey` should be treated as locked. Do not infer business semantics from generic retail practice or add equivalence rules from field names.
+Before writing code, read this specification and `docs/PROJECT_BLUEPRINT.md`. Obtain explicit policy approval for every unresolved item. The approved canonical `InterventionKey` should be treated as locked. Do not infer business semantics from generic retail practice or add equivalence rules from field names.
 
 The first implementation review must include deterministic fixtures for active, repeated, paused, rejected, expired, cancelled, completed, and failed interventions; checkpoint gaps; not-due and contradictory outcomes; forecast `NO_DATA` versus `ERROR`; and insufficient-evidence fallback. Keep Project 2 read-only, preserve provenance, and keep every Phase 1 invariant frozen.
