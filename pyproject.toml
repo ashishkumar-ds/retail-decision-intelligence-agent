@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "retail-decision-intelligence-agent"
+version = "4.2.0"
+description = "Deterministic decision-intelligence engine for retail store recovery recommendations, with an event-sourced Phase 2 intervention lifecycle."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn==0.30.6",
+    "requests==2.32.3",
+    # Direct runtime dependency: phase2/schemas.py, tools/campaign_tool.py and
+    # presentation/cards.py import pydantic at module load. It used to be only a
+    # transitive dependency (via FastAPI), so installing this package's declared
+    # deps alone could break `import phase2`. Declared explicitly now.
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+llm = [
+    "anthropic>=0.42.0",
+]
+dev = [
+    "pytest==8.3.3",
+    "httpx==0.27.2",
+    "ruff==0.16.4",
+]
+
+[tool.setuptools]
+packages = ["app", "approvals", "decision_engine", "guardrails", "memory", "phase2", "presentation", "rag", "tools"]

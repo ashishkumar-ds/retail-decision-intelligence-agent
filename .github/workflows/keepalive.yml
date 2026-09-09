@@ -1,0 +1,21 @@
+name: Keep-alive (Render free tier)
+
+# Render free services sleep after ~15 min idle. This pings both deployed
+# APIs every 10 minutes so tests and sweeps never hit a cold start.
+# Note: GitHub disables scheduled workflows after 60 days of repo
+# inactivity - for a guarantee, also add the URLs to a free external
+# pinger (e.g. UptimeRobot / cron-job.org at a 10-minute interval).
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}   # manual run button
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm forecast API
+        run: curl -fsS --max-time 120 "${{ secrets.FORECAST_API_URL || 'https://retail-forecast-api-7sue.onrender.com/' }}/health"
+      - name: Warm campaign audit API
+        run: curl -fsS --max-time 120 "${{ secrets.CAMPAIGN_AUDIT_API_URL || 'https://retail-campaign-automation.onrender.com/audit' }}"

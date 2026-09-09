@@ -1,0 +1,26 @@
+# Retail Decision Intelligence Agent — single-service deployment.
+# The append-only JSONL logs (recommendations, approvals, phase2 events)
+# are the durable state; they live on a named volume so containers are
+# disposable and history is not.
+services:
+  decision-agent:
+    build: .
+    image: retail-decision-intelligence-agent:latest
+    ports:
+      - "${PORT:-8001}:8001"
+    environment:
+      # Heartbeat: enable the autonomous sweep in deployment (off by default
+      # in code so tests and local work never fire live-API calls).
+      SWEEP_ENABLED: "${SWEEP_ENABLED:-1}"
+      SWEEP_INTERVAL_SECONDS: "${SWEEP_INTERVAL_SECONDS:-86400}"
+      # Set these before exposing beyond localhost:
+      APPROVAL_AUTH_TOKEN: "${APPROVAL_AUTH_TOKEN:?set APPROVAL_AUTH_TOKEN}"
+      FORECAST_API_URL: "${FORECAST_API_URL:-https://retail-forecast-api-7sue.onrender.com/}"
+      CAMPAIGN_AUDIT_API_URL: "${CAMPAIGN_AUDIT_API_URL:-}"
+      CAMPAIGN_AUDIT_LOG_PATH: "${CAMPAIGN_AUDIT_LOG_PATH:-}"
+    volumes:
+      - agent-logs:/srv/app/logs
+    restart: unless-stopped
+
+volumes:
+  agent-logs:

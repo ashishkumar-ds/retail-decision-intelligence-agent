@@ -1,0 +1,21 @@
+# Lint configuration (commerce-agents convention: ruff gates every commit).
+line-length = 120
+
+[lint]
+select = [
+    "E4",   # pycodestyle imports/whitespace errors
+    "E7",   # pycodestyle statement errors
+    "E9",   # pycodestyle runtime errors
+    "F",    # pyflakes (undefined names, unused imports/vars, f-strings)
+    "I",    # isort (import ordering)
+]
+
+[lint.per-file-ignores]
+# Package __init__ modules intentionally re-export names.
+"__init__.py" = ["F401"]
+# Tests keep local fixtures/variables for readability.
+"tests/*" = ["F841"]
+# evaluation/ holds offline, operator-run benchmark scripts (not shipped
+# packages; excluded from the CI complexity gate as well).
+"evaluation/*" = ["E701", "E702", "E712", "E722", "E741", "F841"]
+
