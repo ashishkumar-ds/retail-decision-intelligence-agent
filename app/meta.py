@@ -3,4 +3,4 @@
 ``pyproject.toml`` [project].version must equal ``VERSION``;
 ``scripts/check.py`` enforces the match so the two cannot drift.
 """
-VERSION = "4.2.0"
+VERSION = "1.0.0"
