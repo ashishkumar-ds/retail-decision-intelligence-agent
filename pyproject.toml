@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "retail-decision-intelligence-agent"
-version = "4.2.0"
+version = "1.0.0"
 description = "Deterministic decision-intelligence engine for retail store recovery recommendations, with an event-sourced Phase 2 intervention lifecycle."
 readme = "README.md"
 requires-python = ">=3.10"
