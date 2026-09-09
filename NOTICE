@@ -1,0 +1,34 @@
+NOTICE
+
+This project adapts engineering patterns (not source code) from Anthropic's
+commerce-agents blueprint (https://github.com/anthropics/commerce-agents) and
+the guide "The anatomy of effective commerce agents"
+(https://claude.com/blog/the-anatomy-of-effective-commerce-agents).
+
+Adapted patterns, and where they live in this repo:
+  - Staged change + change ledger, guardrails at stage AND apply time
+    -> approvals/ledger.py (decision-time double gate)
+  - MerchantBackend typed tool interface, model reads results not raw HTTP
+    -> tools/forecast_tool.py, tools/campaign_tool.py
+  - MerchantAgentConfig (enable_* switches, guardrail limits, one frozen config)
+    -> app/config.py (DecisionAgentConfig)
+  - build_static_system / build_dynamic_context prompt split, cache breakpoint
+    -> rag/llm_explainer.py
+  - Grounding lexicon and claim gates
+    -> rag/llm_explainer.py (lexicon_check), rag/explainer.py
+  - Presentation tools as typed payload schemas enriched by the host
+    -> presentation/cards.py
+  - DataLimitation: a figure the upstream cannot supply is typed evidence
+    -> tools/forecast_tool.py
+  - scripts/check.py cross-module drift gates
+    -> scripts/check.py
+  - Declarative flow specs (SKILL.md style), drift-checked against the planner
+    -> decision_engine/flows/
+
+The decision core itself is deliberately NOT an LLM agent loop: this service
+is a scheduled sweep + API decision system in which the deterministic engine
+decides, the LLM only rephrases grounded explanations, and humans approve
+material actions.
+
+This project also builds on dunnhumby's "The Complete Journey" dataset; see
+rag/sources/ and docs/rag_sources.md for dataset attribution and license notes.

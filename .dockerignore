@@ -1,0 +1,21 @@
+# Keep runtime images minimal and secrets out.
+.git
+.github
+.pytest_cache
+__pycache__
+*.pyc
+*.egg-info
+logs/
+docs/
+tests/
+agent/
+.dockerignore
+Dockerfile
+docker-compose.yml
+*.tar.gz
+*.zip
+# Never bake secrets into an image: local env files are for the deploy host.
+.env
+.env.local
+.env.*.local
+*.env

@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+logs/
+*.egg-info/
+.env.local
+.venv/
+# Durable derived state (SQLite) lives under logs/ and should not be committed.
+*.db
+*.db-wal
+*.db-shm

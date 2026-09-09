@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install project + dev deps
+        run: pip install -e ".[dev]" radon
+      - name: Ruff lint gate
+        run: ruff check .
+      - name: Cross-module consistency gate
+        run: python scripts/check.py
+      - name: Golden decision evals (offline)
+        run: python evaluation/run_evals.py --quiet
+      - name: Offline test suite (live_api excluded by pytest.ini)
+        run: pytest -q
+      - name: "Complexity gate (15+ must split; D+ fails the build)"
+        run: |
+          radon cc -s -n D app approvals decision_engine phase2 presentation rag tools guardrails memory > /tmp/cc_violations.txt
+          if [ -s /tmp/cc_violations.txt ]; then
+            echo "Cyclomatic complexity gate failed (D+ found):"
+            cat /tmp/cc_violations.txt
+            exit 1
+          fi
+          echo "Complexity gate passed: no D/E/F functions."
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t retail-decision-intelligence-agent:ci .
+      - name: Container smoke test (/health)
+        run: |
+          docker run -d --name smoke -p 8001:8001 \
+            -e APPROVAL_AUTH_TOKEN=ci-smoke-token \
+            retail-decision-intelligence-agent:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8001/health | grep -q '"status": *"ok"'; then
+              echo "Health OK"; exit 0
+            fi
+            sleep 2
+          done
+          echo "Container failed health check"; docker logs smoke; exit 1
+      - name: Cleanup
+        if: always()
+        run: docker rm -f smoke || true
