@@ -86,6 +86,6 @@
 ---
 
 *Source analysis: comparison of `anthropics/commerce-agents` architecture
-(fictional ACME data, Apache-2.0) against this repo, conducted in the v4 review
+(fictional ACME data, Apache-2.0) against this repo, conducted in a review
 session. Their repo is a reference blueprint — follow the patterns, don't copy
 the code.*

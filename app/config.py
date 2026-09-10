@@ -6,7 +6,7 @@ path; a disabled capability refuses to serve (503) rather than silently
 degrading. Flags are read at call time (not import time) so tests can flip
 them per-test and a container restart picks up new env values.
 
-All flags default to enabled - the full v4 behavior is unchanged unless an
+All flags default to enabled - the full behavior is unchanged unless an
 operator explicitly turns a capability off.
 """
 from __future__ import annotations

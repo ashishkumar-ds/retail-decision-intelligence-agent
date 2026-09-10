@@ -3,7 +3,7 @@
 
 **Series:** `P1 Store Performance Analysis (DiD)` → `P2 Campaign Automation with n8n` → `P3 Decision Intelligence Agent`  
 **Stack:** dunnhumby The Complete Journey (2,595,732 transactions, 582 stores, 2,500 households, 30 campaigns) · LightGBM (Optuna) · FastAPI · n8n · Brevo  
-**Author:** Retail Decision Intelligence Team — v4 Public Release
+**Author:** Retail Decision Intelligence Team — Public Release
 
 ---
 
