@@ -2,11 +2,11 @@
 # rules (not a subjective "is this a good recommendation").
 from guardrails import requires_human_approval
 
-# Phase 1 + v4 feedback/diversified policy (must stay in sync with
+# Phase 1 + feedback/diversified policy (must stay in sync with
 # guardrails.APPROVAL_REQUIRED_RECOMMENDATIONS and decision_engine/scorer.py)
 VALID_RECOMMENDATIONS = {
     "CONTINUE", "MONITOR", "EXTEND_INTERVENTION", "ESCALATE", "NEEDS_REVIEW",
-    # v4 feedback loop
+    # Feedback loop
     "PAUSE_INTERVENTION",
     # Priority 2 diversified policy — only on SUFFICIENT+MEETS_TARGET + explicit context
     "RETARGET_SEGMENT", "TIMING_SHIFT", "REALLOCATE_BUDGET",

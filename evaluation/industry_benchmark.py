@@ -190,7 +190,7 @@ def _check_causal():
         import pandas as pd
         base=Path("datasets") if Path("datasets").exists() else Path("/root/projects/data-science-projects/dunnhumby-retail-performance-analysis/datasets")
         if not base.exists():
-            base=Path("/root/retail-decision-intelligence-agent-v4/datasets") # fallback
+            base=Path(__file__).resolve().parents[1] / "datasets"  # repo-relative fallback
         trans=pd.read_csv(base / "transaction_data.csv", usecols=["STORE_ID","DAY","SALES_VALUE","QUANTITY","RETAIL_DISC"])
         df=trans[(trans.QUANTITY<61335)&(trans.QUANTITY!=0)&(trans.SALES_VALUE<631.8)&(trans.RETAIL_DISC>-100)]
         # Quick check: 90 redemption stores exists
@@ -225,7 +225,7 @@ def run():
         rows.append((b["id"], b["vendor"], b["claim"][:55], b["test"][:55], "PASS" if passed else "FAIL", w))
 
     # Print table
-    print("\nIndustry Benchmark — Retail Decision Intelligence Agent v4")
+    print("\nIndustry Benchmark — Retail Decision Intelligence Agent")
     print("="*110)
     print(f"{'ID':<22} {'Vendor':<18} {'Status':<6} {'Weight':<6} Claim")
     print("-"*110)

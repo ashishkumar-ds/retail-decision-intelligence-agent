@@ -9,7 +9,7 @@
 #   FORECAST_API_URL=... AUDIT_API_URL=... ./scripts/keepalive.sh
 #
 # Schedule it with cron (every 10 min is safe against the 15-min spin-down):
-#   */10 * * * * /path/to/retail-decision-intelligence-agent-v4/scripts/keepalive.sh >> /tmp/keepalive.log 2>&1
+#   */10 * * * * /path/to/retail-decision-intelligence-agent/scripts/keepalive.sh >> /tmp/keepalive.log 2>&1
 set -u
 
 FORECAST_URL="${FORECAST_API_URL:-https://retail-forecast-api-7sue.onrender.com/}"
