@@ -66,7 +66,7 @@ Every store evaluation runs a fixed pipeline — `route → plan → score →
 verify → approval gate` — with each stage recorded in a `DecisionTrajectory`
 embedded in the recommendation record itself.
 
-![System architecture — deterministic, human-gated decision flow](docs/architecture.png)
+![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture.png)
 *The decision path is pure code with no LLM; the optional LLM layer sits off-path and may only rephrase grounded, cited explanations.*
 
 | Component | Module | Responsibility |

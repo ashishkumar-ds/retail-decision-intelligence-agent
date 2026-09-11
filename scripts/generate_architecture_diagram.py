@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Generate docs/architecture.json - an Eraser Diagrams (MDP) model of the
+"""Generate docs/diagrams/architecture.json - an Eraser Diagrams (MDP) model of the
 Retail Decision Intelligence Agent architecture.
 
 Render with:
-    eraser-diagrams render docs/architecture.json \\
-        --chromium-path <chrome> --scale 2 -o docs/architecture.png
+    eraser-diagrams render docs/diagrams/architecture.json \
+        --chromium-path <chrome> --scale 2 -o docs/diagrams/architecture.png
 
 Deterministic layout: four left-to-right columns
 (sources/grounding -> orchestration/memory -> brain/gates -> human gate/surfaces).
@@ -209,7 +209,7 @@ def build_connections():
 
 def main():
     document = {"entities": build_entities(), "connections": build_connections()}
-    out = Path(__file__).resolve().parents[1] / "docs" / "architecture.json"
+    out = Path(__file__).resolve().parents[1] / "docs" / "diagrams" / "architecture.json"
     out.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out} ({len(document['entities'])} entities, {len(document['connections'])} connections)")
 
