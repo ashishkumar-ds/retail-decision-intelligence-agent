@@ -2,590 +2,881 @@
   "entities": [
     {
       "tag": "Shape",
-      "id": "diagram-title",
+      "id": "tcj-top-rule",
       "x": 40,
-      "y": 30,
-      "width": 1600,
-      "height": 64,
-      "bgColor": "#190f47",
-      "borderColor": "#190f47",
+      "y": 22,
+      "width": 1550,
+      "height": 4,
+      "bgColor": "#38b2ab",
+      "borderColor": "#38b2ab",
+      "styleMode": "plain",
       "texts": [
         {
-          "text": "✳ retail decision intelligence agent — dunnhumby brand edition: plan → execute → measure → re-decide",
-          "fontSize": 18,
+          "text": ""
+        }
+      ]
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-title",
+      "x": 40,
+      "y": 52,
+      "width": 1100,
+      "height": 44,
+      "bgColor": "#ffffff",
+      "borderColor": "#ffffff",
+      "styleMode": "plain",
+      "texts": [
+        {
+          "text": "The Retail Decision Intelligence Agent",
+          "fontSize": 26,
           "hAlign": "left",
+          "color": "#000000"
+        }
+      ]
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-chip",
+      "x": 40,
+      "y": 106,
+      "width": 118,
+      "height": 26,
+      "bgColor": "#38b2ab",
+      "borderColor": "#38b2ab",
+      "styleMode": "plain",
+      "texts": [
+        {
+          "text": "architecture",
+          "fontSize": 12,
           "color": "#ffffff"
         }
       ]
     },
     {
       "tag": "Group",
+      "id": "tcj-panel",
+      "x": 28,
+      "y": 150,
+      "width": 1566,
+      "height": 1188,
+      "bgColor": "#ebf7f5",
+      "borderColor": "#ebf7f5",
+      "styleMode": "plain"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-col-0",
+      "x": 40,
+      "y": 166,
+      "width": 300,
+      "height": 24,
+      "text": "inputs & grounding",
+      "fontSize": 14,
+      "color": "#38b2ab",
+      "hAlign": "left",
+      "containerId": "tcj-panel"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-col-1",
+      "x": 450,
+      "y": 166,
+      "width": 300,
+      "height": 24,
+      "text": "orchestration & memory",
+      "fontSize": 14,
+      "color": "#38b2ab",
+      "hAlign": "left",
+      "containerId": "tcj-panel"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-col-2",
+      "x": 860,
+      "y": 166,
+      "width": 300,
+      "height": 24,
+      "text": "decision core",
+      "fontSize": 14,
+      "color": "#38b2ab",
+      "hAlign": "left",
+      "containerId": "tcj-panel"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-col-3",
+      "x": 1270,
+      "y": 166,
+      "width": 300,
+      "height": 24,
+      "text": "human gate & surfaces",
+      "fontSize": 14,
+      "color": "#38b2ab",
+      "hAlign": "left",
+      "containerId": "tcj-panel"
+    },
+    {
+      "tag": "Group",
       "id": "sources",
       "x": 40,
-      "y": 170,
+      "y": 218,
       "width": 300,
       "height": 604,
-      "color": "#b3bee9",
+      "color": "gray",
       "title": {
-        "text": "Sources"
-      }
+        "text": "Sources",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "campaign-audit-evidence",
       "x": 60,
-      "y": 250,
+      "y": 298,
       "width": 260,
       "height": 60,
-      "color": "#b3bee9",
+      "color": "gray",
       "texts": [
         {
-          "text": "Campaign Audit Evidence"
+          "text": "Campaign Audit Evidence",
+          "color": "#000000"
         }
       ],
-      "icon": "file-text",
-      "containerId": "sources"
+      "containerId": "sources",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "sales-forecasts",
       "x": 60,
-      "y": 336,
+      "y": 384,
       "width": 260,
       "height": 60,
-      "color": "#b3bee9",
+      "color": "gray",
       "texts": [
         {
-          "text": "Sales Forecasts"
+          "text": "Sales Forecasts",
+          "color": "#000000"
         }
       ],
-      "icon": "trending-up",
-      "containerId": "sources"
+      "containerId": "sources",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Group",
       "id": "vetted-knowledge-sources",
       "x": 60,
-      "y": 422,
+      "y": 470,
       "width": 260,
       "height": 332,
-      "color": "#b3bee9",
+      "color": "gray",
       "title": {
-        "text": "Vetted Knowledge Sources"
+        "text": "Vetted Knowledge Sources",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
       },
-      "containerId": "sources"
+      "containerId": "sources",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "case-studies",
       "x": 80,
-      "y": 502,
+      "y": 550,
       "width": 220,
       "height": 60,
-      "color": "#b3bee9",
+      "color": "gray",
       "texts": [
         {
-          "text": "Case Studies"
+          "text": "Case Studies",
+          "color": "#000000"
         }
       ],
-      "icon": "book",
-      "containerId": "vetted-knowledge-sources"
+      "containerId": "vetted-knowledge-sources",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "data-dictionary",
       "x": 80,
-      "y": 588,
+      "y": 636,
       "width": 220,
       "height": 60,
-      "color": "#b3bee9",
+      "color": "gray",
       "texts": [
         {
-          "text": "Data Dictionary"
+          "text": "Data Dictionary",
+          "color": "#000000"
         }
       ],
-      "icon": "table",
-      "containerId": "vetted-knowledge-sources"
+      "containerId": "vetted-knowledge-sources",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "methodology",
       "x": 80,
-      "y": 674,
+      "y": 722,
       "width": 220,
       "height": 60,
-      "color": "#b3bee9",
+      "color": "gray",
       "texts": [
         {
-          "text": "Methodology Docs"
+          "text": "Methodology Docs",
+          "color": "#000000"
         }
       ],
-      "icon": "file-text",
-      "containerId": "vetted-knowledge-sources"
+      "containerId": "vetted-knowledge-sources",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Group",
       "id": "rag-layer",
       "x": 40,
-      "y": 808,
+      "y": 856,
       "width": 300,
       "height": 246,
-      "color": "#f6ad55",
+      "color": "yellow",
       "title": {
-        "text": "RAG Layer"
-      }
+        "text": "RAG Layer",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "evidence-ids",
       "x": 60,
-      "y": 888,
+      "y": 936,
       "width": 260,
       "height": 60,
-      "color": "#f6ad55",
+      "color": "yellow",
       "texts": [
         {
-          "text": "Evidence IDs"
+          "text": "Evidence IDs",
+          "color": "#000000"
         }
       ],
-      "icon": "hash",
-      "containerId": "rag-layer"
+      "containerId": "rag-layer",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "deterministic-bm25",
       "x": 60,
-      "y": 974,
+      "y": 1022,
       "width": 260,
       "height": 60,
-      "color": "#f6ad55",
+      "color": "yellow",
       "texts": [
         {
-          "text": "Deterministic BM25"
+          "text": "Deterministic BM25",
+          "color": "#000000"
         }
       ],
-      "icon": "filter",
-      "containerId": "rag-layer"
+      "containerId": "rag-layer",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "why-endpoint",
       "x": 60,
-      "y": 1088,
+      "y": 1136,
       "width": 260,
       "height": 68,
-      "color": "#f6ad55",
+      "color": "yellow",
       "texts": [
         {
-          "text": "/why/{store_id} Cited Explanations"
+          "text": "/why/{store_id} Cited Explanations",
+          "color": "#000000"
         }
       ],
-      "icon": "message-square"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "optional-llm-layer",
       "x": 60,
-      "y": 1190,
+      "y": 1238,
       "width": 260,
       "height": 76,
-      "color": "#f6ad55",
+      "color": "yellow",
       "texts": [
         {
-          "text": "Optional LLM Layer (rephrase only, guarded)"
+          "text": "Optional LLM Layer (rephrase only, guarded)",
+          "color": "#000000"
         }
       ],
-      "icon": "brain"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "tools",
       "x": 470,
-      "y": 170,
+      "y": 218,
       "width": 260,
       "height": 68,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Tools - typed, fail-closed adapters"
+          "text": "Tools - typed, fail-closed adapters",
+          "color": "#000000"
         }
       ],
-      "icon": "server"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Group",
       "id": "fastapi-service",
       "x": 450,
-      "y": 272,
+      "y": 320,
       "width": 300,
       "height": 302,
-      "color": "#425cc7",
+      "color": "green",
       "title": {
-        "text": "FastAPI Service (app/main.py)"
-      }
+        "text": "FastAPI Service (app/main.py)",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "pipeline-orchestrator",
       "x": 470,
-      "y": 352,
+      "y": 400,
       "width": 260,
       "height": 104,
-      "color": "#425cc7",
+      "color": "green",
       "texts": [
         {
-          "text": "Pipeline Orchestrator - route → plan → score → verify → gate"
+          "text": "Pipeline Orchestrator - route → plan → score → verify → gate",
+          "color": "#000000"
         }
       ],
-      "icon": "git-branch",
-      "containerId": "fastapi-service"
+      "containerId": "fastapi-service",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "sweep-scheduler",
       "x": 470,
-      "y": 482,
+      "y": 530,
       "width": 260,
       "height": 72,
-      "color": "#425cc7",
+      "color": "green",
       "texts": [
         {
-          "text": "Sweep Scheduler (daily sweep)"
+          "text": "Sweep Scheduler (daily sweep)",
+          "color": "#000000"
         }
       ],
-      "icon": "clock",
-      "containerId": "fastapi-service"
+      "containerId": "fastapi-service",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "memory",
       "x": 470,
-      "y": 608,
+      "y": 656,
       "width": 260,
       "height": 88,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Memory - append-only JSONL (fsynced, never rewritten)"
+          "text": "Memory - append-only JSONL (fsynced, never rewritten)",
+          "color": "#000000"
         }
       ],
-      "icon": "archive"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "evaluation",
       "x": 470,
-      "y": 730,
+      "y": 778,
       "width": 260,
       "height": 72,
-      "color": "#190f47",
+      "color": "purple",
       "texts": [
         {
-          "text": "Evaluation - 22 golden scenarios, CI-gated"
+          "text": "Evaluation - 22 golden scenarios, CI-gated",
+          "color": "#000000"
         }
       ],
-      "icon": "target"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Group",
       "id": "decision-engine",
       "x": 860,
-      "y": 170,
+      "y": 218,
       "width": 300,
       "height": 520,
-      "color": "#190f47",
+      "color": "purple",
       "title": {
-        "text": "Decision Engine - pure code, no LLM"
-      }
+        "text": "Decision Engine - pure code, no LLM",
+        "color": "#ffffff",
+        "bgColor": "#26245c",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#26245c",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "router",
       "x": 880,
-      "y": 250,
+      "y": 298,
       "width": 260,
       "height": 60,
-      "color": "#190f47",
+      "color": "purple",
       "texts": [
         {
-          "text": "Router"
+          "text": "Router",
+          "color": "#000000"
         }
       ],
-      "icon": "shuffle",
-      "containerId": "decision-engine"
+      "containerId": "decision-engine",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "planner",
       "x": 880,
-      "y": 336,
+      "y": 384,
       "width": 260,
       "height": 60,
-      "color": "#190f47",
+      "color": "purple",
       "texts": [
         {
-          "text": "Planner"
+          "text": "Planner",
+          "color": "#000000"
         }
       ],
-      "icon": "map",
-      "containerId": "decision-engine"
+      "containerId": "decision-engine",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "scoring-rules",
       "x": 880,
-      "y": 422,
+      "y": 470,
       "width": 260,
       "height": 76,
-      "color": "#190f47",
+      "color": "purple",
       "texts": [
         {
-          "text": "Scoring Rules - transparent rule chain"
+          "text": "Scoring Rules - transparent rule chain",
+          "color": "#000000"
         }
       ],
-      "icon": "list",
-      "containerId": "decision-engine"
+      "containerId": "decision-engine",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "verifier",
       "x": 880,
-      "y": 524,
+      "y": 572,
       "width": 260,
       "height": 60,
-      "color": "#190f47",
+      "color": "purple",
       "texts": [
         {
-          "text": "Verifier"
+          "text": "Verifier",
+          "color": "#000000"
         }
       ],
-      "icon": "check-circle",
-      "containerId": "decision-engine"
+      "containerId": "decision-engine",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "decision-trajectory",
       "x": 880,
-      "y": 610,
+      "y": 658,
       "width": 260,
       "height": 60,
-      "color": "#190f47",
+      "color": "purple",
       "texts": [
         {
-          "text": "Decision Trajectory (recorded)"
+          "text": "Decision Trajectory (recorded)",
+          "color": "#000000"
         }
       ],
-      "icon": "git-commit",
-      "containerId": "decision-engine"
+      "containerId": "decision-engine",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Group",
       "id": "guardrails",
       "x": 860,
-      "y": 724,
+      "y": 772,
       "width": 300,
       "height": 418,
-      "color": "#fc8181",
+      "color": "orange",
       "title": {
-        "text": "Guardrails"
-      }
+        "text": "Guardrails",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "approval-gate-set",
       "x": 880,
-      "y": 804,
+      "y": 852,
       "width": 260,
       "height": 60,
-      "color": "#fc8181",
+      "color": "orange",
       "texts": [
         {
-          "text": "Approval Gate Set"
+          "text": "Approval Gate Set",
+          "color": "#000000"
         }
       ],
-      "icon": "lock",
-      "containerId": "guardrails"
+      "containerId": "guardrails",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "risk-tiers",
       "x": 880,
-      "y": 890,
+      "y": 938,
       "width": 260,
       "height": 60,
-      "color": "#fc8181",
+      "color": "orange",
       "texts": [
         {
-          "text": "Risk Tiers"
+          "text": "Risk Tiers",
+          "color": "#000000"
         }
       ],
-      "icon": "alert-triangle",
-      "containerId": "guardrails"
+      "containerId": "guardrails",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "choice-architecture",
       "x": 880,
-      "y": 976,
+      "y": 1024,
       "width": 260,
       "height": 60,
-      "color": "#fc8181",
+      "color": "orange",
       "texts": [
         {
-          "text": "Choice Architecture"
+          "text": "Choice Architecture",
+          "color": "#000000"
         }
       ],
-      "icon": "sliders",
-      "containerId": "guardrails"
+      "containerId": "guardrails",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "cost-of-inaction",
       "x": 880,
-      "y": 1062,
+      "y": 1110,
       "width": 260,
       "height": 60,
-      "color": "#fc8181",
+      "color": "orange",
       "texts": [
         {
-          "text": "Cost of Inaction"
+          "text": "Cost of Inaction",
+          "color": "#000000"
         }
       ],
-      "icon": "dollar-sign",
-      "containerId": "guardrails"
+      "containerId": "guardrails",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "store-manager",
       "x": 1290,
-      "y": 170,
+      "y": 218,
       "width": 260,
       "height": 60,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Store Manager"
+          "text": "Store Manager",
+          "color": "#000000"
         }
       ],
-      "icon": "user"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "approval-ledger",
       "x": 1290,
-      "y": 264,
+      "y": 312,
       "width": 260,
       "height": 88,
-      "color": "#fc8181",
+      "color": "red",
       "texts": [
         {
-          "text": "Approval Ledger - double-gated, guardrails re-run at decision time"
+          "text": "Approval Ledger - double-gated, guardrails re-run at decision time",
+          "color": "#000000"
         }
       ],
-      "icon": "file-check"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Group",
       "id": "lifecycle",
       "x": 1270,
-      "y": 386,
+      "y": 434,
       "width": 300,
       "height": 188,
-      "color": "#fc8181",
+      "color": "red",
       "title": {
-        "text": "Intervention Lifecycle (phase2)"
-      }
+        "text": "Intervention Lifecycle (phase2)",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "lifecycle-stages",
       "x": 1290,
-      "y": 466,
+      "y": 514,
       "width": 260,
       "height": 88,
-      "color": "#fc8181",
+      "color": "red",
       "texts": [
         {
-          "text": "define → approve → start → complete → evaluate"
+          "text": "define → approve → start → complete → evaluate",
+          "color": "#000000"
         }
       ],
-      "icon": "layers",
-      "containerId": "lifecycle"
+      "containerId": "lifecycle",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Group",
       "id": "presentation",
       "x": 1270,
-      "y": 608,
+      "y": 656,
       "width": 300,
       "height": 332,
-      "color": "#425cc7",
+      "color": "blue",
       "title": {
-        "text": "Presentation"
-      }
+        "text": "Presentation",
+        "color": "#38b2ab",
+        "bgColor": "#ffffff",
+        "border": false
+      },
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
     },
     {
       "tag": "Shape",
       "id": "executive-board",
       "x": 1290,
-      "y": 688,
+      "y": 736,
       "width": 260,
       "height": 60,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Executive Board"
+          "text": "Executive Board",
+          "color": "#000000"
         }
       ],
-      "icon": "layout-dashboard",
-      "containerId": "presentation"
+      "containerId": "presentation",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "attention-queue",
       "x": 1290,
-      "y": 774,
+      "y": 822,
       "width": 260,
       "height": 60,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Attention Queue"
+          "text": "Attention Queue",
+          "color": "#000000"
         }
       ],
-      "icon": "bell",
-      "containerId": "presentation"
+      "containerId": "presentation",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "recommendation-cards",
       "x": 1290,
-      "y": 860,
+      "y": 908,
       "width": 260,
       "height": 60,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Recommendation Cards"
+          "text": "Recommendation Cards",
+          "color": "#000000"
         }
       ],
-      "icon": "credit-card",
-      "containerId": "presentation"
+      "containerId": "presentation",
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c"
     },
     {
       "tag": "Shape",
       "id": "executive-team",
       "x": 1290,
-      "y": 974,
+      "y": 1022,
       "width": 260,
       "height": 60,
-      "color": "#425cc7",
+      "color": "blue",
       "texts": [
         {
-          "text": "Executive Team"
+          "text": "Executive Team",
+          "color": "#000000"
         }
       ],
-      "icon": "users"
+      "styleMode": "plain",
+      "bgColor": "#ffffff",
+      "borderColor": "#26245c",
+      "containerId": "tcj-panel"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-footer-rule",
+      "x": 40,
+      "y": 1364,
+      "width": 1550,
+      "height": 2,
+      "bgColor": "#cccccc",
+      "borderColor": "#cccccc",
+      "styleMode": "plain",
+      "texts": [
+        {
+          "text": ""
+        }
+      ]
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-footer-copy",
+      "x": 40,
+      "y": 1376,
+      "width": 700,
+      "height": 24,
+      "text": "© 2026 retail decision intelligence agent · all rights reserved",
+      "fontSize": 11,
+      "color": "#666666",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-footer-brand",
+      "x": 1330,
+      "y": 1372,
+      "width": 260,
+      "height": 24,
+      "text": "dunnhumby",
+      "fontSize": 17,
+      "color": "#000000",
+      "hAlign": "right"
     }
   ],
   "connections": [
@@ -595,7 +886,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "ingest",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "sales-forecasts",
@@ -603,7 +894,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "typed, fail-closed",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "vetted-knowledge-sources",
@@ -611,14 +902,14 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "indexed",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "tools",
       "to": "pipeline-orchestrator",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "rag-layer",
@@ -626,65 +917,49 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "grounded context",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "pipeline-orchestrator",
       "to": "router",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "router",
       "to": "planner",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "planner",
       "to": "scoring-rules",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "scoring-rules",
       "to": "verifier",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
-    },
-    {
-      "from": "verifier",
-      "to": "decision-trajectory",
-      "lineStyle": "solid",
-      "endArrowhead": "triangle",
-      "label": "trajectory recorded",
-      "color": "#190f47"
-    },
-    {
-      "from": "verifier",
-      "to": "guardrails",
-      "lineStyle": "dashed",
-      "endArrowhead": "triangle",
-      "label": "rule gates",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "pipeline-orchestrator",
       "to": "memory",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "pipeline-orchestrator",
       "to": "why-endpoint",
       "lineStyle": "solid",
       "endArrowhead": "triangle",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "verifier",
@@ -692,7 +967,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "budget-affecting actions",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "store-manager",
@@ -700,7 +975,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "approve / reject - fail-closed 503",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "approval-ledger",
@@ -708,7 +983,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "event-sourced",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "why-endpoint",
@@ -716,7 +991,7 @@
       "lineStyle": "dashed",
       "endArrowhead": "triangle",
       "label": "citations to evidence",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "why-endpoint",
@@ -724,7 +999,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "rephrase only, guarded",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "optional-llm-layer",
@@ -732,7 +1007,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "cited answer",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "lifecycle",
@@ -740,7 +1015,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "intervention outcomes",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "presentation",
@@ -748,7 +1023,7 @@
       "lineStyle": "solid",
       "endArrowhead": "triangle",
       "label": "plan → execute → measure → re-decide",
-      "color": "#190f47"
+      "color": "#38b2ab"
     },
     {
       "from": "evaluation",
@@ -756,7 +1031,7 @@
       "lineStyle": "dashed",
       "endArrowhead": "triangle",
       "label": "golden-case CI gates",
-      "color": "#190f47"
+      "color": "#38b2ab"
     }
   ]
 }
