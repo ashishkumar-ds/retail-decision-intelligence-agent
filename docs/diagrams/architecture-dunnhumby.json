@@ -1,0 +1,762 @@
+{
+  "entities": [
+    {
+      "tag": "Shape",
+      "id": "diagram-title",
+      "x": 40,
+      "y": 30,
+      "width": 1600,
+      "height": 64,
+      "bgColor": "#190f47",
+      "borderColor": "#190f47",
+      "texts": [
+        {
+          "text": "✳ retail decision intelligence agent — dunnhumby brand edition: plan → execute → measure → re-decide",
+          "fontSize": 18,
+          "hAlign": "left",
+          "color": "#ffffff"
+        }
+      ]
+    },
+    {
+      "tag": "Group",
+      "id": "sources",
+      "x": 40,
+      "y": 170,
+      "width": 300,
+      "height": 604,
+      "color": "#b3bee9",
+      "title": {
+        "text": "Sources"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "campaign-audit-evidence",
+      "x": 60,
+      "y": 250,
+      "width": 260,
+      "height": 60,
+      "color": "#b3bee9",
+      "texts": [
+        {
+          "text": "Campaign Audit Evidence"
+        }
+      ],
+      "icon": "file-text",
+      "containerId": "sources"
+    },
+    {
+      "tag": "Shape",
+      "id": "sales-forecasts",
+      "x": 60,
+      "y": 336,
+      "width": 260,
+      "height": 60,
+      "color": "#b3bee9",
+      "texts": [
+        {
+          "text": "Sales Forecasts"
+        }
+      ],
+      "icon": "trending-up",
+      "containerId": "sources"
+    },
+    {
+      "tag": "Group",
+      "id": "vetted-knowledge-sources",
+      "x": 60,
+      "y": 422,
+      "width": 260,
+      "height": 332,
+      "color": "#b3bee9",
+      "title": {
+        "text": "Vetted Knowledge Sources"
+      },
+      "containerId": "sources"
+    },
+    {
+      "tag": "Shape",
+      "id": "case-studies",
+      "x": 80,
+      "y": 502,
+      "width": 220,
+      "height": 60,
+      "color": "#b3bee9",
+      "texts": [
+        {
+          "text": "Case Studies"
+        }
+      ],
+      "icon": "book",
+      "containerId": "vetted-knowledge-sources"
+    },
+    {
+      "tag": "Shape",
+      "id": "data-dictionary",
+      "x": 80,
+      "y": 588,
+      "width": 220,
+      "height": 60,
+      "color": "#b3bee9",
+      "texts": [
+        {
+          "text": "Data Dictionary"
+        }
+      ],
+      "icon": "table",
+      "containerId": "vetted-knowledge-sources"
+    },
+    {
+      "tag": "Shape",
+      "id": "methodology",
+      "x": 80,
+      "y": 674,
+      "width": 220,
+      "height": 60,
+      "color": "#b3bee9",
+      "texts": [
+        {
+          "text": "Methodology Docs"
+        }
+      ],
+      "icon": "file-text",
+      "containerId": "vetted-knowledge-sources"
+    },
+    {
+      "tag": "Group",
+      "id": "rag-layer",
+      "x": 40,
+      "y": 808,
+      "width": 300,
+      "height": 246,
+      "color": "#f6ad55",
+      "title": {
+        "text": "RAG Layer"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "evidence-ids",
+      "x": 60,
+      "y": 888,
+      "width": 260,
+      "height": 60,
+      "color": "#f6ad55",
+      "texts": [
+        {
+          "text": "Evidence IDs"
+        }
+      ],
+      "icon": "hash",
+      "containerId": "rag-layer"
+    },
+    {
+      "tag": "Shape",
+      "id": "deterministic-bm25",
+      "x": 60,
+      "y": 974,
+      "width": 260,
+      "height": 60,
+      "color": "#f6ad55",
+      "texts": [
+        {
+          "text": "Deterministic BM25"
+        }
+      ],
+      "icon": "filter",
+      "containerId": "rag-layer"
+    },
+    {
+      "tag": "Shape",
+      "id": "why-endpoint",
+      "x": 60,
+      "y": 1088,
+      "width": 260,
+      "height": 68,
+      "color": "#f6ad55",
+      "texts": [
+        {
+          "text": "/why/{store_id} Cited Explanations"
+        }
+      ],
+      "icon": "message-square"
+    },
+    {
+      "tag": "Shape",
+      "id": "optional-llm-layer",
+      "x": 60,
+      "y": 1190,
+      "width": 260,
+      "height": 76,
+      "color": "#f6ad55",
+      "texts": [
+        {
+          "text": "Optional LLM Layer (rephrase only, guarded)"
+        }
+      ],
+      "icon": "brain"
+    },
+    {
+      "tag": "Shape",
+      "id": "tools",
+      "x": 470,
+      "y": 170,
+      "width": 260,
+      "height": 68,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Tools - typed, fail-closed adapters"
+        }
+      ],
+      "icon": "server"
+    },
+    {
+      "tag": "Group",
+      "id": "fastapi-service",
+      "x": 450,
+      "y": 272,
+      "width": 300,
+      "height": 302,
+      "color": "#425cc7",
+      "title": {
+        "text": "FastAPI Service (app/main.py)"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "pipeline-orchestrator",
+      "x": 470,
+      "y": 352,
+      "width": 260,
+      "height": 104,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Pipeline Orchestrator - route → plan → score → verify → gate"
+        }
+      ],
+      "icon": "git-branch",
+      "containerId": "fastapi-service"
+    },
+    {
+      "tag": "Shape",
+      "id": "sweep-scheduler",
+      "x": 470,
+      "y": 482,
+      "width": 260,
+      "height": 72,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Sweep Scheduler (daily sweep)"
+        }
+      ],
+      "icon": "clock",
+      "containerId": "fastapi-service"
+    },
+    {
+      "tag": "Shape",
+      "id": "memory",
+      "x": 470,
+      "y": 608,
+      "width": 260,
+      "height": 88,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Memory - append-only JSONL (fsynced, never rewritten)"
+        }
+      ],
+      "icon": "archive"
+    },
+    {
+      "tag": "Shape",
+      "id": "evaluation",
+      "x": 470,
+      "y": 730,
+      "width": 260,
+      "height": 72,
+      "color": "#190f47",
+      "texts": [
+        {
+          "text": "Evaluation - 22 golden scenarios, CI-gated"
+        }
+      ],
+      "icon": "target"
+    },
+    {
+      "tag": "Group",
+      "id": "decision-engine",
+      "x": 860,
+      "y": 170,
+      "width": 300,
+      "height": 520,
+      "color": "#190f47",
+      "title": {
+        "text": "Decision Engine - pure code, no LLM"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "router",
+      "x": 880,
+      "y": 250,
+      "width": 260,
+      "height": 60,
+      "color": "#190f47",
+      "texts": [
+        {
+          "text": "Router"
+        }
+      ],
+      "icon": "shuffle",
+      "containerId": "decision-engine"
+    },
+    {
+      "tag": "Shape",
+      "id": "planner",
+      "x": 880,
+      "y": 336,
+      "width": 260,
+      "height": 60,
+      "color": "#190f47",
+      "texts": [
+        {
+          "text": "Planner"
+        }
+      ],
+      "icon": "map",
+      "containerId": "decision-engine"
+    },
+    {
+      "tag": "Shape",
+      "id": "scoring-rules",
+      "x": 880,
+      "y": 422,
+      "width": 260,
+      "height": 76,
+      "color": "#190f47",
+      "texts": [
+        {
+          "text": "Scoring Rules - transparent rule chain"
+        }
+      ],
+      "icon": "list",
+      "containerId": "decision-engine"
+    },
+    {
+      "tag": "Shape",
+      "id": "verifier",
+      "x": 880,
+      "y": 524,
+      "width": 260,
+      "height": 60,
+      "color": "#190f47",
+      "texts": [
+        {
+          "text": "Verifier"
+        }
+      ],
+      "icon": "check-circle",
+      "containerId": "decision-engine"
+    },
+    {
+      "tag": "Shape",
+      "id": "decision-trajectory",
+      "x": 880,
+      "y": 610,
+      "width": 260,
+      "height": 60,
+      "color": "#190f47",
+      "texts": [
+        {
+          "text": "Decision Trajectory (recorded)"
+        }
+      ],
+      "icon": "git-commit",
+      "containerId": "decision-engine"
+    },
+    {
+      "tag": "Group",
+      "id": "guardrails",
+      "x": 860,
+      "y": 724,
+      "width": 300,
+      "height": 418,
+      "color": "#fc8181",
+      "title": {
+        "text": "Guardrails"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "approval-gate-set",
+      "x": 880,
+      "y": 804,
+      "width": 260,
+      "height": 60,
+      "color": "#fc8181",
+      "texts": [
+        {
+          "text": "Approval Gate Set"
+        }
+      ],
+      "icon": "lock",
+      "containerId": "guardrails"
+    },
+    {
+      "tag": "Shape",
+      "id": "risk-tiers",
+      "x": 880,
+      "y": 890,
+      "width": 260,
+      "height": 60,
+      "color": "#fc8181",
+      "texts": [
+        {
+          "text": "Risk Tiers"
+        }
+      ],
+      "icon": "alert-triangle",
+      "containerId": "guardrails"
+    },
+    {
+      "tag": "Shape",
+      "id": "choice-architecture",
+      "x": 880,
+      "y": 976,
+      "width": 260,
+      "height": 60,
+      "color": "#fc8181",
+      "texts": [
+        {
+          "text": "Choice Architecture"
+        }
+      ],
+      "icon": "sliders",
+      "containerId": "guardrails"
+    },
+    {
+      "tag": "Shape",
+      "id": "cost-of-inaction",
+      "x": 880,
+      "y": 1062,
+      "width": 260,
+      "height": 60,
+      "color": "#fc8181",
+      "texts": [
+        {
+          "text": "Cost of Inaction"
+        }
+      ],
+      "icon": "dollar-sign",
+      "containerId": "guardrails"
+    },
+    {
+      "tag": "Shape",
+      "id": "store-manager",
+      "x": 1290,
+      "y": 170,
+      "width": 260,
+      "height": 60,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Store Manager"
+        }
+      ],
+      "icon": "user"
+    },
+    {
+      "tag": "Shape",
+      "id": "approval-ledger",
+      "x": 1290,
+      "y": 264,
+      "width": 260,
+      "height": 88,
+      "color": "#fc8181",
+      "texts": [
+        {
+          "text": "Approval Ledger - double-gated, guardrails re-run at decision time"
+        }
+      ],
+      "icon": "file-check"
+    },
+    {
+      "tag": "Group",
+      "id": "lifecycle",
+      "x": 1270,
+      "y": 386,
+      "width": 300,
+      "height": 188,
+      "color": "#fc8181",
+      "title": {
+        "text": "Intervention Lifecycle (phase2)"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "lifecycle-stages",
+      "x": 1290,
+      "y": 466,
+      "width": 260,
+      "height": 88,
+      "color": "#fc8181",
+      "texts": [
+        {
+          "text": "define → approve → start → complete → evaluate"
+        }
+      ],
+      "icon": "layers",
+      "containerId": "lifecycle"
+    },
+    {
+      "tag": "Group",
+      "id": "presentation",
+      "x": 1270,
+      "y": 608,
+      "width": 300,
+      "height": 332,
+      "color": "#425cc7",
+      "title": {
+        "text": "Presentation"
+      }
+    },
+    {
+      "tag": "Shape",
+      "id": "executive-board",
+      "x": 1290,
+      "y": 688,
+      "width": 260,
+      "height": 60,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Executive Board"
+        }
+      ],
+      "icon": "layout-dashboard",
+      "containerId": "presentation"
+    },
+    {
+      "tag": "Shape",
+      "id": "attention-queue",
+      "x": 1290,
+      "y": 774,
+      "width": 260,
+      "height": 60,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Attention Queue"
+        }
+      ],
+      "icon": "bell",
+      "containerId": "presentation"
+    },
+    {
+      "tag": "Shape",
+      "id": "recommendation-cards",
+      "x": 1290,
+      "y": 860,
+      "width": 260,
+      "height": 60,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Recommendation Cards"
+        }
+      ],
+      "icon": "credit-card",
+      "containerId": "presentation"
+    },
+    {
+      "tag": "Shape",
+      "id": "executive-team",
+      "x": 1290,
+      "y": 974,
+      "width": 260,
+      "height": 60,
+      "color": "#425cc7",
+      "texts": [
+        {
+          "text": "Executive Team"
+        }
+      ],
+      "icon": "users"
+    }
+  ],
+  "connections": [
+    {
+      "from": "campaign-audit-evidence",
+      "to": "tools",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "ingest",
+      "color": "#190f47"
+    },
+    {
+      "from": "sales-forecasts",
+      "to": "tools",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "typed, fail-closed",
+      "color": "#190f47"
+    },
+    {
+      "from": "vetted-knowledge-sources",
+      "to": "rag-layer",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "indexed",
+      "color": "#190f47"
+    },
+    {
+      "from": "tools",
+      "to": "pipeline-orchestrator",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "rag-layer",
+      "to": "decision-engine",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "grounded context",
+      "color": "#190f47"
+    },
+    {
+      "from": "pipeline-orchestrator",
+      "to": "router",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "router",
+      "to": "planner",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "planner",
+      "to": "scoring-rules",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "scoring-rules",
+      "to": "verifier",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "verifier",
+      "to": "decision-trajectory",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "trajectory recorded",
+      "color": "#190f47"
+    },
+    {
+      "from": "verifier",
+      "to": "guardrails",
+      "lineStyle": "dashed",
+      "endArrowhead": "triangle",
+      "label": "rule gates",
+      "color": "#190f47"
+    },
+    {
+      "from": "pipeline-orchestrator",
+      "to": "memory",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "pipeline-orchestrator",
+      "to": "why-endpoint",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "color": "#190f47"
+    },
+    {
+      "from": "verifier",
+      "to": "approval-ledger",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "budget-affecting actions",
+      "color": "#190f47"
+    },
+    {
+      "from": "store-manager",
+      "to": "approval-ledger",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "approve / reject - fail-closed 503",
+      "color": "#190f47"
+    },
+    {
+      "from": "approval-ledger",
+      "to": "lifecycle",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "event-sourced",
+      "color": "#190f47"
+    },
+    {
+      "from": "why-endpoint",
+      "to": "rag-layer",
+      "lineStyle": "dashed",
+      "endArrowhead": "triangle",
+      "label": "citations to evidence",
+      "color": "#190f47"
+    },
+    {
+      "from": "why-endpoint",
+      "to": "optional-llm-layer",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "rephrase only, guarded",
+      "color": "#190f47"
+    },
+    {
+      "from": "optional-llm-layer",
+      "to": "store-manager",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "cited answer",
+      "color": "#190f47"
+    },
+    {
+      "from": "lifecycle",
+      "to": "presentation",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "intervention outcomes",
+      "color": "#190f47"
+    },
+    {
+      "from": "presentation",
+      "to": "executive-team",
+      "lineStyle": "solid",
+      "endArrowhead": "triangle",
+      "label": "plan → execute → measure → re-decide",
+      "color": "#190f47"
+    },
+    {
+      "from": "evaluation",
+      "to": "decision-engine",
+      "lineStyle": "dashed",
+      "endArrowhead": "triangle",
+      "label": "golden-case CI gates",
+      "color": "#190f47"
+    }
+  ]
+}
