@@ -1,0 +1,99 @@
+title Retail Decision Intelligence Agent — Architecture
+
+// ---------------------------------------------------------------------------
+// Render at https://app.eraser.io (Diagram-as-Code) or with eraser-diagrams CLI
+// Brain is code, not a model call: plan -> execute -> measure -> re-decide
+// ---------------------------------------------------------------------------
+
+Store Manager [icon: user, color: blue]
+Executive Team [icon: users, color: blue]
+
+Sources [icon: database, color: gray] {
+  Campaign Audit Evidence [icon: file-text, color: gray]
+  Sales Forecasts [icon: trending-up, color: gray]
+  Vetted Knowledge Sources [icon: book-open, color: gray] {
+    Case Studies [icon: book, color: gray]
+    Data Dictionary [icon: table, color: gray]
+    Methodology Docs [icon: file-text, color: gray]
+  }
+}
+
+FastAPI Service [icon: box, color: green] {
+  Pipeline Orchestrator [icon: git-branch, color: green] // app/main.py: route -> plan -> score -> verify -> approval gate
+  Sweep Scheduler [icon: clock, color: green]            // autonomous daily sweep (Docker)
+}
+
+Decision Engine [icon: brain, color: purple] {           // decision_engine/ — pure, constructor-injected, no LLM
+  Router [icon: shuffle, color: purple]                  // route
+  Planner [icon: map, color: purple]                     // plan
+  Scoring Rules [icon: list, color: purple]              // score — transparent rule chain
+  Verifier [icon: check-circle, color: purple]           // verify
+  Decision Trajectory [icon: git-commit, color: purple]  // every stage recorded in recommendation record
+}
+
+Guardrails [icon: shield, color: orange] {               // guardrails/
+  Approval Gate Set [icon: lock, color: orange]
+  Risk Tiers [icon: alert-triangle, color: orange]
+  Choice Architecture [icon: sliders, color: orange]
+  Cost of Inaction [icon: dollar-sign, color: orange]
+}
+
+Approval Ledger [icon: file-check, color: red]           // approvals/ledger.py — double-gated approve/reject, guardrails re-run at decision time
+Lifecycle [icon: activity, color: red] {                 // phase2/ — event-sourced
+  Lifecycle Stages [icon: layers, color: red, label: "define → approve → start → complete → evaluate"]
+}
+
+Memory [icon: archive, color: teal]                      // memory/history.py — append-only JSONL, fsync'd, locked, never rewritten
+Tools [icon: wrench, color: teal]                        // tools/ — typed, fail-closed adapters
+
+RAG Layer [icon: search, color: yellow] {                // rag/ — two-tier grounding
+  Evidence IDs [icon: hash, color: yellow]
+  Deterministic BM25 [icon: filter, color: yellow]
+}
+
+Presentation [icon: monitor, color: indigo] {            // presentation/
+  Executive Board [icon: layout, color: indigo]
+  Attention Queue [icon: bell, color: indigo]
+  Recommendation Cards [icon: credit-card, color: indigo]
+}
+
+Why Endpoint [icon: message-square, color: yellow]       // /why/{store_id} — cited, grounded explanation
+Optional LLM Layer [icon: bot, color: yellow]            // may only rephrase; same numeric/citation guards
+Evaluation [icon: target, color: pink]                   // evaluation/ — 22 golden scenarios + calibration constants, CI-gated
+
+// --- Data in ---------------------------------------------------------------
+Campaign Audit Evidence > Tools: ingest
+Sales Forecasts > Tools: typed, fail-closed
+Vetted Knowledge Sources > RAG Layer: indexed
+Tools > Pipeline Orchestrator: evidence + forecasts
+RAG Layer > Decision Engine: grounded context
+
+// --- Pipeline --------------------------------------------------------------
+Pipeline Orchestrator > Router
+Router > Planner
+Planner > Scoring Rules
+Scoring Rules > Verifier
+Verifier > Decision Trajectory: trajectory recorded
+Verifier - Guardrails: rule gates
+Pipeline Orchestrator > Memory: append-only log
+Pipeline Orchestrator > Why Endpoint
+
+// --- Human gate ------------------------------------------------------------
+Verifier > Approval Ledger: budget-affecting actions only (EXTEND, PAUSE, REALLOCATE)
+Approval Ledger - Lifecycle: event-sourced state transitions
+Store Manager > Approval Ledger: explicit approve / reject (fail-closed 503 otherwise)
+Approval Ledger > Lifecycle: approved budget moves
+
+// --- Grounded explanations -------------------------------------------------
+Why Endpoint > RAG Layer: citations to evidence records
+Why Endpoint > Optional LLM Layer: rephrase only, guarded
+Optional LLM Layer > Store Manager: cited answer
+
+// --- Surfaces & quality ----------------------------------------------------
+Presentation > Executive Team: plan -> execute -> measure -> re-decide
+Lifecycle > Presentation: intervention outcomes
+Evaluation - Decision Engine: golden-case CI gates (22 pinned scenarios)
+
+layout {
+  direction right
+}
