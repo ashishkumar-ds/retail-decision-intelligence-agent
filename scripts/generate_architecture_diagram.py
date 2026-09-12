@@ -10,6 +10,7 @@ Deterministic layout: four left-to-right columns
 (sources/grounding -> orchestration/memory -> brain/gates -> human gate/surfaces).
 """
 from __future__ import annotations
+
 import json
 from pathlib import Path
 
