@@ -2,33 +2,19 @@
 
 A deterministic decision-intelligence agent for retail store recovery. The
 brain is code, not a model call: every recommendation is recomputable by
-hand, citable by ID, and approved by a human before any budget moves.
+hand, citable by ID, and approved by a human before any budget moves. It
+closes the loop **plan → execute → measure → re-decide** for underperforming
+stores.
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)](https://docs.astral.sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Overview
-
-The agent closes the loop **plan → execute → measure → re-decide** for
-underperforming stores. It consumes campaign-audit evidence and live sales
-forecasts, scores every store with a transparent rule chain, proposes the
-next best action, and gates anything that moves money behind a human
-decision — with an event-sourced intervention lifecycle and grounded,
-cited explanations for every call.
-
-- **Deterministic by design** — the decision path is pure code with no LLM;
-  identical evidence always produces an identical, auditable decision.
-- **Human-gated by default** — budget-affecting actions (`EXTEND`,
-  `PAUSE`, `REALLOCATE`, …) require an explicit approval; unauthenticated
-  writes fail closed (503).
-- **Grounded explanations** — `/why/{store_id}` answers with citations to
-  the exact evidence records; the optional LLM layer may only rephrase and
-  must pass the same numeric/citation guards.
-- **Golden-case gated** — 22 pinned business scenarios plus cross-module
-  consistency gates run in CI; a recalibration must change the pinned cases
-  in the same commit with the rationale stated.
+- **Deterministic by design** — pure-code decision path, no LLM.
+- **Human-gated by default** — budget-affecting writes fail closed (503) without approval.
+- **Grounded explanations** — `/why/{store_id}` cites exact evidence; the LLM only rephrases, under the same guards.
+- **Golden-case gated** — 22 pinned scenarios run in CI; recalibration updates them in the same commit.
 
 ## Quickstart
 
@@ -69,18 +55,9 @@ embedded in the recommendation record itself.
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
 *The decision path is pure code with no LLM; the optional LLM layer sits off-path and may only rephrase grounded, cited explanations. (Themed after dunnhumby's "The Complete Journey" user guide.)*
 
-| Component | Module | Responsibility |
-| --- | --- | --- |
-| Pipeline | `app/main.py` | FastAPI service; orchestrates the pipeline; sweep scheduler |
-| Decision engine | `decision_engine/` | Pure, constructor-injected brain: routing, planning, scoring rules, verification |
-| Memory | `memory/history.py` | Append-only JSONL recommendation log (fsync'd, locked, never rewritten) |
-| Lifecycle | `phase2/` | Event-sourced intervention lifecycle: define → approve → start → complete → evaluate |
-| Decision ledger | `approvals/ledger.py` | Double-gated approve/reject record; guardrails re-run at decision time |
-| Guardrails | `guardrails/` | Approval-gate set, risk tiers, choice architecture, cost of inaction |
-| Tools | `tools/` | Typed, fail-closed adapters to the forecast and campaign-audit services |
-| Knowledge | `rag/` | Two-tier grounding: evidence IDs + deterministic BM25 over vetted sources |
-| Evaluation | `evaluation/` | Golden business scenarios and calibration constants |
-| Stakeholder surface | `presentation/` | Executive board, attention queue, recommendation cards |
+The component map — pipeline, decision engine, memory, lifecycle, ledger,
+guardrails, tools, RAG, evaluation, stakeholder surfaces — lives in the
+[project blueprint](docs/PROJECT_BLUEPRINT.md), the full architecture record.
 
 ## API surface
 
