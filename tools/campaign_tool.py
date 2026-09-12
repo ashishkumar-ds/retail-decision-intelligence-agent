@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-import requests
+import httpx
 from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -144,16 +144,16 @@ def _get_audit_log_from_api(api_url: str) -> list[dict[str, Any]]:
     """Fetch and normalize Project 2's read-only ``GET /audit`` response.
 
     The API is used only when ``CAMPAIGN_AUDIT_API_URL`` is configured. HTTP
-    failures propagate as ``requests`` errors and bad payloads raise
+    failures propagate as ``httpx`` errors and bad payloads raise
     ``CampaignAuditResponseError``; neither case is silently converted to
     campaign data. No campaign execution endpoint is called.
     """
     _validate_audit_api_url(api_url)
-    response = requests.get(api_url, timeout=REQUEST_TIMEOUT_SECONDS)
+    response = httpx.get(api_url, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     try:
         payload = response.json()
-    except (ValueError, requests.JSONDecodeError) as error:
+    except ValueError as error:
         raise CampaignAuditResponseError("campaign audit API returned invalid JSON") from error
     return _normalise_api_audit_response(payload)
 

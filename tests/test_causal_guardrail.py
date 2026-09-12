@@ -6,8 +6,8 @@ Covers:
 - the get_control_comparison client's fail-closed envelope validation;
 - the app's causal evidence helper (fail-open to INSUFFICIENT, never raises).
 """
+import httpx
 import pytest
-import requests
 
 from decision_engine.causality import (
     CONFIRMED,
@@ -114,21 +114,21 @@ def _good_envelope(store_id=317, did=-30.74):
 
 
 def test_get_control_comparison_validates_envelope(monkeypatch):
-    monkeypatch.setattr(requests, "get", lambda *a, **k: _FakeResponse(_good_envelope()))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _FakeResponse(_good_envelope()))
     envelope = get_control_comparison(317, 594, 649, 650, 710)
     assert envelope["causal"]["did_uplift_pct"] == -30.74
 
-    monkeypatch.setattr(requests, "get", lambda *a, **k: _FakeResponse({"store_id": 317}))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _FakeResponse({"store_id": 317}))
     with pytest.raises(ForecastResponseError):
         get_control_comparison(317, 594, 649, 650, 710)
 
-    monkeypatch.setattr(requests, "get", lambda *a, **k: _FakeResponse(_good_envelope(store_id=999)))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _FakeResponse(_good_envelope(store_id=999)))
     with pytest.raises(ForecastResponseError):
         get_control_comparison(317, 594, 649, 650, 710)
 
     bad = _good_envelope()
     bad["matched_controls"] = []
-    monkeypatch.setattr(requests, "get", lambda *a, **k: _FakeResponse(bad))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: _FakeResponse(bad))
     with pytest.raises(ForecastResponseError):
         get_control_comparison(317, 594, 649, 650, 710)
 
@@ -148,7 +148,7 @@ def test_causal_evidence_helper_fails_open_to_insufficient(monkeypatch):
     import app.main as app_main
 
     def _boom(*a, **k):
-        raise requests.ConnectionError("down")
+        raise httpx.ConnectError("down")
 
     monkeypatch.setattr(app_main, "get_control_comparison", _boom)
     out = app_main._causal_evidence_for_intervention(317, 650)

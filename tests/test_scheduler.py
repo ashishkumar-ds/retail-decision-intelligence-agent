@@ -120,7 +120,7 @@ def test_app_startup_does_not_start_scheduler_by_default():
 def test_warm_up_returns_true_when_service_answers():
     """A service that answers 200 on the first poll needs no waiting."""
     fake = mock.Mock(status_code=200)
-    with mock.patch.object(forecast_tool.requests, "get", return_value=fake) as get, \
+    with mock.patch.object(forecast_tool.httpx, "get", return_value=fake) as get, \
          mock.patch.object(forecast_tool.time, "sleep") as sleep:
         assert forecast_tool.warm_up(max_wait_seconds=30) is True
     assert get.call_count == 1
@@ -131,7 +131,7 @@ def test_warm_up_polls_through_cold_start_until_healthy():
     """Simulate a Render cold start: 503, 503, then 200 — the warm-up must
     keep polling (with sleeps) and eventually succeed."""
     responses = [mock.Mock(status_code=503), mock.Mock(status_code=503), mock.Mock(status_code=200)]
-    with mock.patch.object(forecast_tool.requests, "get", side_effect=responses) as get, \
+    with mock.patch.object(forecast_tool.httpx, "get", side_effect=responses) as get, \
          mock.patch.object(forecast_tool.time, "sleep") as sleep:
         assert forecast_tool.warm_up(max_wait_seconds=120) is True
     assert get.call_count == 3
@@ -141,7 +141,7 @@ def test_warm_up_polls_through_cold_start_until_healthy():
 def test_warm_up_gives_up_after_budget():
     """A service that never answers must return False, not hang forever."""
     fake = mock.Mock(status_code=503)
-    with mock.patch.object(forecast_tool.requests, "get", return_value=fake), \
+    with mock.patch.object(forecast_tool.httpx, "get", return_value=fake), \
          mock.patch.object(forecast_tool.time, "sleep") as sleep, \
          mock.patch.object(forecast_tool.time, "monotonic",
                            side_effect=[0, 10, 20, 30, 40, 50, 60, 200]):
@@ -150,8 +150,8 @@ def test_warm_up_gives_up_after_budget():
 
 
 def test_warm_up_treats_connection_errors_as_retryable():
-    with mock.patch.object(forecast_tool.requests, "get",
-                           side_effect=[forecast_tool.requests.ConnectionError("down"),
+    with mock.patch.object(forecast_tool.httpx, "get",
+                           side_effect=[forecast_tool.httpx.ConnectError("down"),
                                         mock.Mock(status_code=200)]), \
          mock.patch.object(forecast_tool.time, "sleep"):
         assert forecast_tool.warm_up(max_wait_seconds=120) is True

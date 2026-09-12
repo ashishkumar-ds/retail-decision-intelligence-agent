@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import requests
+import httpx
 from fastapi import Body, Depends, FastAPI, Header, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
@@ -269,7 +269,7 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
         log_run_step(store_id, "forecast_fetch", "success", f"baseline={baseline}, current={current}")
         return StoreSignal(store_id, baseline, current, days_elapsed, days_remaining, True, "AVAILABLE")
 
-    except (requests.RequestException, TimeoutError) as e:
+    except (httpx.HTTPError, TimeoutError) as e:
         # Technical failure (network/HTTP) - must not be treated as no-data.
         logger.error(f"[FORECAST INTEGRATION ERROR] store={store_id} network/HTTP failure: "
                      f"{type(e).__name__}: {e}")
@@ -343,7 +343,7 @@ def _fetch_audit_store_ids() -> list[int]:
     """Shared audit fetch for /recommendations and the sweep (HTTP errors -> 502/400)."""
     try:
         audit_runs = get_audit_log()
-    except requests.RequestException as error:
+    except httpx.HTTPError as error:
         logger.error("[CAMPAIGN AUDIT INTEGRATION ERROR] HTTP/network failure: %s", error)
         raise HTTPException(status_code=502, detail="Campaign audit API is unavailable.") from error
     except CampaignAuditResponseError as error:
@@ -864,7 +864,7 @@ def _causal_evidence_for_intervention(store_id: int, started_day: int) -> dict:
             post_start=started_day,
             post_end=started_day + EVALUATION_WINDOW_DAYS,
         )
-    except (requests.RequestException, ForecastResponseError, TypeError, ValueError) as error:
+    except (httpx.HTTPError, ForecastResponseError, TypeError, ValueError) as error:
         logger.warning("[CAUSAL GUARDRAIL] controls fetch failed for store %s: %s: %s",
                        store_id, type(error).__name__, error)
         return {"evidence_state": "INSUFFICIENT",
@@ -934,7 +934,7 @@ def _auto_forecast_reference(
                 forecast_status = "AVAILABLE"
         elif forecast_status is None:
             forecast_status = "NO_DATA"
-    except (requests.RequestException, ForecastResponseError, TimeoutError, TypeError, ValueError) as error:
+    except (httpx.HTTPError, ForecastResponseError, TimeoutError, TypeError, ValueError) as error:
         if forecast_status is None:
             forecast_status = "ERROR"
         forecast_reference_value = None
