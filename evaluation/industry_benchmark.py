@@ -131,14 +131,6 @@ def _check_why():
     chunks = build_chunks()
     return len(chunks) >= 3 and callable(build_narrative) and callable(numeric_grounding_check) and callable(validate_citations)
 
-def _check_profit_discipline():
-    from decision_engine.calibration import CAUSAL_BASELINE, TARGET_UPLIFT_PCT
-    from decision_engine.causality import assess_causal_evidence
-    # Must gate on 3%, not 30.1
-    ok = TARGET_UPLIFT_PCT == 3.0 and CAUSAL_BASELINE["estimate_pct"] == 2.84
-    # CONFIRMED only if did >=3
-    r = assess_causal_evidence({"evidence_state":"SUFFICIENT","did_uplift_pct":2.9})
-    return ok and r["assessment_state"]=="REVIEW_ZONE" and not r["scale_up_eligible"]
 
 def _check_joined_up():
     # Series has 3 discrete services with typed adapters
@@ -146,19 +138,7 @@ def _check_joined_up():
     import tools.forecast_tool as ft
     return hasattr(ft,"get_actuals") and hasattr(ft,"get_control_comparison") and hasattr(ct,"get_audit_log")
 
-def _check_measure():
-    from phase2.evaluator import BASELINE_DAYS, EVALUATION_WINDOW_DAYS, RECENT_OBSERVATION_DAYS
-    return BASELINE_DAYS==56 and RECENT_OBSERVATION_DAYS==14 and EVALUATION_WINDOW_DAYS==60
 
-def _check_traceability():
-    from app.main import _recommendation_id
-    from phase2.contracts import InterventionKey
-    rec={"store_id":317,"recommendation":"EXTEND_INTERVENTION","store_health_score":20.0,"recovery_pct":0.0,"days_remaining":60,"forecast_status":"AVAILABLE"}
-    id1=_recommendation_id(rec); id2=_recommendation_id(rec)
-    k=InterventionKey(store_id=317, intervention_type="recovery", target_segment="Best", campaign_variant="18", strategy_version="v1")
-    # Traceability PASS, but contextual fabric (entity resolution/graph) is not built — honest partial
-    # So we return True for determinism, but benchmark counts it separately below
-    return id1==id2 and len(k.canonical_dict())==5
 
 def _has_profit_objective():
     import pathlib

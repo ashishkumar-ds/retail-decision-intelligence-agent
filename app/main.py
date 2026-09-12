@@ -33,7 +33,7 @@ from app.scheduler import (
     sweep_interval_seconds,
 )
 from app.state import PendingApprovalStore
-from approvals.ledger import append_decision, decision_gate, read_decisions
+from approvals.ledger import append_decision, decision_gate, read_decisions, utcnow_iso
 from decision_engine.engine import DecisionEngine
 from decision_engine.scorer import StoreSignal
 from decision_engine.verifier import verify_batch
@@ -181,9 +181,6 @@ def _require_phase2_write_auth(authorization: str | None = Header(default=None))
     return _require_approval_auth(authorization)
 
 
-
-def utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def log_run_step(store_id: int, step: str, status: str, detail: str = "") -> None:

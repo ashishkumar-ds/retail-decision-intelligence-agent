@@ -35,9 +35,10 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Mapping
+
+from approvals.ledger import utcnow_iso as _utcnow_iso
 
 DEFAULT_STATE_PATH = Path("logs/pending_approvals.db")
 _PATH_ENV = "PENDING_APPROVAL_STATE_PATH"
@@ -57,8 +58,6 @@ def state_path() -> Path:
     return Path(os.getenv(_PATH_ENV, str(DEFAULT_STATE_PATH)))
 
 
-def _utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 class PendingApprovalStore:

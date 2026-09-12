@@ -71,19 +71,6 @@ class AuditRunPayload(BaseModel):
         return value
 
 
-class AuditEnvelopePayload(_Strict):
-    """Project 2's ``GET /audit`` response envelope."""
-
-    total_runs: int
-    runs: list[AuditRunPayload]
-
-    @field_validator("runs")
-    @classmethod
-    def _total_matches(cls, value: list[AuditRunPayload], info) -> list[AuditRunPayload]:
-        total = info.data.get("total_runs")
-        if total is not None and total != len(value):
-            raise ValueError("total_runs does not match runs")
-        return value
 
 
 class ActualsRow(BaseModel):
