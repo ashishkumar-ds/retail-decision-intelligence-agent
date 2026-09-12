@@ -7,7 +7,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Sequence
 
-import requests
+import httpx
 
 DEFAULT_FORECAST_API_URL = "https://retail-forecast-api-7sue.onrender.com/"
 REQUEST_TIMEOUT_SECONDS = 15
@@ -85,7 +85,7 @@ def _base_url() -> str:
     return os.getenv("FORECAST_API_URL", DEFAULT_FORECAST_API_URL).rstrip("/")
 
 
-def _response_json(response: requests.Response) -> Any:
+def _response_json(response: httpx.Response) -> Any:
     try:
         return response.json()
     except ValueError as error:
@@ -97,9 +97,9 @@ RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 def _is_retryable_error(error: Exception) -> bool:
     """Determine whether an error represents a transient failure or cold start."""
-    if isinstance(error, (requests.ConnectionError, requests.Timeout, TimeoutError)):
+    if isinstance(error, (httpx.TransportError, httpx.TimeoutException, TimeoutError)):
         return True
-    if isinstance(error, requests.HTTPError):
+    if isinstance(error, httpx.HTTPStatusError):
         resp = getattr(error, "response", None)
         if resp is not None and hasattr(resp, "status_code"):
             return resp.status_code in RETRYABLE_STATUS_CODES
@@ -119,16 +119,16 @@ def _request_with_retry(
     backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
     sleep_fn: Callable[[float], None] = time.sleep,
     **kwargs: Any,
-) -> requests.Response:
+) -> httpx.Response:
     """Execute an HTTP request with exponential backoff for network and transient HTTP errors."""
     kwargs.setdefault("timeout", REQUEST_TIMEOUT_SECONDS)
     last_error: Exception | None = None
 
-    req_func = getattr(requests, method.lower(), requests.request)
+    req_func = getattr(httpx, method.lower(), httpx.request)
 
     for attempt in range(retries + 1):
         try:
-            if req_func is requests.request:
+            if req_func is httpx.request:
                 response = req_func(method, url, **kwargs)
             else:
                 response = req_func(url, **kwargs)
@@ -136,7 +136,7 @@ def _request_with_retry(
             if hasattr(response, "raise_for_status"):
                 response.raise_for_status()
             return response
-        except (requests.ConnectionError, requests.Timeout, requests.HTTPError, TimeoutError) as error:
+        except (httpx.TransportError, httpx.TimeoutException, httpx.HTTPStatusError, TimeoutError) as error:
             last_error = error
             if not _is_retryable_error(error):
                 logger.warning(
@@ -158,7 +158,7 @@ def _request_with_retry(
 
     if last_error:
         raise last_error
-    raise requests.RequestException(f"Failed to execute {method} {url}")
+    raise httpx.HTTPError(f"Failed to execute {method} {url}")
 
 
 def get_all_stores_info(
@@ -201,7 +201,7 @@ def get_store_info(
 ) -> dict[str, Any] | None:
     """Get a store's metadata, or ``None`` when the service has no such store.
 
-    HTTP and network errors deliberately propagate as ``requests`` exceptions after retries.
+    HTTP and network errors deliberately propagate as ``httpx`` exceptions after retries.
     """
     stores_by_id = get_all_stores_info(retries=retries, backoffs=backoffs, sleep_fn=sleep_fn)
     return stores_by_id.get(store_id)
@@ -224,12 +224,12 @@ def warm_up(max_wait_seconds: float = 120.0, sleep_fn: Callable[[float], None] |
     while time.monotonic() < deadline:
         attempt += 1
         try:
-            response = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+            response = httpx.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
             if response.status_code < 500:
                 logger.info("[FORECAST WARM-UP] service answering after %d attempt(s)", attempt)
                 return True
             logger.info("[FORECAST WARM-UP] attempt %d: HTTP %s (cold start?)", attempt, response.status_code)
-        except requests.RequestException as error:
+        except httpx.HTTPError as error:
             logger.info("[FORECAST WARM-UP] attempt %d failed: %s", attempt, type(error).__name__)
         delay(5.0)
     logger.warning("[FORECAST WARM-UP] service not answering within %.0fs", max_wait_seconds)
@@ -296,7 +296,7 @@ def get_evaluation_window_forecast(
         TypeError: If store_id, start_day, or offsets are not integers (or are bool).
         ValueError: If window_start_offset > window_end_offset.
         ForecastResponseError: If any daily prediction is missing, malformed, or incomplete.
-        requests.RequestException: If network or HTTP errors persist after all retries.
+        httpx.HTTPError: If network or HTTP errors persist after all retries.
     """
     if isinstance(store_id, bool) or not isinstance(store_id, int):
         raise TypeError("store_id must be an integer")
@@ -357,7 +357,7 @@ def get_control_comparison(
         TypeError: If arguments are not integers (or are bool).
         ValueError: If the windows are not ordered correctly.
         ForecastResponseError: If the payload is malformed.
-        requests.RequestException: If network or HTTP errors persist after retries.
+        httpx.HTTPError: If network or HTTP errors persist after retries.
     """
     for name, value in (("store_id", store_id), ("pre_start", pre_start), ("pre_end", pre_end),
                         ("post_start", post_start), ("post_end", post_end), ("k", k)):
@@ -418,7 +418,7 @@ def get_actuals(
         TypeError: If arguments are not integers (or are bool).
         ValueError: If start_day exceeds end_day.
         ForecastResponseError: If the payload is malformed.
-        requests.RequestException: If network or HTTP errors persist after retries.
+        httpx.HTTPError: If network or HTTP errors persist after retries.
     """
     if isinstance(store_id, bool) or not isinstance(store_id, int):
         raise TypeError("store_id must be an integer")

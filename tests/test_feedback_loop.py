@@ -8,8 +8,8 @@ Covers the plan -> execute -> measure -> re-decide cycle:
 """
 from datetime import datetime, timezone
 
+import httpx
 import pytest
-import requests
 
 from decision_engine.scorer import StoreSignal, score_and_recommend
 from tools import forecast_tool
@@ -166,11 +166,11 @@ def test_get_actuals_validates_envelope(monkeypatch):
         "observation_count": 1,
         "observations": [{"day": 1, "date": "2017-01-01", "sales_value": 99.5}],
     }
-    monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResponse(good))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: FakeResponse(good))
     envelope = forecast_tool.get_actuals(31642, 1, 2)
     assert envelope["observations"][0]["sales_value"] == 99.5
 
-    monkeypatch.setattr(requests, "get", lambda *a, **k: FakeResponse({"store_id": 31642}))
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: FakeResponse({"store_id": 31642}))
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_actuals(31642, 1, 2)
 

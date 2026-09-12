@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from statistics import fmean, median
 from typing import Any, Mapping, Sequence
 
-import requests
+import httpx
 
 from tools.forecast_tool import (
     ForecastResponseError,
@@ -190,7 +190,7 @@ def _resolve_forecast(
             window_end_offset=60,
         )
         return forecast_ref, "AVAILABLE", None
-    except (requests.RequestException, TimeoutError) as e:
+    except (httpx.HTTPError, TimeoutError) as e:
         return None, "ERROR", f"Network error: {e}"
     except (ForecastResponseError, ValueError, TypeError) as e:
         return None, "ERROR", f"Validation error: {e}"

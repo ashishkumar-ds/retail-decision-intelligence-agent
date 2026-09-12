@@ -14,8 +14,8 @@ flaky against a live, changing backend.
 import os
 import time
 
+import httpx
 import pytest
-import requests
 
 from tools import campaign_tool, forecast_tool
 
@@ -68,7 +68,7 @@ def test_live_forecast_api_evaluation_window_is_fast_and_correct_shape():
     """Confirms the concurrent window fetch works against the real API and,
     just as importantly, that it completes in seconds rather than minutes -
     this is the exact code path that used to serialize 14 sequential
-    requests with retry/backoff on top."""
+    httpx with retry/backoff on top."""
     stores = forecast_tool.get_all_stores_info()
     store_id, meta = next(iter(stores.items()))
     start_day = max(0, meta["last_day"] - 70)  # leave room for the +47..+60 window
@@ -105,13 +105,13 @@ def test_live_campaign_audit_api_only_calls_audit_endpoint(monkeypatch):
     ever gets requested even when the configured URL points at /audit."""
     _require_campaign_audit_api_configured()
     requested_urls = []
-    real_get = requests.get
+    real_get = httpx.get
 
     def spy_get(url, *args, **kwargs):
         requested_urls.append(url)
         return real_get(url, *args, **kwargs)
 
-    monkeypatch.setattr(requests, "get", spy_get)
+    monkeypatch.setattr(httpx, "get", spy_get)
     campaign_tool.get_audit_log()
     from urllib.parse import urlparse
 

@@ -1,8 +1,8 @@
 import json
 from datetime import datetime, timezone
 
+import httpx
 import pytest
-import requests
 
 from decision_engine.router import route
 from decision_engine.scorer import StoreSignal, compute_recovery_pct, compute_recovery_velocity, score_and_recommend
@@ -133,21 +133,29 @@ class FakeResponse:
         return self.payload
 
 
+def _status_error(message: str) -> httpx.HTTPStatusError:
+    """httpx.HTTPStatusError with a matching response status (parsed from message)."""
+    request = httpx.Request("GET", "http://forecast.test")
+    return httpx.HTTPStatusError(
+        message, request=request, response=httpx.Response(int(message[:3]), request=request)
+    )
+
+
 def test_forecast_tool_success_and_failures(monkeypatch):
-    monkeypatch.setattr(forecast_tool.requests, "get", lambda *a, **k: FakeResponse([{"store_id": 7, "last_day": 4}]))
-    monkeypatch.setattr(forecast_tool.requests, "post", lambda *a, **k: FakeResponse({"predicted_sales_value": 42.5}))
+    monkeypatch.setattr(forecast_tool.httpx, "get", lambda *a, **k: FakeResponse([{"store_id": 7, "last_day": 4}]))
+    monkeypatch.setattr(forecast_tool.httpx, "post", lambda *a, **k: FakeResponse({"predicted_sales_value": 42.5}))
     assert forecast_tool.get_store_info(7)["last_day"] == 4
     assert forecast_tool.get_prediction(7, 5) == 42.5
-    monkeypatch.setattr(forecast_tool.requests, "get", lambda *a, **k: (_ for _ in ()).throw(requests.ConnectionError()))
-    with pytest.raises(requests.ConnectionError):
+    monkeypatch.setattr(forecast_tool.httpx, "get", lambda *a, **k: (_ for _ in ()).throw(httpx.ConnectError("down")))
+    with pytest.raises(httpx.ConnectError):
         forecast_tool.get_store_info(7, sleep_fn=lambda s: None)
-    monkeypatch.setattr(forecast_tool.requests, "post", lambda *a, **k: FakeResponse({"bad": 1}))
+    monkeypatch.setattr(forecast_tool.httpx, "post", lambda *a, **k: FakeResponse({"bad": 1}))
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_prediction(7, 5)
-    monkeypatch.setattr(forecast_tool.requests, "post", lambda *a, **k: FakeResponse({"predicted_sales_value": "42.5"}))
+    monkeypatch.setattr(forecast_tool.httpx, "post", lambda *a, **k: FakeResponse({"predicted_sales_value": "42.5"}))
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_prediction(7, 5)
-    monkeypatch.setattr(forecast_tool.requests, "post", lambda *a, **k: FakeResponse(None, json_error=True))
+    monkeypatch.setattr(forecast_tool.httpx, "post", lambda *a, **k: FakeResponse(None, json_error=True))
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_prediction(7, 5)
 
@@ -232,7 +240,7 @@ def test_forecast_tool_http_malformed_store_and_timeout_paths(monkeypatch):
         captured.update(kwargs)
         return FakeResponse({"stores": "not-a-list"})
 
-    monkeypatch.setattr(forecast_tool.requests, "get", fake_get)
+    monkeypatch.setattr(forecast_tool.httpx, "get", fake_get)
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_store_info(7)
     assert captured["timeout"] == forecast_tool.REQUEST_TIMEOUT_SECONDS
@@ -242,24 +250,24 @@ def test_forecast_tool_http_malformed_store_and_timeout_paths(monkeypatch):
         post_captured.update(kwargs)
         return FakeResponse({"predicted_sales_value": 42})
 
-    monkeypatch.setattr(forecast_tool.requests, "post", fake_post)
+    monkeypatch.setattr(forecast_tool.httpx, "post", fake_post)
     assert forecast_tool.get_prediction(7, 5) == 42.0
     assert post_captured["timeout"] == forecast_tool.REQUEST_TIMEOUT_SECONDS
 
     monkeypatch.setattr(
-        forecast_tool.requests,
+        forecast_tool.httpx,
         "post",
-        lambda *args, **kwargs: FakeResponse({}, status_error=requests.HTTPError("503")),
+        lambda *args, **kwargs: FakeResponse({}, status_error=_status_error("503")),
     )
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(httpx.HTTPStatusError):
         forecast_tool.get_prediction(7, 5, sleep_fn=lambda s: None)
 
     monkeypatch.setattr(
-        forecast_tool.requests,
+        forecast_tool.httpx,
         "post",
-        lambda *args, **kwargs: (_ for _ in ()).throw(requests.Timeout()),
+        lambda *args, **kwargs: (_ for _ in ()).throw(httpx.TimeoutException("timed out")),
     )
-    with pytest.raises(requests.Timeout):
+    with pytest.raises(httpx.TimeoutException):
         forecast_tool.get_prediction(7, 5, sleep_fn=lambda s: None)
 
 
@@ -273,7 +281,7 @@ def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
         called_days.append(day)
         return FakeResponse({"predicted_sales_value": float(day)})
 
-    monkeypatch.setattr(forecast_tool.requests, "post", fake_post)
+    monkeypatch.setattr(forecast_tool.httpx, "post", fake_post)
     mean_val = forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100)
     # Days are fetched concurrently (see get_evaluation_window_forecast), so
     # call order isn't guaranteed - only that every day in the window was
@@ -299,18 +307,18 @@ def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
             return FakeResponse({"predicted_sales_value": None})
         return FakeResponse({"predicted_sales_value": 50.0})
 
-    monkeypatch.setattr(forecast_tool.requests, "post", malformed_post)
+    monkeypatch.setattr(forecast_tool.httpx, "post", malformed_post)
     with pytest.raises(forecast_tool.ForecastResponseError):
         forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100)
 
     # HTTP error on day 155
     def error_post(url, json=None, timeout=None):
         if json["day"] == 155:
-            return FakeResponse({}, status_error=requests.HTTPError("500 Server Error"))
+            return FakeResponse({}, status_error=_status_error("500 Server Error"))
         return FakeResponse({"predicted_sales_value": 50.0})
 
-    monkeypatch.setattr(forecast_tool.requests, "post", error_post)
-    with pytest.raises(requests.HTTPError):
+    monkeypatch.setattr(forecast_tool.httpx, "post", error_post)
+    with pytest.raises(httpx.HTTPStatusError):
         forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100, sleep_fn=lambda s: None)
 
 
@@ -323,11 +331,11 @@ def test_forecast_tool_retries_and_exponential_backoff(monkeypatch):
         attempt_count["count"] += 1
         if attempt_count["count"] < 3:
             # First 2 attempts fail with 503 Service Unavailable (cold start)
-            return FakeResponse({}, status_error=requests.HTTPError("503 Service Unavailable"))
+            return FakeResponse({}, status_error=_status_error("503 Service Unavailable"))
         # Attempt 3 succeeds
         return FakeResponse({"predicted_sales_value": 99.0})
 
-    monkeypatch.setattr(forecast_tool.requests, "post", transient_error_post)
+    monkeypatch.setattr(forecast_tool.httpx, "post", transient_error_post)
     val = forecast_tool.get_prediction(
         store_id=7,
         day=5,
@@ -342,10 +350,10 @@ def test_forecast_tool_retries_and_exponential_backoff(monkeypatch):
     # Test exhausted retries
     exhausted_sleeps = []
     def permanent_fail_post(*args, **kwargs):
-        raise requests.ConnectionError("Connection refused")
+        raise httpx.ConnectError("Connection refused")
 
-    monkeypatch.setattr(forecast_tool.requests, "post", permanent_fail_post)
-    with pytest.raises(requests.ConnectionError):
+    monkeypatch.setattr(forecast_tool.httpx, "post", permanent_fail_post)
+    with pytest.raises(httpx.ConnectError):
         forecast_tool.get_prediction(
             store_id=7,
             day=5,
@@ -385,7 +393,7 @@ def test_api_forecast_statuses_and_error_review_behavior(tmp_path, monkeypatch):
     assert no_data["forecast_status"] == "NO_DATA"
     assert no_data["recommendation"] == "NEEDS_REVIEW"
 
-    monkeypatch.setattr(main, "get_store_info", lambda store_id: (_ for _ in ()).throw(requests.ConnectionError("internal detail")))
+    monkeypatch.setattr(main, "get_store_info", lambda store_id: (_ for _ in ()).throw(httpx.ConnectError("internal detail")))
     network_error = client.post("/recommendations/run", headers=auth_headers).json()["recommendations"][0]
     assert network_error["forecast_status"] == "ERROR"
     assert network_error["recommendation"] == "NEEDS_REVIEW"
@@ -415,7 +423,7 @@ def test_campaign_api_preserves_campaign_as_a_label_and_flags_missing_stable_pro
         })
 
     monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
-    monkeypatch.setattr(campaign_tool.requests, "get", fake_get)
+    monkeypatch.setattr(campaign_tool.httpx, "get", fake_get)
     runs = campaign_tool.get_audit_log()
     assert requested == {
         "url": campaign_tool.DEFAULT_AUDIT_API_URL,
@@ -451,7 +459,7 @@ def test_campaign_api_does_not_promote_campaign_18_or_rollout_status_to_delivery
         }],
     }
     monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
-    monkeypatch.setattr(campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse(payload))
+    monkeypatch.setattr(campaign_tool.httpx, "get", lambda *args, **kwargs: FakeResponse(payload))
     runs = campaign_tool.get_audit_log()
     assert len(runs) == 1  # ingested, not rejected
     record = runs[0]
@@ -472,7 +480,7 @@ def test_campaign_api_does_not_promote_campaign_18_or_rollout_status_to_delivery
 ])
 def test_campaign_api_rejects_schema_invalid_responses(monkeypatch, payload):
     monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
-    monkeypatch.setattr(campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse(payload))
+    monkeypatch.setattr(campaign_tool.httpx, "get", lambda *args, **kwargs: FakeResponse(payload))
     with pytest.raises(campaign_tool.CampaignAuditResponseError):
         campaign_tool.get_audit_log()
 
@@ -486,7 +494,7 @@ def test_campaign_api_rejects_schema_invalid_responses(monkeypatch, payload):
 def test_campaign_api_strictly_validates_audit_run_fields(monkeypatch, run):
     monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
     monkeypatch.setattr(
-        campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse({"total_runs": 1, "runs": [run]})
+        campaign_tool.httpx, "get", lambda *args, **kwargs: FakeResponse({"total_runs": 1, "runs": [run]})
     )
     with pytest.raises(campaign_tool.CampaignAuditResponseError):
         campaign_tool.get_audit_log()
@@ -500,7 +508,7 @@ def test_campaign_api_strictly_validates_audit_run_fields(monkeypatch, run):
 def test_campaign_api_refuses_non_audit_endpoints(monkeypatch, api_url):
     monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", api_url)
     monkeypatch.setattr(
-        campaign_tool.requests,
+        campaign_tool.httpx,
         "get",
         lambda *args, **kwargs: pytest.fail("non-audit endpoints must never be requested"),
     )
@@ -511,13 +519,13 @@ def test_campaign_api_refuses_non_audit_endpoints(monkeypatch, api_url):
 def test_campaign_api_surfaces_http_and_malformed_json_failures(monkeypatch):
     monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
     monkeypatch.setattr(
-        campaign_tool.requests,
+        campaign_tool.httpx,
         "get",
-        lambda *args, **kwargs: FakeResponse({}, status_error=requests.HTTPError("503")),
+        lambda *args, **kwargs: FakeResponse({}, status_error=_status_error("503")),
     )
-    with pytest.raises(requests.HTTPError):
+    with pytest.raises(httpx.HTTPStatusError):
         campaign_tool.get_audit_log()
-    monkeypatch.setattr(campaign_tool.requests, "get", lambda *args, **kwargs: FakeResponse(None, json_error=True))
+    monkeypatch.setattr(campaign_tool.httpx, "get", lambda *args, **kwargs: FakeResponse(None, json_error=True))
     with pytest.raises(campaign_tool.CampaignAuditResponseError):
         campaign_tool.get_audit_log()
 
@@ -528,7 +536,7 @@ def test_campaign_local_jsonl_source_is_unchanged_when_api_is_not_configured(tmp
     monkeypatch.setenv("CAMPAIGN_AUDIT_LOG_PATH", str(path))
     monkeypatch.delenv("CAMPAIGN_AUDIT_API_URL", raising=False)
     monkeypatch.setattr(
-        campaign_tool.requests,
+        campaign_tool.httpx,
         "get",
         lambda *args, **kwargs: pytest.fail("local source must not make an HTTP request"),
     )

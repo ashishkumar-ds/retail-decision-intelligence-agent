@@ -182,9 +182,9 @@ def _provider() -> str:
 
 def _http_post_json(url: str, headers: dict, payload: dict, timeout: float = 60.0) -> dict:
     """Thin JSON POST used by the openai_compat provider (seams for tests)."""
-    import requests
+    import httpx
 
-    response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    response = httpx.post(url, headers=headers, json=payload, timeout=timeout)
     response.raise_for_status()
     return response.json()
 
