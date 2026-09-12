@@ -17,8 +17,9 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from datetime import datetime, timezone
 from typing import Callable
+
+from approvals.ledger import utcnow_iso as _utcnow_iso
 
 logger = logging.getLogger("retail_decision_agent.scheduler")
 
@@ -41,8 +42,6 @@ def sweep_interval_seconds() -> int:
     return value if value > 0 else DEFAULT_INTERVAL_SECONDS
 
 
-def _utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 class SweepScheduler:
