@@ -154,3 +154,63 @@ quantexa.com (/blog/core-capabilities-of-a-true-decision-intelligence-platform);
 DI lineage referenced therein (Gartner DI trend; Pratt & Zangari 2008;
 Kozyrkov). Vendor outcome figures are unverified marketing claims and are
 used only as capability signals, not benchmarks.
+
+## 6. Fortune 50 retail AI — how the giants actually build this (added 2026-09-12)
+
+Note: written from widely reported public facts (2024–2025 engineering
+coverage); live vendor sources were not reachable at write time.
+
+What the largest US retailers operate (the relevant public systems):
+
+- **Walmart** — Wallaby (retail-specific LLM, customer support/content),
+  Sparky (associate GenAI assistant), Trend-to-Product (social trend →
+  shoppable item), proprietary deep-learning demand forecasting across
+  ~10,000+ US stores, Element AI platform.
+- **Amazon** — anticipatory demand forecasting (among the largest ML systems
+  in retail), Rufus (shopping copilot), Just Walk Out (computer vision),
+  algorithmic repricing with policy guardrails.
+- **Kroger** — 84.51° (data science unit, literally dunnhumby USA heritage:
+  Kroger acquired dunnhumbyUSA in 2015) — household-level loyalty
+  personalization and promotion optimization across ~2,700 stores / ~60M
+  households.
+- **Home Depot** — Magic Apron (GenAI product/associate assistant), SKU
+  availability forecasting. **Lowe's** — Mylow assistant, store digital
+  twins. **Target** — demand/inventory-placement ML, Roundel retail media.
+  **Starbucks** — Deep Brew (labor scheduling, personalization, IoT).
+
+Axis comparison against this series:
+
+| Axis | Fortune 50 norm | This series |
+|---|---|---|
+| Scale | 2,700–10,000+ stores, petabytes, household-level | 85-store dataset — not comparable, and not the artifact's purpose |
+| Forecasting | Deep-learning ensembles, weather/elasticity features | Deterministic rule chain + calibration — recomputable by hand |
+| Decision autonomy | Auto-execute pricing/inventory within policy guardrails; humans on strategy | Fail-closed human gate on *every* budget-affecting move, double-gated ledger |
+| Explainability | Dashboards + post-hoc analytics; decision records rarely citable | Event-sourced, reproducible by ID, grounded /why with numeric grounding |
+| Causal measurement | Heavy test-and-learn culture, but measurement design rarely published per decision | Matched-control DiD published in the API response; scale-up gated on evidence state |
+| Agent surface | Mostly customer/associate copilots (Rufus, Sparky, Magic Apron, Mylow) | Decision agent over budget interventions (store recovery) |
+
+Honest reading:
+
+1. **The giants' public "retail AI agents" are copilots, not decision
+   agents.** Rufus, Sparky, Magic Apron, Mylow — these automate
+   conversations and content. The budget/markdown/lifecycle decision layer
+   is an internal platform at each company and is essentially never shown
+   publicly. That internal layer is what this series implements.
+2. **Kroger 84.51° is the closest lineage** — it is literally dunnhumby
+   operating at Kroger scale. This series uses dunnhumby's own Complete
+   Journey data and reproduces the same measurement problem at classroom
+   scale, with the governance discipline made explicit rather than
+   proprietary.
+3. **Where the giants are genuinely ahead** (accepted gaps): real-time
+   streaming ingestion, per-household personalization, deep-learning
+   forecast accuracy, breadth of decision domains, and multi-year learning
+   loops. Several are already on the roadmap (section 3).
+4. **Where this series is differentiated**: the three properties an auditor
+   would demand and none of the giants show publicly — published measurement
+   design, fail-closed human gating with a double-gated ledger, and
+   deterministic recomputability of every decision by ID.
+
+Positioning: not a mini-Amazon — a **governance-first reference
+implementation of the internal decision layer** that Fortune 50 retailers
+build privately, at dataset scale, using the same dunnhumby data heritage
+Kroger industrialized.
