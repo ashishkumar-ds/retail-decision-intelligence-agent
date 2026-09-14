@@ -101,10 +101,12 @@ def test_all_new_action_types_are_approval_gated():
 
 # --- Budget allocator --------------------------------------------------------
 
-def _candidate(store_id, lift, confidence=0.8, eligible=True, state="SUFFICIENT"):
+def _candidate(store_id, lift, confidence=0.8, eligible=True, state="SUFFICIENT",
+               baseline_daily_sales=100.0, campaign_cost=0.0):
     return {
         "store_id": store_id, "expected_lift_pct": lift, "confidence": confidence,
         "is_eligible": eligible, "evidence_state": state,
+        "baseline_daily_sales": baseline_daily_sales, "campaign_cost": campaign_cost,
     }
 
 
@@ -132,6 +134,26 @@ def test_allocator_excludes_ineligible_and_unproven_stores():
     assert reasons[1] == "not_eligible"
     assert reasons[2] == "evidence_state=PARTIAL"
     assert reasons[3] == "non_positive_expected_lift"
+
+
+def test_allocator_ranks_by_margin_not_lift_percentage():
+    # +1% lift on a high-volume store beats +5% on a low-volume store
+    high_volume = _candidate(1, 1.0, 0.9, baseline_daily_sales=200.0)   # margin 30.00
+    low_volume = _candidate(2, 5.0, 0.9, baseline_daily_sales=10.0)     # margin 7.50
+    plan = allocate_budget(1000.0, [low_volume, high_volume])
+    assert plan.allocations[0].store_id == 1
+    assert plan.allocations[0].score == pytest.approx(30.0 * 0.9, abs=0.001)
+
+
+def test_allocator_excludes_negative_expected_margin():
+    # campaign cost exceeds the expected margin on a tiny-volume store
+    plan = allocate_budget(1000.0, [
+        _candidate(1, 1.0, 0.9, baseline_daily_sales=10.0, campaign_cost=50.0),
+        _candidate(2, 2.0, 0.9),
+    ])
+    assert [a.store_id for a in plan.allocations] == [2]
+    reasons = {e["store_id"]: e["reason"] for e in plan.excluded}
+    assert reasons[1] == "non_positive_expected_margin"
 
 
 def test_allocator_caps_single_store_share():

@@ -1,13 +1,17 @@
 """Deterministic budget allocator for the store portfolio (Priority 2).
 
-Allocates a fixed campaign budget across stores by expected lift x
-confidence, subject to guardrails:
+Allocates a fixed campaign budget across stores by expected incremental
+MARGIN x confidence (money, not lift percentage), subject to guardrails:
 
 - Only eligible stores with SUFFICIENT outcome evidence and non-negative
   expected lift can receive budget (fail-closed: no evidence, no money).
 - Per-store share is capped (MAX_STORE_SHARE) so no single store dominates.
-- Score = expected_lift_pct x confidence, normalized to shares of the
-  allocatable budget; rounding is to cents and never exceeds the budget.
+- Score = expected_incremental_margin x confidence, where margin =
+  baseline_daily_sales x window_days x lift_pct/100 x MARGIN_RATE
+  - campaign_cost. Normalized to shares of the allocatable budget;
+  rounding is to cents and never exceeds the budget.
+- Ranking on margin (not lift %) corrects the volume bias: +3% lift on a
+  $200/day store is worth more than +5% on a $10/day store.
 - Stores below the minimum meaningful allocation are dropped and their
   budget stays unallocated (surfaced as `unallocated_budget`), rather than
   being silently spread.
@@ -19,10 +23,19 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Mapping, Sequence
 
+from phase2.evaluator import EVALUATION_WINDOW_DAYS
+
 MAX_STORE_SHARE = 0.25   # no single store may take more than 25% of budget
 MIN_ALLOCATION = Decimal("100.00")  # below this an allocation is not actionable
 
-REQUIRED_FIELDS = ("store_id", "expected_lift_pct", "confidence", "is_eligible", "evidence_state")
+# Assumed gross margin on incremental sales (grocery general merchandise).
+# Replace with a category-level margin when the data supports it.
+MARGIN_RATE = 0.25
+
+REQUIRED_FIELDS = (
+    "store_id", "expected_lift_pct", "confidence", "is_eligible",
+    "evidence_state", "baseline_daily_sales",
+)
 
 
 class BudgetAllocatorError(ValueError):
@@ -50,8 +63,14 @@ class BudgetAllocationPlan:
     @property
     def methodology(self) -> dict[str, str]:
         return {
-            "score": "expected_lift_pct * confidence (expected lift in % of baseline sales)",
-            "eligibility": "is_eligible AND evidence_state == SUFFICIENT AND expected_lift_pct > 0",
+            "score": (
+                "expected_incremental_margin * confidence, where margin = "
+                "baseline_daily_sales * " + str(EVALUATION_WINDOW_DAYS)
+                + " days * expected_lift_pct/100 * " + str(MARGIN_RATE)
+                + " - campaign_cost"
+            ),
+            "margin_rate": f"{MARGIN_RATE:.2f} (assumed gross margin; publish-and-pin)",
+            "eligibility": "is_eligible AND evidence_state == SUFFICIENT AND expected_lift_pct > 0 AND expected_margin > 0",
             "cap": f"per-store allocation capped at {MAX_STORE_SHARE:.0%} of total budget",
             "min_allocation": f"allocations below ${MIN_ALLOCATION} are dropped (unallocated)",
             "determinism": "pure function of inputs; identical inputs give identical cents",
@@ -79,21 +98,35 @@ def _validate_candidate(candidate: object) -> dict[str, Any]:
     sid = int(candidate["store_id"])
     lift = candidate["expected_lift_pct"]
     confidence = candidate["confidence"]
+    baseline = candidate["baseline_daily_sales"]
+    campaign_cost = candidate.get("campaign_cost", 0.0)
     if not isinstance(lift, (int, float)) or isinstance(lift, bool):
         raise BudgetAllocatorError(f"store {sid}: expected_lift_pct must be a number")
+    if isinstance(baseline, bool) or not isinstance(baseline, (int, float)) or baseline <= 0:
+        raise BudgetAllocatorError(f"store {sid}: baseline_daily_sales must be a positive number")
+    if isinstance(campaign_cost, bool) or not isinstance(campaign_cost, (int, float)) or campaign_cost < 0:
+        raise BudgetAllocatorError(f"store {sid}: campaign_cost must be a non-negative number")
     if (not isinstance(confidence, (int, float)) or isinstance(confidence, bool)
             or not 0 <= confidence <= 1):
         raise BudgetAllocatorError(f"store {sid}: confidence must be a number in [0, 1]")
-    return {"sid": sid, "lift": lift, "confidence": confidence}
+    return {"sid": sid, "lift": lift, "confidence": confidence,
+            "baseline": float(baseline), "campaign_cost": float(campaign_cost)}
 
 
-def _exclusion_reason(candidate: Mapping[str, Any], lift: float) -> str | None:
+def _expected_margin(lift: float, baseline: float, campaign_cost: float) -> float:
+    """Expected incremental margin over the evaluation window (money)."""
+    return baseline * EVALUATION_WINDOW_DAYS * lift / 100.0 * MARGIN_RATE - campaign_cost
+
+
+def _exclusion_reason(candidate: Mapping[str, Any], lift: float, expected_margin: float) -> str | None:
     if not candidate["is_eligible"]:
         return "not_eligible"
     if candidate["evidence_state"] != "SUFFICIENT":
         return f"evidence_state={candidate['evidence_state']}"
     if lift <= 0:
         return "non_positive_expected_lift"
+    if expected_margin <= 0:
+        return "non_positive_expected_margin"
     return None
 
 
@@ -109,11 +142,12 @@ def _score_candidates(
     for candidate in candidates:
         validated = _validate_candidate(candidate)
         sid, lift = validated["sid"], validated["lift"]
-        reason = _exclusion_reason(candidate, lift)
+        margin = _expected_margin(lift, validated["baseline"], validated["campaign_cost"])
+        reason = _exclusion_reason(candidate, lift, margin)
         if reason is not None:
             excluded.append({"store_id": sid, "reason": reason})
             continue
-        scored.append((sid, float(lift) * float(validated["confidence"])))
+        scored.append((sid, margin * float(validated["confidence"])))
     scored.sort(key=lambda t: (-t[1], t[0]))
     return scored, excluded
 
