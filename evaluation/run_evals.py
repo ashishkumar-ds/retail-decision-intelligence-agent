@@ -20,7 +20,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from decision_engine.scorer import StoreSignal, score_and_recommend  # noqa: E402
-from evaluation.golden_cases import GOLDEN_CASES, GoldenCase  # noqa: E402
+from decision_engine.simulator import simulate_intervention  # noqa: E402
+from evaluation.golden_cases import (  # noqa: E402
+    GOLDEN_CASES,
+    SIMULATION_CASES,
+    GoldenCase,
+    SimulationCase,
+)
 
 EVAL_LOG_PATH = Path("logs/eval_runs.jsonl")
 
@@ -99,7 +105,61 @@ def run_all(quiet: bool = False) -> tuple[int, int, list[dict]]:
     return passed, failed, results
 
 
+def run_sim_case(case: SimulationCase) -> dict:
+    """Run one simulator golden case against the pinned expectations."""
+    result = simulate_intervention(
+        1, case.observations, case.started_day,
+        pre_window_days=56, evaluation_window_days=60,
+    )
+    guardrail = (result.get("simulation") or {}).get("projected", {}).get(
+        "guardrail", {}).get("assessment_state", "UNAVAILABLE")
+    checks = {
+        "evidence_state": (result["evidence_state"], case.expected_evidence_state),
+        "guardrail_state": (guardrail, case.expected_guardrail_state),
+        "coverage_days": (
+            (result.get("simulation") or {}).get("baseline", {}).get("coverage_days"),
+            case.expected_coverage_days,
+        ),
+        "baseline_mean": (
+            (result.get("simulation") or {}).get("baseline", {}).get("mean_daily_sales"),
+            case.expected_baseline_mean,
+        ),
+    }
+    failures = []
+    for field_name, (actual, expected) in checks.items():
+        if expected is None:
+            continue
+        if field_name == "baseline_mean":
+            actual = round(float(actual), 1)
+        if actual != expected:
+            failures.append(f"{field_name}: expected {expected!r}, got {actual!r}")
+    return {"case_id": case.case_id, "passed": not failures, "failures": failures,
+            "tags": case.tags}
+
+
+def run_sim_all() -> tuple[int, int, list[dict]]:
+    results = [run_sim_case(case) for case in SIMULATION_CASES]
+    passed = sum(1 for r in results if r["passed"])
+    failed = len(results) - passed
+    if not failed:
+        print(f"Simulator evals: {passed}/{len(results)} passed - pre-approval backtest matches the pinned prior.")
+    else:
+        print(f"Simulator evals: {passed}/{len(results)} passed ({failed} FAILED)")
+        for r in results:
+            if not r["passed"]:
+                print(f"       {r['case_id']}: {'; '.join(r['failures'])}")
+    with EVAL_LOG_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({
+            "run_at": datetime.now(timezone.utc).isoformat(),
+            "kind": "simulator", "total": len(results),
+            "passed": passed, "failed": failed,
+            "failed_case_ids": [r["case_id"] for r in results if not r["passed"]],
+        }) + "\n")
+    return passed, failed, results
+
+
 if __name__ == "__main__":
     _quiet = "--quiet" in sys.argv
     _passed, _failed, _ = run_all(quiet=_quiet)
-    sys.exit(1 if _failed else 0)
+    _sim_passed, _sim_failed, _ = run_sim_all()
+    sys.exit(1 if (_failed or _sim_failed) else 0)

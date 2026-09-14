@@ -36,6 +36,7 @@ from app.state import PendingApprovalStore
 from approvals.ledger import append_decision, decision_gate, read_decisions, utcnow_iso
 from decision_engine.engine import DecisionEngine
 from decision_engine.scorer import StoreSignal
+from decision_engine.simulator import simulate_intervention
 from decision_engine.verifier import verify_batch
 from memory.history import append_log, read_log
 from phase2.contracts import (
@@ -1119,6 +1120,38 @@ def get_store_cards(store_id: int):
         "recommendation_card": build_recommendation_card(latest),
         "approval_preview": build_approval_preview(latest),
     })
+
+
+@app.get("/simulate/{store_id}")
+def simulate_store_intervention(store_id: int, started_day: int):
+    """Pre-approval backtest: replay the calibrated causal prior against the
+    store's observed baseline (Priority 4 follow-on, market note sec. 3.4).
+
+    Read-only compute - no state mutation, no auth. Combines the store's own
+    baseline actuals with the Part 1 DiD calibration prior and returns the
+    projected DiD band, the guardrail verdict that projection would earn, and
+    the projected incremental sales value. Fail-closed: insufficient baseline
+    coverage is INSUFFICIENT, never a invented projection.
+    """
+    if started_day <= BASELINE_DAYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"started_day must exceed the baseline window ({BASELINE_DAYS} days)",
+        )
+    try:
+        actuals = get_actuals(store_id, started_day - BASELINE_DAYS, started_day - 1)
+    except (httpx.HTTPError, ForecastResponseError, TypeError, ValueError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Actuals service unavailable for simulation: {type(error).__name__}",
+        ) from error
+    return simulate_intervention(
+        store_id,
+        actuals.get("observations", []),
+        started_day,
+        pre_window_days=BASELINE_DAYS,
+        evaluation_window_days=EVALUATION_WINDOW_DAYS,
+    )
 
 
 @app.get("/log")

@@ -68,6 +68,7 @@ guardrails, tools, RAG, evaluation, stakeholder surfaces — lives in the
 | `/recommendations/run` | POST | Recompute and persist (auth) |
 | `/board`, `/board/view`, `/cards/*` | GET | Executive board and recommendation cards |
 | `/why/{store_id}` | GET | Grounded, cited explanation |
+| `/simulate/{store_id}` | GET | Pre-approval backtest: calibrated causal prior replayed on the observed baseline |
 | `/pending-approvals`, `/attention-queue` | GET | Approval queue and triage digest |
 | `/approve/{store_id}`, `/reject/{store_id}` | POST | Human decision (auth) |
 | `/phase2/interventions/*` | GET/POST | Intervention lifecycle: define, events, checkpoints, outcome (auth on writes) |
