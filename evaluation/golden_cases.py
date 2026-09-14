@@ -50,6 +50,65 @@ class GoldenCase:
 _HEALTHY = dict(baseline_forecast=100.0, current_forecast=104.0, days_elapsed=30, days_remaining=30)
 _SUFFICIENT = {"evidence_state": "SUFFICIENT", "intervention_id": "int-golden-1"}
 
+@dataclass
+class SimulationCase:
+    """Pinned expectation for the pre-approval simulator (decision_engine.simulator)."""
+    case_id: str
+    description: str
+    started_day: int
+    observations: list  # [{"day": int, "sales_value": float}] (get_actuals shape)
+    expected_evidence_state: str
+    expected_guardrail_state: str | None = None
+    expected_coverage_days: int | None = None
+    expected_baseline_mean: float | None = None
+    tags: list[str] = field(default_factory=list)
+
+
+SIMULATION_CASES: list[SimulationCase] = [
+    SimulationCase(
+        case_id="sim_review_zone_full_coverage",
+        description="Full 56d coverage, flat sales: prior point 2.84 lands REVIEW_ZONE - honest, not CONFIRMED",
+        started_day=650,
+        observations=[{"day": d, "sales_value": 100.0} for d in range(594, 650)],
+        expected_evidence_state="SUFFICIENT",
+        expected_guardrail_state="REVIEW_ZONE",
+        expected_coverage_days=56,
+        expected_baseline_mean=100.0,
+        tags=["prior", "review-zone"],
+    ),
+    SimulationCase(
+        case_id="sim_insufficient_coverage_fail_closed",
+        description="Sparse baseline: INSUFFICIENT, guardrail UNAVAILABLE - never invents data",
+        started_day=650,
+        observations=[{"day": d, "sales_value": 100.0} for d in range(640, 650)],
+        expected_evidence_state="INSUFFICIENT",
+        expected_guardrail_state="UNAVAILABLE",
+        tags=["fail-closed"],
+    ),
+    SimulationCase(
+        case_id="sim_momentum_is_not_causal",
+        description="Declining own sales (momentum -50%) must NOT change the causal projection",
+        started_day=650,
+        observations=[{"day": d, "sales_value": 200.0 if d < 622 else 100.0} for d in range(594, 650)],
+        expected_evidence_state="SUFFICIENT",
+        expected_guardrail_state="REVIEW_ZONE",
+        expected_coverage_days=56,
+        expected_baseline_mean=150.0,
+        tags=["non-causal-separation"],
+    ),
+    SimulationCase(
+        case_id="sim_window_filtering",
+        description="Observations outside the pre-window are ignored (coverage stays 56)",
+        started_day=650,
+        observations=[{"day": d, "sales_value": 100.0} for d in range(590, 660)],
+        expected_evidence_state="SUFFICIENT",
+        expected_guardrail_state="REVIEW_ZONE",
+        expected_coverage_days=56,
+        tags=["window-filter"],
+    ),
+]
+
+
 GOLDEN_CASES: list[GoldenCase] = [
     # --- Routing / no-data ----------------------------------------------------
     GoldenCase(

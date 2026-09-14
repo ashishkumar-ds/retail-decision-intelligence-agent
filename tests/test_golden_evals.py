@@ -13,13 +13,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest
 
-from evaluation.golden_cases import GOLDEN_CASES, GoldenCase
-from evaluation.run_evals import run_case
+from evaluation.golden_cases import (  # noqa: E402
+    GOLDEN_CASES,
+    SIMULATION_CASES,
+    GoldenCase,
+    SimulationCase,
+)
+from evaluation.run_evals import run_case, run_sim_case  # noqa: E402
 
 
 @pytest.mark.parametrize("case", GOLDEN_CASES, ids=[c.case_id for c in GOLDEN_CASES])
 def test_golden_case(case: GoldenCase):
     result = run_case(case)
+    assert result["passed"], f"{case.case_id}: {result['failures']}"
+
+
+@pytest.mark.parametrize("case", SIMULATION_CASES, ids=[c.case_id for c in SIMULATION_CASES])
+def test_simulation_case(case: SimulationCase):
+    result = run_sim_case(case)
     assert result["passed"], f"{case.case_id}: {result['failures']}"
 
 
