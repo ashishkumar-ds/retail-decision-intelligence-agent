@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
-from fastapi import Body, Depends, FastAPI, Header, HTTPException
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 
@@ -73,6 +73,14 @@ from presentation.cards import (
     build_approval_preview,
     build_attention_digest,
     build_recommendation_card,
+)
+from presentation.site import (
+    render_approvals,
+    render_dashboard,
+    render_evals,
+    render_page,
+    render_simulate,
+    render_why,
 )
 from rag.corpus import load_corpus
 from rag.explainer import explain_store
@@ -166,6 +174,24 @@ def _require_approval_auth(authorization: str | None = Header(default=None)) -> 
     if not secrets.compare_digest(provided_token, configured_token):
         raise HTTPException(status_code=403, detail="Invalid approval token.")
     return provided_token
+
+
+def _verify_approval_token_value(token: str) -> str:
+    """Token check for operator-site forms (same gate as the header dependency).
+
+    Same fail-closed contract as ``_require_approval_auth``: no configured
+    server-side token -> 503 (endpoints disabled); mismatch -> 403.
+    """
+    configured = os.getenv(APPROVAL_AUTH_TOKEN_ENV)
+    if not configured:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Approval endpoints are disabled: set {APPROVAL_AUTH_TOKEN_ENV} to enable them.",
+        )
+    provided = (token or "").strip()
+    if not secrets.compare_digest(provided, configured):
+        raise HTTPException(status_code=403, detail="Invalid approval token.")
+    return provided
 
 
 def _require_phase2_write_auth(authorization: str | None = Header(default=None)) -> str:
@@ -1165,6 +1191,100 @@ def get_recommendation_log():
         # approve/reject with its decision-time gate checks.
         "decision_ledger": read_decisions(),
     }
+
+
+# --- Operator site (server-rendered; the UI is a view, never a second source of truth) ---
+
+@app.get("/ui", response_class=HTMLResponse)
+def ui_dashboard():
+    attention = rank_attention(list(_pending_approvals.values()))
+    return render_page(
+        "Decision dashboard", "/ui",
+        render_dashboard(_pending_approvals.values(), read_log(), attention),
+    )
+
+
+@app.get("/ui/approvals", response_class=HTMLResponse)
+def ui_approvals_page():
+    return render_page("Approvals", "/ui/approvals",
+                       render_approvals(list(_pending_approvals.values())))
+
+
+async def _ui_decide_from_request(store_id: int, request: Request, approved: bool) -> HTMLResponse:
+    from urllib.parse import parse_qs  # stdlib form parsing; no multipart dependency
+    form = parse_qs((await request.body()).decode("utf-8"))
+    return _ui_decide(store_id, form.get("token", [""])[0],
+                      form.get("actor", [""])[0], approved)
+
+
+def _ui_decide(store_id: int, token: str, actor: str, approved: bool) -> HTMLResponse:
+    """Run the same double-gated decision the JSON API serves, from a form post."""
+    route_fn = approve_recommendation if approved else reject_recommendation
+    try:
+        provided = _verify_approval_token_value(token)
+        result = route_fn(store_id, payload={"actor": actor or None}, _auth=provided)
+        message = str(result.get("message", "Recorded."))
+    except HTTPException as error:
+        message = f"{error.status_code}: {error.detail}"
+    return HTMLResponse(render_page(
+        "Approvals", "/ui/approvals",
+        render_approvals(list(_pending_approvals.values()), banner=message),
+    ))
+
+
+@app.post("/ui/approve/{store_id}", response_class=HTMLResponse)
+async def ui_approve(store_id: int, request: Request):
+    return await _ui_decide_from_request(store_id, request, approved=True)
+
+
+@app.post("/ui/reject/{store_id}", response_class=HTMLResponse)
+async def ui_reject(store_id: int, request: Request):
+    return await _ui_decide_from_request(store_id, request, approved=False)
+
+
+@app.get("/ui/simulate", response_class=HTMLResponse)
+def ui_simulate(store_id: int | None = None, started_day: int | None = None):
+    if store_id is None or started_day is None:
+        return render_page("Simulator", "/ui/simulate", render_simulate())
+    if started_day <= BASELINE_DAYS:
+        return render_page("Simulator", "/ui/simulate", render_simulate(
+            store_id=store_id, started_day=started_day,
+            error=f"started_day must exceed the baseline window ({BASELINE_DAYS} days)."))
+    try:
+        actuals = get_actuals(store_id, started_day - BASELINE_DAYS, started_day - 1)
+        result = simulate_intervention(
+            store_id, actuals.get("observations", []), started_day,
+            pre_window_days=BASELINE_DAYS, evaluation_window_days=EVALUATION_WINDOW_DAYS,
+        )
+    except (httpx.HTTPError, ForecastResponseError, TypeError, ValueError) as error:
+        return render_page("Simulator", "/ui/simulate", render_simulate(
+            store_id=store_id, started_day=started_day,
+            error=f"Simulation unavailable: {type(error).__name__} - {error}"))
+    return render_page("Simulator", "/ui/simulate",
+                       render_simulate(store_id=store_id, started_day=started_day, result=result))
+
+
+@app.get("/ui/why/{store_id}", response_class=HTMLResponse)
+def ui_why(store_id: int, question: str = ""):
+    try:
+        result = explain_recommendation(store_id, question=question)
+    except HTTPException as error:
+        return render_page(f"Why store {store_id}?", "/ui",
+                           f"<div class='banner err'>{error.detail}</div>")
+    return render_page(f"Why store {store_id}?", "/ui", render_why(store_id, result))
+
+
+@app.get("/ui/evals", response_class=HTMLResponse)
+def ui_evals():
+    from evaluation.run_evals import EVAL_LOG_PATH
+    records: list[dict] = []
+    if EVAL_LOG_PATH.exists():
+        for line in EVAL_LOG_PATH.read_text(encoding="utf-8").splitlines():
+            try:
+                records.append(json.loads(line))
+            except ValueError:
+                continue  # skip malformed audit lines, never crash the page
+    return render_page("Eval history", "/ui/evals", render_evals(records))
 
 
 if __name__ == "__main__":
