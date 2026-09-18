@@ -23,7 +23,13 @@ from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 
-from app.config import actuals_feedback_enabled, llm_explanations_enabled, phase2_enabled, rag_enabled
+from app.config import (
+    actuals_feedback_enabled,
+    llm_advisory_enabled,
+    llm_explanations_enabled,
+    phase2_enabled,
+    rag_enabled,
+)
 from app.meta import VERSION
 from app.monitor import is_campaign_working, rank_attention
 from app.scheduler import (
@@ -82,6 +88,7 @@ from presentation.site import (
     render_simulate,
     render_why,
 )
+from rag.advisor import maybe_advisory_triage
 from rag.corpus import load_corpus
 from rag.explainer import explain_store
 from tools.campaign_tool import (
@@ -359,6 +366,7 @@ def health():
             "phase2": phase2_enabled(),
             "actuals_feedback": actuals_feedback_enabled(),
             "llm_explanations": llm_explanations_enabled(),
+            "llm_advisory": llm_advisory_enabled(),
         },
     }
 
@@ -1068,6 +1076,80 @@ def explain_recommendation(store_id: int, question: str = ""):
         logger.error("[WHY ENDPOINT] grounding guard failed for store %s: %s", store_id, error)
         raise HTTPException(status_code=409, detail=str(error)) from error
     return jsonable_encoder(result)
+
+
+@app.get("/advisory/{store_id}")
+def advisory_triage(store_id: int, question: str = ""):
+    """LLM triage suggestion for a human reviewer - ABOVE the human gate.
+
+    Reads the SAME grounded evidence the /why endpoint serves, then (when
+    LLM_ADVISORY_ENABLED) asks the configured LLM for a triage suggestion
+    constrained to the engine's closed action vocabulary and grounded with
+    the same numeric/citation guards. The suggestion is structurally inert:
+    ``auto_applied`` is always False, ``requires_human_approval`` always
+    True, and this endpoint writes nothing - no recommendation-log append,
+    no ledger entry, no state mutation. The deterministic engine's own
+    recommendation remains the only decision.
+    """
+    if not rag_enabled():
+        raise HTTPException(
+            status_code=503,
+            detail="RAG knowledge layer is disabled: set RAG_ENABLED=true to enable it.",
+        )
+    if question and len(question) > 500:
+        raise HTTPException(status_code=400, detail="question must be at most 500 characters")
+    corpus = load_corpus()
+    # Deterministic base: the TEMPLATE narrative (LLM off here), so the
+    # advisory is grounded against the engine's own text, not an already-
+    # rephrased one - no double-LLM drift.
+    try:
+        grounded = explain_store(
+            store_id,
+            recommendation_records=read_log(),
+            event_records=[e.to_record() for e in _phase2_registry.read_events()],
+            corpus=corpus,
+            question=question,
+            llm_enabled=False,
+        )
+    except ValueError as error:
+        logger.error("[ADVISORY ENDPOINT] grounding guard failed for store %s: %s",
+                     store_id, error)
+        raise HTTPException(status_code=409, detail=str(error)) from error
+
+    evidence = grounded["evidence"]
+    latest = evidence.get("latest_recommendation") or {}
+    current_rec = latest.get("recommendation", "NEEDS_REVIEW")
+    fallback_note = latest.get("reason", "No grounded reason available; review manually.")
+
+    # Same BM25 retrieval the /why tier-2 grounding uses, so the advisory
+    # note is checked against the same allowed-number/citation universe.
+    retrieved: list = []
+    if corpus:
+        base_query = str(current_rec)
+        query = (question or base_query +
+                 " difference-in-differences matched controls decision intelligence uplift")
+        from rag.retriever import BM25Retriever
+        retrieved = BM25Retriever(list(corpus)).retrieve(query, k=3)
+
+    advisory, advisory_status = maybe_advisory_triage(
+        store_id, question, current_rec, fallback_note,
+        grounded["narrative"], evidence, corpus, retrieved,
+        llm_enabled=llm_advisory_enabled(),
+    )
+    return jsonable_encoder({
+        "store_id": store_id,
+        "question": question,
+        "engine_recommendation": current_rec,
+        "narrative": grounded["narrative"],
+        "citations": grounded["citations"],
+        "advisory": advisory,
+        "advisory_status": advisory_status,
+        "invariants": {
+            "auto_applied": False,
+            "requires_human_approval": True,
+            "writes_nothing": True,
+        },
+    })
 
 
 @app.post("/phase2/portfolio/evaluate")
