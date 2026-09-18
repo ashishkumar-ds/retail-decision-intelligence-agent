@@ -36,7 +36,7 @@ def test_health_reports_feature_flags(monkeypatch):
     client = TestClient(app_main.app)
     features = client.get("/health").json()["features"]
     assert features == {"rag": False, "phase2": False, "actuals_feedback": False,
-                        "llm_explanations": False}
+                        "llm_explanations": False, "llm_advisory": False}
 
 
 def test_why_refuses_when_rag_disabled(monkeypatch):

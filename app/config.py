@@ -47,11 +47,25 @@ def llm_explanations_enabled() -> bool:
     return _flag("LLM_EXPLANATIONS_ENABLED", default="false")
 
 
+def llm_advisory_enabled() -> bool:
+    """Whether /advisory may draft LLM triage suggestions above the human gate.
+
+    Defaults to OFF, like llm_explanations: the advisory is a strictly
+    additive layer. It is structurally inert either way (auto_applied is
+    always False, requires_human_approval always True); this flag only
+    controls whether the LLM call happens at all. Without the anthropic
+    dependency or API key the endpoint degrades to the engine's own
+    recommendation (fail-closed), never errors.
+    """
+    return _flag("LLM_ADVISORY_ENABLED", default="false")
+
+
 FEATURE_FLAGS = {
     "RAG_ENABLED": rag_enabled,
     "PHASE2_ENABLED": phase2_enabled,
     "ACTUALS_FEEDBACK_ENABLED": actuals_feedback_enabled,
     "LLM_EXPLANATIONS_ENABLED": llm_explanations_enabled,
+    "LLM_ADVISORY_ENABLED": llm_advisory_enabled,
 }
 
 
@@ -80,6 +94,7 @@ class DecisionAgentConfig:
     enable_phase2: bool = True
     enable_actuals_feedback: bool = True
     enable_llm_explanations: bool = False
+    enable_llm_advisory: bool = False
 
     # Guardrail limits (merchant-agent "guardrail limits" slot)
     max_question_chars: int = 500            # /why question length cap
@@ -100,6 +115,7 @@ class DecisionAgentConfig:
             "phase2": self.enable_phase2,
             "actuals_feedback": self.enable_actuals_feedback,
             "llm_explanations": self.enable_llm_explanations,
+            "llm_advisory": self.enable_llm_advisory,
         }
 
 
@@ -110,5 +126,6 @@ def load_config() -> DecisionAgentConfig:
         enable_phase2=phase2_enabled(),
         enable_actuals_feedback=actuals_feedback_enabled(),
         enable_llm_explanations=llm_explanations_enabled(),
+        enable_llm_advisory=llm_advisory_enabled(),
         approval_token_required=_flag("APPROVAL_AUTH_TOKEN_REQUIRED"),
     )
