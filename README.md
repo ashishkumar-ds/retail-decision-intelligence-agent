@@ -27,7 +27,7 @@ cd retail-decision-intelligence-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
-pytest                          # offline suite; live-API tests are deselected by default
+pytest                          # full suite incl. live-API smoke tests (see LLM section to run fully offline)
 uvicorn app.main:app --port 8001
 ```
 
@@ -68,6 +68,7 @@ guardrails, tools, RAG, evaluation, stakeholder surfaces — lives in the
 | `/recommendations/run` | POST | Recompute and persist (auth) |
 | `/board`, `/board/view`, `/cards/*` | GET | Executive board and recommendation cards |
 | `/why/{store_id}` | GET | Grounded, cited explanation |
+| `/advisory/{store_id}` | GET | LLM triage suggestion above the human gate (read-only, never auto-applied) |
 | `/simulate/{store_id}` | GET | Pre-approval backtest: calibrated causal prior replayed on the observed baseline |
 | `/pending-approvals`, `/attention-queue` | GET | Approval queue and triage digest |
 | `/approve/{store_id}`, `/reject/{store_id}` | POST | Human decision (auth) |
@@ -91,7 +92,31 @@ endpoints refuse to serve (503) rather than allow unauthenticated writes.
 | `RECOMMENDATION_LOG_PATH` | `logs/recommendation_log.jsonl` | Append-only recommendation log location |
 | `PENDING_APPROVAL_STATE_PATH` | `logs/pending_approvals.db` | Durable SQLite pending-approval queue (multi-worker safe) |
 | `SWEEP_ENABLED` / `SWEEP_INTERVAL_SECONDS` | off / `86400` | Opt-in background sweep scheduler |
+| `LLM_ADVISORY_ENABLED` / `LLM_EXPLANATIONS_ENABLED` | off / off | Opt-in LLM layers (advisory triage / narrative rephrase); both fail closed to deterministic output |
 | `PORT` | `8001` | FastAPI listen port |
+
+### Free LLM setup (Groq / Gemini / Ollama)
+
+The LLM layers work with any OpenAI-compatible endpoint - no paid API needed:
+
+```bash
+# Groq (free tier): get a key at https://console.groq.com
+export LLM_PROVIDER=openai_compat
+export LLM_BASE_URL=https://api.groq.com/openai/v1
+export LLM_API_KEY=gsk_...
+export LLM_MODEL=llama-3.3-70b-versatile
+
+# Or fully offline with Ollama (no key at all):
+# export LLM_BASE_URL=http://localhost:11434/v1
+# export LLM_MODEL=llama3.2
+# export LLM_API_KEY=ollama   # any non-empty value; Ollama ignores it
+
+export LLM_ADVISORY_ENABLED=true LLM_EXPLANATIONS_ENABLED=true
+```
+
+Grounding guards apply identically to any provider: a free model that
+hallucinates numbers or invents citations is rejected and the endpoint
+serves the deterministic output instead.
 
 ## Documentation
 
