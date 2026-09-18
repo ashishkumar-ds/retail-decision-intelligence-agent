@@ -43,7 +43,9 @@ ADVISORY_SUGGESTABLE_ACTIONS = frozenset(
     APPROVAL_REQUIRED_RECOMMENDATIONS | {"CONTINUE", "MONITOR"}
 )
 
-ADVISORY_MAX_TOKENS = 400
+# Reasoning models spend completion tokens on hidden reasoning before the
+# visible SUGGESTED_ACTION/NOTE lines - give them room (see llm_explainer).
+ADVISORY_MAX_TOKENS = int(os.getenv("LLM_ADVISORY_MAX_TOKENS", "2000"))
 ACTION_LINE_RE = re.compile(r"^SUGGESTED_ACTION:\s*([A-Z_]+)\s*$", re.MULTILINE)
 NOTE_LINE_RE = re.compile(r"^NOTE:\s*(.+)$", re.MULTILINE | re.DOTALL)
 

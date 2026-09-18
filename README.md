@@ -104,7 +104,10 @@ The LLM layers work with any OpenAI-compatible endpoint - no paid API needed:
 export LLM_PROVIDER=openai_compat
 export LLM_BASE_URL=https://api.groq.com/openai/v1
 export LLM_API_KEY=gsk_...
-export LLM_MODEL=llama-3.3-70b-versatile
+# Check current models for your key:
+#   curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer $LLM_API_KEY"
+export LLM_MODEL=qwen/qwen3.8-27b        # openai/gpt-oss-120b also works
+export LLM_MAX_TOKENS=4000               # reasoning models need headroom
 
 # Or fully offline with Ollama (no key at all):
 # export LLM_BASE_URL=http://localhost:11434/v1

@@ -22,7 +22,10 @@ logger = logging.getLogger("retail_decision_agent.llm_explainer")
 
 LLM_MODEL_ENV = "LLM_MODEL"
 DEFAULT_LLM_MODEL = "claude-sonnet-4-5"
-LLM_MAX_TOKENS = 700
+# Reasoning models (e.g. Groq's openai/gpt-oss-*) spend completion tokens on
+# hidden reasoning before the visible answer, so the default 700 can exhaust
+# the budget mid-thought and yield empty content. Override with LLM_MAX_TOKENS.
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
 
 # Provider selection: "anthropic" (default) or "openai_compat" for any
 # OpenAI-compatible endpoint (Groq, Google Gemini, OpenRouter, Ollama, ...).
