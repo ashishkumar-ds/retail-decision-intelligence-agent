@@ -1,9 +1,8 @@
 """Smoke tests against the real, deployed Forecast API and Campaign Audit API.
 
-Excluded from the default suite (pytest.ini: addopts = -m "not live_api").
-Run explicitly once both services are confirmed reachable:
-
-    pytest -m live_api -v
+Included in the default suite (design change: live connectivity is part of
+the contract the suite verifies). Point FORECAST_API_URL at a local
+instance to run fully offline, or deselect with `-m "not live_api"`.
 
 These are intentionally light-touch: they confirm connectivity, response
 shape, and basic contract compliance, not specific business values (which
