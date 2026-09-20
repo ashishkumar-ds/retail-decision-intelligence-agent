@@ -233,6 +233,8 @@ def rephrase(store_id: int, question: str, template_narrative: str,
              retrieved: Sequence[tuple[CorpusChunk, float]]) -> str:
     """Rephrase via the configured provider. Raises LLMUnavailableError on
     any dependency/key/API failure."""
+    from .prefilter import filter_retrieved
+    retrieved = filter_retrieved(question, retrieved)
     block = build_evidence_block(store_id, question, template_narrative, evidence, retrieved)
     if _provider() == "openai_compat":
         return _rephrase_openai_compat(block)

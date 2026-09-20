@@ -5,6 +5,15 @@ logs/
 *.egg-info/
 .env.local
 .venv/
+# Local-only (Termux) tooling — never pushed to GitHub:
+# classifier.dev skill install + all agent-copy dirs from `skills add --agent '*'`
+.claude/skills/bulk-classify/
+.agents/
+agent/skills/
+skills/
+skills-lock.json
+.devintmp/
+.ruff_cache/
 # Durable derived state (SQLite) lives under logs/ and should not be committed.
 *.db
 *.db-wal
