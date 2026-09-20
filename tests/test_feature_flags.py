@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 import app.main as app_main
 from app.config import actuals_feedback_enabled, phase2_enabled, rag_enabled
 
-ALL_FLAG_ENVS = ("RAG_ENABLED", "PHASE2_ENABLED", "ACTUALS_FEEDBACK_ENABLED")
+ALL_FLAG_ENVS = ("RAG_ENABLED", "PHASE2_ENABLED", "ACTUALS_FEEDBACK_ENABLED", "LLM_EXPLANATIONS_ENABLED", "LLM_ADVISORY_ENABLED")
 
 
 def test_flags_default_enabled(monkeypatch):

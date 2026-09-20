@@ -11,7 +11,6 @@ import hashlib
 import json
 import logging
 import os
-import secrets
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -39,6 +38,9 @@ from app.scheduler import (
     sweep_interval_seconds,
 )
 from app.state import PendingApprovalStore
+from approvals.identity import (
+    TOKENS_ENV as APPROVAL_TOKENS_ENV,
+)
 from approvals.identity import (
     IdentityNotConfigured,
     principal_for_token,
@@ -176,16 +178,16 @@ def _require_approval_auth(authorization: str | None = Header(default=None)) -> 
     this codebase's fail-closed philosophy elsewhere (never silently degrade
     a safety control just because it wasn't explicitly configured).
     """
+    if not os.getenv(APPROVAL_TOKENS_ENV) and not os.getenv(APPROVAL_AUTH_TOKEN_ENV):
+        raise HTTPException(
+            status_code=503,
+            detail=f"Approval endpoints are disabled: set {APPROVAL_AUTH_TOKEN_ENV} (or {APPROVAL_TOKENS_ENV}) to enable them.",
+        )
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or malformed Authorization header. Expected 'Bearer <token>'.")
     provided_token = authorization.removeprefix("Bearer ").strip()
     try:
         resolve_principal(provided_token)  # accepts token-map OR legacy shared token
-    except IdentityNotConfigured as error:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Approval endpoints are disabled: {error}",
-        ) from error
     except PermissionError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
     return provided_token
@@ -211,15 +213,14 @@ def _verify_approval_token_value(token: str) -> str:
     return provided
 
 
-def _principal_from_token(token: str):
-    """Resolve the authenticated principal for an already-verified token value.
+def _decision_principal(token: str):
+    """Resolve the authenticated principal and enforce the decision role.
 
-    Unknown tokens -> 403 (defense in depth: the header dependency already
-    verified one shape of credential; this re-resolves the same token into an
-    identity). No configured credential -> 503, same fail-closed contract.
+    One mapping place for identity failures: no configured credential -> 503
+    (same fail-closed contract), unknown token or viewer role -> 403.
     """
     try:
-        return principal_for_token(token)
+        return require_decision_role(principal_for_token(token))
     except IdentityNotConfigured as error:
         raise HTTPException(
             status_code=503,
@@ -592,7 +593,7 @@ def _latest_decided_record(store_id: int) -> dict | None:
 
 @app.post("/approve/{store_id}")
 def approve_recommendation(store_id: int, payload: dict = Body(default={}), _auth: str = Depends(_require_approval_auth)):
-    principal = require_decision_role(_principal_from_token(_auth))
+    principal = _decision_principal(_auth)
     actor = payload.get("actor") if isinstance(payload, dict) else None
     rec = _pending_approvals.pop(store_id, None)
     if rec is None:
@@ -626,7 +627,7 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
 
 @app.post("/reject/{store_id}")
 def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth: str = Depends(_require_approval_auth)):
-    principal = require_decision_role(_principal_from_token(_auth))
+    principal = _decision_principal(_auth)
     actor = payload.get("actor") if isinstance(payload, dict) else None
     rec = _pending_approvals.pop(store_id, None)
     if rec is None:

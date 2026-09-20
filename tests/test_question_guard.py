@@ -84,7 +84,7 @@ def test_prefilter_sends_sanitized_question(monkeypatch):
 
 
 def test_endpoint_why_sanitizes_reflected_question(monkeypatch):
-    TestClient = pytest.importorskip("fastapi.testclient")
+    TestClient = pytest.importorskip("fastapi.testclient").TestClient
     import app.main as app_main
     monkeypatch.delenv("RAG_ENABLED", raising=False)
     client = TestClient(app_main.app)
@@ -97,7 +97,7 @@ def test_endpoint_why_sanitizes_reflected_question(monkeypatch):
 
 
 def test_endpoint_overlimit_question_still_400():
-    TestClient = pytest.importorskip("fastapi.testclient")
+    TestClient = pytest.importorskip("fastapi.testclient").TestClient
     import app.main as app_main
     client = TestClient(app_main.app)
     response = client.get("/why/999999", params={"question": "x" * 501})

@@ -30,8 +30,14 @@ from rag.llm_explainer import (
 
 @pytest.fixture(autouse=True)
 def _hermetic_llm_env(monkeypatch):
-    """Scrub ambient provider selection so tests always take the stubbed path."""
-    for var in ("LLM_PROVIDER", "LLM_API_KEY", "LLM_BASE_URL"):
+    """Scrub ambient provider selection so tests always take the stubbed path.
+
+    Also scrubs the enable flags: an operator shell with
+    LLM_EXPLANATIONS_ENABLED/LLM_ADVISORY_ENABLED set must not flip the
+    "defaults off" assertion below (tests that want them on set them).
+    """
+    for var in ("LLM_PROVIDER", "LLM_API_KEY", "LLM_BASE_URL",
+                "LLM_EXPLANATIONS_ENABLED", "LLM_ADVISORY_ENABLED"):
         monkeypatch.delenv(var, raising=False)
 
 EVIDENCE = {

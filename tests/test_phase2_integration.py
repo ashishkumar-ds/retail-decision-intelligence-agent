@@ -69,6 +69,11 @@ def integration_context(tmp_path, monkeypatch):
     audit_path.write_text(json.dumps({"campaign_id": "camp-api", "timing_window": "window-api"}) + "\n")
     before = audit_path.read_text()
     monkeypatch.setattr(main, "get_audit_log", lambda: [json.loads(audit_path.read_text())])
+    # Hermetic forecast seam: without this, tests that do not patch it
+    # themselves reach the real Project 1 Forecast API and hang. Deterministic
+    # values, overridable per-test by re-patching (one seam, every caller).
+    monkeypatch.setattr(main, "get_store_info", lambda store_id: {"store_id": store_id, "last_day": 100})
+    monkeypatch.setattr(main, "get_prediction", lambda store_id, day, **kwargs: 120.0)
     return registry, audit_path, before
 
 

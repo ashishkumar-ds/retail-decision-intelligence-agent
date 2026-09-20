@@ -93,21 +93,37 @@ def test_ledger_records_decided_by(tmp_path, monkeypatch):
     assert stored["decided_by"] == "user:alice"
 
 
-# --- endpoint wiring (CI-only; needs fastapi) ----------------------------------
+# --- endpoint wiring (skips without fastapi; runs in CI and via /usr/bin/python3) ----
 
-def test_endpoint_approve_records_provenance_and_rejects_viewer(monkeypatch, tmp_path):
-    TestClient = pytest.importorskip("fastapi.testclient")
+def _seed_engine_and_client(monkeypatch, tmp_path, tokens_env):
+    """Seed a REAL engine recommendation through /recommendations/run (the same
+    pattern test_phase1 uses), so the record passes the decision-time gate."""
+    from datetime import datetime, timezone
+
+    from fastapi.testclient import TestClient
+
     import app.main as app_main
-    monkeypatch.setenv("APPROVAL_TOKENS", "tok-approve:alice:approver,tok-view:bob:viewer")
+    monkeypatch.delenv("APPROVAL_AUTH_TOKEN", raising=False)
+    monkeypatch.setenv("APPROVAL_TOKENS", tokens_env)
     monkeypatch.setenv("APPROVAL_LEDGER_PATH", str(tmp_path / "ledger.jsonl"))
     monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "log.jsonl"))
     monkeypatch.setenv("PENDING_APPROVAL_STATE_PATH", str(tmp_path / "state.db"))
+    now = datetime.now(timezone.utc).isoformat()
+    monkeypatch.setattr(app_main, "get_audit_log",
+                        lambda: [{"run_timestamp": now, "store_ids": [1]}])
+    monkeypatch.setattr(app_main, "get_store_info", lambda store_id: {"last_day": 1})
+    monkeypatch.setattr(app_main, "get_prediction", lambda store_id, day: 100)
     client = TestClient(app_main.app)
-    client.get("/health")
-    app_main._pending_approvals.seed_from({
-        1: {"store_id": 1, "recommendation_id": "rec-x", "recommendation": "CONTINUE",
-            "requires_human_approval": True},
-    })
+    run = client.post("/recommendations/run",
+                      headers={"Authorization": "Bearer tok-approve"})
+    assert run.status_code == 200
+    return client
+
+
+def test_endpoint_approve_records_provenance_and_rejects_viewer(monkeypatch, tmp_path):
+    pytest.importorskip("fastapi")
+    client = _seed_engine_and_client(
+        monkeypatch, tmp_path, "tok-approve:alice:approver,tok-view:bob:viewer")
     viewer = client.post("/approve/1",
                          headers={"Authorization": "Bearer tok-view"}, json={})
     assert viewer.status_code == 403
@@ -115,24 +131,31 @@ def test_endpoint_approve_records_provenance_and_rejects_viewer(monkeypatch, tmp
                      headers={"Authorization": "Bearer tok-approve"},
                      json={"actor": "alice@example.com"})
     assert ok.status_code == 200
-    assert ok.json()["recommendation"]["decided_by"] == "user:alice"
+    rec = ok.json()["recommendation"]
+    assert rec["decided_by"] == "user:alice"      # authenticated principal
+    assert rec["actor"] == "alice@example.com"    # caller claim kept alongside
     from approvals.ledger import read_decisions
     assert read_decisions()[-1]["decided_by"] == "user:alice"
 
 
 def test_endpoint_metrics_counts(monkeypatch, tmp_path):
-    TestClient = pytest.importorskip("fastapi.testclient")
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
     import app.main as app_main
     monkeypatch.setenv("APPROVAL_AUTH_TOKEN", "tok")
     monkeypatch.setenv("APPROVAL_LEDGER_PATH", str(tmp_path / "ledger.jsonl"))
     monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "log.jsonl"))
     monkeypatch.setenv("PENDING_APPROVAL_STATE_PATH", str(tmp_path / "state.db"))
     client = TestClient(app_main.app)
-    assert client.get("/metrics").status_code == 503  # no token -> fail closed
-    response = client.get("/metrics", headers={"Authorization": "Bearer tok"})
-    assert response.status_code == 200
-    assert "retail_decisions_total{decision=\"approve\"} 0" in response.text
-    assert "retail_pending_approvals 0" in response.text
+    assert client.get("/metrics").status_code == 401  # credential set, no header
+    monkeypatch.delenv("APPROVAL_AUTH_TOKEN", raising=False)
+    assert client.get("/metrics").status_code == 503  # no credential -> fail closed
+    monkeypatch.setenv("APPROVAL_AUTH_TOKEN", "tok")
+    ok = client.get("/metrics", headers={"Authorization": "Bearer tok"})
+    assert ok.status_code == 200
+    assert 'retail_decisions_total{decision="approve"} 0' in ok.text
+    assert "retail_pending_approvals 0" in ok.text
 
 
 if __name__ == "__main__":
