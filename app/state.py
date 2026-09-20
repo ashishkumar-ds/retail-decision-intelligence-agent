@@ -17,6 +17,12 @@ Design contract:
   journaling so concurrent readers run beside the single writer, and a busy
   timeout so lock contention fails after waiting, not instantly.
 
+- **Backend is selectable via ``DATABASE_URL``**: unset (default) keeps the
+  embedded SQLite file above; a ``postgres://`` URL runs the same store on
+  Postgres via psycopg (``pip install '.[storage]'``), with the schema
+  created by the versioned migrations in ``storage/database.py``. An
+  explicit ``path`` argument always pins SQLite (tests, composition).
+
 - **One fresh connection per operation.** The store is called from FastAPI's
   sync threadpool and from sweep threads, so each call opens/closes its own
   connection rather than relying on connection-affinity (and avoids
@@ -39,19 +45,19 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping
 
 from approvals.ledger import utcnow_iso as _utcnow_iso
+from storage.database import (
+    backend,
+    database_url,
+    run_migrations,
+    translate_placeholders,
+)
+from storage.database import (
+    connect as _storage_connect,
+)
 
 DEFAULT_STATE_PATH = Path("logs/pending_approvals.db")
 _PATH_ENV = "PENDING_APPROVAL_STATE_PATH"
 _BUSY_TIMEOUT_MS = 5000
-
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS pending_approvals (
-    store_id    INTEGER PRIMARY KEY,
-    record      TEXT    NOT NULL,
-    inserted_at TEXT    NOT NULL
-)
-"""
-
 
 def state_path() -> Path:
     """Resolve the configured state file path (call-time, so tests override)."""
@@ -67,18 +73,40 @@ class PendingApprovalStore:
         # An explicit path pins this instance (mostly for tests/composition);
         # otherwise the path is read from the environment on every operation.
         self._explicit_path = Path(path) if path is not None else None
+        self._dialect = "sqlite"
 
     def _resolve(self) -> Path:
         return self._explicit_path if self._explicit_path is not None else state_path()
 
-    def _connect(self) -> sqlite3.Connection:
-        path = self._resolve()
+    def _connect_sqlite(self, path: Path) -> Any:
         path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(path), timeout=_BUSY_TIMEOUT_MS / 1000.0)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}")
-        conn.execute(_SCHEMA)
         return conn
+
+    def _connect(self) -> Any:
+        """One fresh connection per operation, on the resolved backend."""
+        if self._explicit_path is not None:
+            self._dialect = "sqlite"
+            conn = self._connect_sqlite(self._explicit_path)
+            run_migrations(conn, "sqlite")
+            return conn
+        url = database_url()
+        if backend(url) == "postgres":
+            self._dialect = "postgres"
+            conn = _storage_connect(url)
+            run_migrations(conn, "postgres")
+            return conn
+        self._dialect = "sqlite"
+        conn = self._connect_sqlite(self._resolve())
+        run_migrations(conn, "sqlite")
+        return conn
+
+    def _q(self, sql: str) -> str:
+        """Dialect paramstyle: ``?`` placeholders natively on SQLite, translated
+        to ``%s`` for Postgres (in-repo SQL constants only)."""
+        return translate_placeholders(sql) if self._dialect == "postgres" else sql
 
     # --- mutation -------------------------------------------------------------
 
@@ -86,9 +114,10 @@ class PendingApprovalStore:
         conn = self._connect()
         try:
             conn.execute(
+                self._q(
                 "INSERT INTO pending_approvals(store_id, record, inserted_at) VALUES(?,?,?) "
                 "ON CONFLICT(store_id) DO UPDATE SET "
-                "record=excluded.record, inserted_at=excluded.inserted_at",
+                "record=excluded.record, inserted_at=excluded.inserted_at"),
                 (store_id, json.dumps(dict(record), default=str, ensure_ascii=False), _utcnow_iso()),
             )
             conn.commit()
@@ -100,11 +129,11 @@ class PendingApprovalStore:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT record FROM pending_approvals WHERE store_id=?", (store_id,)
+                self._q("SELECT record FROM pending_approvals WHERE store_id=?"), (store_id,)
             ).fetchone()
             if row is None:
                 return default
-            conn.execute("DELETE FROM pending_approvals WHERE store_id=?", (store_id,))
+            conn.execute(self._q("DELETE FROM pending_approvals WHERE store_id=?"), (store_id,))
             conn.commit()
             return json.loads(row[0])
         finally:
@@ -130,9 +159,10 @@ class PendingApprovalStore:
         conn = self._connect()
         try:
             conn.executemany(
+                self._q(
                 "INSERT INTO pending_approvals(store_id, record, inserted_at) VALUES(?,?,?) "
                 "ON CONFLICT(store_id) DO UPDATE SET "
-                "record=excluded.record, inserted_at=excluded.inserted_at",
+                "record=excluded.record, inserted_at=excluded.inserted_at"),
                 [
                     (sid, json.dumps(dict(rec), default=str, ensure_ascii=False), _utcnow_iso())
                     for sid, rec in records.items()
@@ -148,7 +178,7 @@ class PendingApprovalStore:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT record FROM pending_approvals WHERE store_id=?", (store_id,)
+                self._q("SELECT record FROM pending_approvals WHERE store_id=?"), (store_id,)
             ).fetchone()
         finally:
             conn.close()
@@ -160,7 +190,7 @@ class PendingApprovalStore:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT 1 FROM pending_approvals WHERE store_id=?", (store_id,)
+                self._q("SELECT 1 FROM pending_approvals WHERE store_id=?"), (store_id,)
             ).fetchone()
         finally:
             conn.close()
