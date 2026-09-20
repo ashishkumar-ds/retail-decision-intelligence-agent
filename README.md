@@ -91,6 +91,7 @@ endpoints refuse to serve (503) rather than allow unauthenticated writes.
 | `CAMPAIGN_AUDIT_API_URL` | unset | Opt-in read-only audit HTTP endpoint (takes precedence over the file) |
 | `RECOMMENDATION_LOG_PATH` | `logs/recommendation_log.jsonl` | Append-only recommendation log location |
 | `PENDING_APPROVAL_STATE_PATH` | `logs/pending_approvals.db` | Durable SQLite pending-approval queue (multi-worker safe) |
+| `DATABASE_URL` | unset (embedded SQLite) | Storage backend for the pending-approval store. Unset keeps SQLite (schema via versioned migrations in `storage/database.py`); a `postgres://`/`postgresql://` URL runs the same store on Postgres — install with `pip install '.[storage]'` |
 | `SWEEP_ENABLED` / `SWEEP_INTERVAL_SECONDS` | off / `86400` | Opt-in background sweep scheduler |
 | `LLM_ADVISORY_ENABLED` / `LLM_EXPLANATIONS_ENABLED` | off / off | Opt-in LLM layers (advisory triage / narrative rephrase); both fail closed to deterministic output |
 | `PORT` | `8001` | FastAPI listen port |
