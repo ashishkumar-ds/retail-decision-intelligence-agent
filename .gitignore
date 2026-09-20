@@ -18,3 +18,4 @@ skills-lock.json
 *.db
 *.db-wal
 *.db-shm
+.clinerules
