@@ -89,6 +89,8 @@ class AdvisoryUnavailableError(Exception):
 
 def _block(store_id: int, question: str, narrative: str,
            evidence: Mapping[str, Any]) -> str:
+    from .question_guard import sanitize_question
+    question = sanitize_question(question)
     latest = evidence.get("latest_recommendation") or {}
     current = latest.get("recommendation", "UNKNOWN")
     allowed = ", ".join(sorted(ADVISORY_SUGGESTABLE_ACTIONS))

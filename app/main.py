@@ -91,6 +91,7 @@ from presentation.site import (
 from rag.advisor import maybe_advisory_triage
 from rag.corpus import load_corpus
 from rag.explainer import explain_store
+from rag.question_guard import sanitize_question
 from tools.campaign_tool import (
     CampaignAuditResponseError,
     first_run_for_store,
@@ -1063,6 +1064,7 @@ def explain_recommendation(store_id: int, question: str = ""):
         )
     if question and len(question) > 500:
         raise HTTPException(status_code=400, detail="question must be at most 500 characters")
+    question = sanitize_question(question)
     try:
         result = explain_store(
             store_id,
@@ -1098,6 +1100,7 @@ def advisory_triage(store_id: int, question: str = ""):
         )
     if question and len(question) > 500:
         raise HTTPException(status_code=400, detail="question must be at most 500 characters")
+    question = sanitize_question(question)
     corpus = load_corpus()
     # Deterministic base: the TEMPLATE narrative (LLM off here), so the
     # advisory is grounded against the engine's own text, not an already-

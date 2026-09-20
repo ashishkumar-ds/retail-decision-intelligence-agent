@@ -74,6 +74,10 @@ def filter_retrieved(question: str,
         return list(retrieved)
     if os.getenv(PREFILTER_ENABLED_ENV, "1").strip().lower() in ("0", "false", "off"):
         return list(retrieved)
+    # question is untrusted caller text; it goes into the classifier
+    # instructions, so the same structural guard applies here.
+    from .question_guard import sanitize_question
+    question = sanitize_question(question)
     try:
         results = _classify_relevance(question, [c.text for c, _ in retrieved])
         if len(results) != len(retrieved):

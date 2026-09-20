@@ -153,6 +153,8 @@ def build_evidence_block(store_id: int, question: str,
                          template_narrative: str, evidence: Mapping[str, Any],
                          retrieved: Sequence[tuple[CorpusChunk, float]]) -> str:
     """Per-request data, fenced - the static prompt never changes bytes."""
+    from .question_guard import sanitize_question
+    question = sanitize_question(question)
     lines = [
         "<evidence>",
         f"STORE_ID: {store_id}",
