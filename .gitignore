@@ -6,13 +6,13 @@ logs/
 .env.local
 .venv/
 # Local-only (Termux) tooling — never pushed to GitHub:
-# classifier.dev skill install + all agent-copy dirs from `skills add --agent '*'`
-.claude/skills/bulk-classify/
+# agent skills used while building (classifier.dev, ask-matt, tdd, ...),
+# all agent-copy dirs from `skills add`, and the skills lock file.
+.claude/
 .agents/
-agent/skills/
+agent/
 skills/
 skills-lock.json
-.devintmp/
 .ruff_cache/
 # Durable derived state (SQLite) lives under logs/ and should not be committed.
 *.db
