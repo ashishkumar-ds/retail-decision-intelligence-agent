@@ -19,3 +19,4 @@ skills-lock.json
 *.db-wal
 *.db-shm
 .clinerules
+SESSION_HANDOFF.md
