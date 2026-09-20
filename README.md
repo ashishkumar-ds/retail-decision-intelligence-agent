@@ -85,7 +85,8 @@ endpoints refuse to serve (503) rather than allow unauthenticated writes.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `APPROVAL_AUTH_TOKEN` | unset (fail-closed) | Bearer token for all state-mutating endpoints |
+| `APPROVAL_AUTH_TOKEN` | unset (fail-closed) | Bearer token for all state-mutating endpoints (legacy shared-token mode; decisions are recorded as principal `shared-token`) |
+| `APPROVAL_TOKENS` | unset | Named token map `token:user:role,…` with roles `approver`/`viewer`; the authenticated principal is recorded in the record and audit ledger as `decided_by` (overrides the shared token) |
 | `FORECAST_API_URL` | deployed forecast API | Shared forecast service base URL |
 | `CAMPAIGN_AUDIT_LOG_PATH` | unset | Path to Project 2 `audit_log.jsonl` |
 | `CAMPAIGN_AUDIT_API_URL` | unset | Opt-in read-only audit HTTP endpoint (takes precedence over the file) |

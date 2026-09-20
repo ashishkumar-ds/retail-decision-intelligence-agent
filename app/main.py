@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse
 
@@ -39,6 +39,12 @@ from app.scheduler import (
     sweep_interval_seconds,
 )
 from app.state import PendingApprovalStore
+from approvals.identity import (
+    IdentityNotConfigured,
+    principal_for_token,
+    require_decision_role,
+    resolve_principal,
+)
 from approvals.ledger import append_decision, decision_gate, read_decisions, utcnow_iso
 from decision_engine.engine import DecisionEngine
 from decision_engine.scorer import StoreSignal
@@ -170,17 +176,18 @@ def _require_approval_auth(authorization: str | None = Header(default=None)) -> 
     this codebase's fail-closed philosophy elsewhere (never silently degrade
     a safety control just because it wasn't explicitly configured).
     """
-    configured_token = os.getenv(APPROVAL_AUTH_TOKEN_ENV)
-    if not configured_token:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Approval endpoints are disabled: set {APPROVAL_AUTH_TOKEN_ENV} to enable them.",
-        )
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or malformed Authorization header. Expected 'Bearer <token>'.")
     provided_token = authorization.removeprefix("Bearer ").strip()
-    if not secrets.compare_digest(provided_token, configured_token):
-        raise HTTPException(status_code=403, detail="Invalid approval token.")
+    try:
+        resolve_principal(provided_token)  # accepts token-map OR legacy shared token
+    except IdentityNotConfigured as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Approval endpoints are disabled: {error}",
+        ) from error
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
     return provided_token
 
 
@@ -188,18 +195,38 @@ def _verify_approval_token_value(token: str) -> str:
     """Token check for operator-site forms (same gate as the header dependency).
 
     Same fail-closed contract as ``_require_approval_auth``: no configured
-    server-side token -> 503 (endpoints disabled); mismatch -> 403.
+    server-side credential -> 503 (endpoints disabled); mismatch -> 403.
+    Accepts either an ``APPROVAL_TOKENS`` map token or the legacy shared token.
     """
-    configured = os.getenv(APPROVAL_AUTH_TOKEN_ENV)
-    if not configured:
+    provided = (token or "").strip()
+    try:
+        resolve_principal(provided)
+    except IdentityNotConfigured as error:
         raise HTTPException(
             status_code=503,
-            detail=f"Approval endpoints are disabled: set {APPROVAL_AUTH_TOKEN_ENV} to enable them.",
-        )
-    provided = (token or "").strip()
-    if not secrets.compare_digest(provided, configured):
-        raise HTTPException(status_code=403, detail="Invalid approval token.")
+            detail=f"Approval endpoints are disabled: {error}",
+        ) from error
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
     return provided
+
+
+def _principal_from_token(token: str):
+    """Resolve the authenticated principal for an already-verified token value.
+
+    Unknown tokens -> 403 (defense in depth: the header dependency already
+    verified one shape of credential; this re-resolves the same token into an
+    identity). No configured credential -> 503, same fail-closed contract.
+    """
+    try:
+        return principal_for_token(token)
+    except IdentityNotConfigured as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Approval endpoints are disabled: {error}",
+        ) from error
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
 
 
 def _require_phase2_write_auth(authorization: str | None = Header(default=None)) -> str:
@@ -565,6 +592,7 @@ def _latest_decided_record(store_id: int) -> dict | None:
 
 @app.post("/approve/{store_id}")
 def approve_recommendation(store_id: int, payload: dict = Body(default={}), _auth: str = Depends(_require_approval_auth)):
+    principal = require_decision_role(_principal_from_token(_auth))
     actor = payload.get("actor") if isinstance(payload, dict) else None
     rec = _pending_approvals.pop(store_id, None)
     if rec is None:
@@ -580,6 +608,7 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
         "approved_at": decided_at,
         "decided_at": decided_at,
         "actor": actor,
+        "decided_by": principal.label(),
     }
     # Double gate (merchant-agent changes.py pattern): guardrails + verifier
     # re-run at decision time, not just at recommendation time. Fail closed.
@@ -590,13 +619,14 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
             "message": "Decision-time gate failed; approval refused.",
             "checks": gate["checks"],
         })
-    append_decision(rec, "approve", actor, gate)
+    append_decision(rec, "approve", actor, gate, decided_by=principal.label())
     append_log(rec)
     return {"message": f"Recommendation for store {store_id} approved.", "recommendation": rec}
 
 
 @app.post("/reject/{store_id}")
 def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth: str = Depends(_require_approval_auth)):
+    principal = require_decision_role(_principal_from_token(_auth))
     actor = payload.get("actor") if isinstance(payload, dict) else None
     rec = _pending_approvals.pop(store_id, None)
     if rec is None:
@@ -612,6 +642,7 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
         "rejected_at": decided_at,
         "decided_at": decided_at,
         "actor": actor,
+        "decided_by": principal.label(),
     }
     # Double gate runs on rejection too: a rejected record is still a
     # decision over an approval-gated recommendation, so the same checks
@@ -623,9 +654,41 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
             "message": "Decision-time gate failed; rejection not recorded.",
             "checks": gate["checks"],
         })
-    append_decision(rec, "reject", actor, gate)
+    append_decision(rec, "reject", actor, gate, decided_by=principal.label())
     append_log(rec)
     return {"message": f"Recommendation for store {store_id} rejected.", "recommendation": rec}
+
+
+@app.get("/metrics")
+def metrics(_auth: str = Depends(_require_approval_auth)):
+    """Prometheus-format operational metrics (token-gated, read-only).
+
+    Computed on scrape from the durable stores - no scrape state, no drift.
+    Requires the same bearer credential as the decision endpoints because
+    decision counts are sensitive business signal; fail-closed like the rest.
+    """
+    decisions = read_decisions()
+    approvals = sum(1 for d in decisions if d.get("decision") == "approve")
+    rejections = sum(1 for d in decisions if d.get("decision") == "reject")
+    by_actor: dict[str, int] = {}
+    for entry in decisions:
+        label = str(entry.get("decided_by") or "unknown")
+        by_actor[label] = by_actor.get(label, 0) + 1
+    lines = [
+        "# HELP retail_decisions_total Double-gated decisions recorded in the audit ledger.",
+        "# TYPE retail_decisions_total counter",
+        f'retail_decisions_total{{decision="approve"}} {approvals}',
+        f'retail_decisions_total{{decision="reject"}} {rejections}',
+        "# TYPE retail_pending_approvals gauge",
+        f"retail_pending_approvals {len(_pending_approvals)}",
+        "# TYPE retail_recommendations_total counter",
+        f"retail_recommendations_total {len(read_log())}",
+        "# TYPE retail_ledger_entries_total counter",
+        f"retail_ledger_entries_total {len(decisions)}",
+    ]
+    for label, count in sorted(by_actor.items()):
+        lines.append(f'retail_decisions_by_principal{{principal="{label}"}} {count}')
+    return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 
 def _parse_phase2_timestamp(value, field_name: str) -> datetime:

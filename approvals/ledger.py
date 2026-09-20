@@ -67,7 +67,7 @@ def decision_gate(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def append_decision(record: dict[str, Any], decision: str, actor: str | None,
-                    gate: dict[str, Any]) -> dict[str, Any]:
+                    gate: dict[str, Any], decided_by: str | None = None) -> dict[str, Any]:
     """Append one gate-stamped decision to the ledger (locked, fail-closed).
 
     Raises ``ValueError`` if the gate did not allow the decision - callers
@@ -83,6 +83,7 @@ def append_decision(record: dict[str, Any], decision: str, actor: str | None,
         "recommendation": record.get("recommendation"),
         "decision": decision,
         "actor": actor,
+        "decided_by": decided_by,  # authenticated principal (identity.py)
         "decided_at": utcnow_iso(),
         "gate": {"allowed": True, "checks": gate.get("checks")},
     }
