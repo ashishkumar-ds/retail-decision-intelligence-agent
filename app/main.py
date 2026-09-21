@@ -689,6 +689,26 @@ def metrics(_auth: str = Depends(_require_approval_auth)):
     ]
     for label, count in sorted(by_actor.items()):
         lines.append(f'retail_decisions_by_principal{{principal="{label}"}} {count}')
+    # Heartbeat + backlog signals for the alert rules in ops/prometheus/
+    # alerts.yml: a silently dead scheduler and a growing approval backlog
+    # are the two failure modes that matter operationally.
+    status = _sweep_scheduler.status()
+    lines += [
+        "# TYPE retail_sweeps_total counter",
+        f'retail_sweeps_total{{result="completed"}} {status.get("sweeps_completed", 0)}',
+        f'retail_sweeps_total{{result="failed"}} {status.get("sweeps_failed", 0)}',
+    ]
+    last_success = status.get("last_sweep_at")
+    if last_success:
+        try:
+            epoch = datetime.fromisoformat(str(last_success)).timestamp()
+        except ValueError:
+            epoch = None
+        if epoch is not None:
+            lines += [
+                "# TYPE retail_last_sweep_timestamp_seconds gauge",
+                f"retail_last_sweep_timestamp_seconds {epoch:.0f}",
+            ]
     return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 

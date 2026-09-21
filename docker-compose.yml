@@ -18,9 +18,34 @@ services:
       FORECAST_API_URL: "${FORECAST_API_URL:-https://retail-forecast-api-7sue.onrender.com/}"
       CAMPAIGN_AUDIT_API_URL: "${CAMPAIGN_AUDIT_API_URL:-}"
       CAMPAIGN_AUDIT_LOG_PATH: "${CAMPAIGN_AUDIT_LOG_PATH:-}"
+      # Storage backend. Unset -> embedded SQLite on the agent-logs volume
+      # (fine for a single instance). Point it at the postgres service below
+      # (docker compose --profile postgres up -d) for multi-instance
+      # deployments: the schema is created by the versioned migrations in
+      # storage/database.py at first connect.
+      DATABASE_URL: "${DATABASE_URL:-}"
     volumes:
       - agent-logs:/srv/app/logs
     restart: unless-stopped
 
+  # Opt-in backing store: `docker compose --profile postgres up -d` then set
+  # DATABASE_URL=postgresql://retail:retail@postgres:5432/retail
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-retail}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-retail}"
+      POSTGRES_DB: "${POSTGRES_DB:-retail}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-retail} -d ${POSTGRES_DB:-retail}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   agent-logs:
+  postgres-data:

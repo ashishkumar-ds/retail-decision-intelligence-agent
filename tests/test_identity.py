@@ -156,6 +156,9 @@ def test_endpoint_metrics_counts(monkeypatch, tmp_path):
     assert ok.status_code == 200
     assert 'retail_decisions_total{decision="approve"} 0' in ok.text
     assert "retail_pending_approvals 0" in ok.text
+    # sweep heartbeat metrics (alert rules depend on these names)
+    assert 'retail_sweeps_total{result="completed"}' in ok.text
+    assert 'retail_sweeps_total{result="failed"}' in ok.text
 
 
 if __name__ == "__main__":

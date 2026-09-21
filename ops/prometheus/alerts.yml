@@ -1,0 +1,68 @@
+# Alerting rules for the Retail Decision Intelligence Agent.
+# Scrape `GET /metrics` with the approval bearer token (the endpoint is
+# fail-closed: without a configured credential it returns 503, so use
+# `authorization: {credentials: <token>}` in the scrape config — see README.md).
+groups:
+  - name: retail-decision-agent
+    rules:
+      # --- governance: the provenance data now makes this detectable ---------
+      - alert: RetailDecisionsConcentratedInOnePrincipal
+        expr: |
+          (
+            max by (principal) (retail_decisions_by_principal)
+            /
+            ignoring(principal) group_left sum by () (retail_decisions_by_principal)
+          ) > 0.8
+          and
+          sum by () (retail_decisions_by_principal) >= 5
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "One principal made >80% of all decisions ({{ $labels.principal }})"
+          description: >-
+            Decisions are supposed to be human-gated with distinct approvers.
+            A single principal dominating the ledger suggests a shared token in
+            use, or a broken approval queue routing everyone to one person.
+            Check APPROVAL_TOKENS assignments and the pending-approval backlog.
+
+      # --- heartbeat: a dead scheduler is silent without this -----------------
+      - alert: RetailSweepFailures
+        expr: increase(retail_sweeps_total{result="failed"}[1h]) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Autonomous sweep is failing"
+          description: >-
+            The daily sweep raised. The scheduler retries on the next tick, so
+            this alert means at least one full cycle failed - check the
+            `[SWEEP SCHEDULER] sweep failed` application logs (likely the
+            forecast API or the campaign audit feed).
+
+      - alert: RetailSweepStale
+        expr: |
+          time() - retail_last_sweep_timestamp_seconds > 172800   # 48h
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "No successful sweep in 48h"
+          description: >-
+            The agent has stopped evaluating stores (scheduler disabled,
+            crashed, or the process restarted without SWEEP_ENABLED). Absence
+            of failure metrics is not health - this is the signal that the
+            heartbeat is gone.
+
+      # --- backlog: approvals nobody is clearing -----------------------------
+      - alert: RetailPendingApprovalBacklog
+        expr: retail_pending_approvals > 50
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} recommendations awaiting human approval"
+          description: >-
+            Undecided recommendations beyond the expected operating backlog.
+            Either reviewers are not seeing the queue (see the board UI) or the
+            sweep is outrunning human capacity.
