@@ -1285,10 +1285,13 @@ def advisory_triage(store_id: int, question: str = ""):
         from rag.retriever import BM25Retriever
         retrieved = BM25Retriever(list(corpus)).retrieve(query, k=3)
 
+    from rag.precedents import retrieve_precedents
+    precedents = retrieve_precedents(
+        read_log(), question or f"{current_rec} for store {store_id}")
     advisory, advisory_status = maybe_advisory_triage(
         store_id, question, current_rec, fallback_note,
         grounded["narrative"], evidence, corpus, retrieved,
-        llm_enabled=llm_advisory_enabled(),
+        llm_enabled=llm_advisory_enabled(), precedents=precedents,
     )
     return jsonable_encoder({
         "store_id": store_id,

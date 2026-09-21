@@ -88,13 +88,14 @@ class AdvisoryUnavailableError(Exception):
 
 
 def _block(store_id: int, question: str, narrative: str,
-           evidence: Mapping[str, Any]) -> str:
+           evidence: Mapping[str, Any],
+           precedents: Sequence[CorpusChunk] = ()) -> str:
     from .question_guard import sanitize_question
     question = sanitize_question(question)
     latest = evidence.get("latest_recommendation") or {}
     current = latest.get("recommendation", "UNKNOWN")
     allowed = ", ".join(sorted(ADVISORY_SUGGESTABLE_ACTIONS))
-    return "\n".join([
+    lines = [
         f"STORE_ID: {store_id}",
         f"REVIEWER_QUESTION: {question or '(none)'}",
         f"ENGINE_RECOMMENDATION: {current}",
@@ -103,7 +104,12 @@ def _block(store_id: int, question: str, narrative: str,
         "NARRATIVE_AND_EVIDENCE:",
         narrative,
         json.dumps(evidence, default=str, indent=1),
-    ])
+    ]
+    if precedents:
+        lines.append("PRECEDENT_CHUNKS:")
+        for chunk in precedents:
+            lines.append(f"[src:{chunk.chunk_id}] {chunk.title}: {chunk.text}")
+    return "\n".join(lines)
 
 
 def _draft_openai_compat(block: str) -> str:
@@ -143,9 +149,10 @@ def _draft_openai_compat(block: str) -> str:
 
 
 def draft_triage(store_id: int, question: str, narrative: str,
-                 evidence: Mapping[str, Any]) -> str:
+                 evidence: Mapping[str, Any],
+                 precedents: Sequence[CorpusChunk] = ()) -> str:
     """Call the configured provider; raises AdvisoryUnavailableError on failure."""
-    block = _block(store_id, question, narrative, evidence)
+    block = _block(store_id, question, narrative, evidence, precedents)
     if _provider() == "openai_compat":
         return _draft_openai_compat(block)
 
@@ -198,7 +205,8 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
                           fallback_note: str, narrative: str,
                           evidence: Mapping[str, Any], corpus: Sequence[CorpusChunk],
                           retrieved: Sequence[tuple[CorpusChunk, float]],
-                          llm_enabled: bool) -> tuple[dict[str, Any], str]:
+                          llm_enabled: bool,
+                          precedents: Sequence[CorpusChunk] = ()) -> tuple[dict[str, Any], str]:
     """Return (advisory, status). Never raises; every failure degrades to the
     deterministic fallback (the engine's own recommendation and reason).
 
@@ -216,12 +224,17 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
     if not llm_enabled:
         return fallback, "deterministic (LLM_ADVISORY_ENABLED off)"
     try:
-        text = draft_triage(store_id, question, narrative, evidence)
+        text = draft_triage(store_id, question, narrative, evidence, precedents)
         action, note = parse_advisory(text)
         # Same grounding guards the /why narrative must pass, applied to the
         # advisory note: untraceable numbers or invented citations fail closed.
         from .llm_explainer import ground_llm_output
-        grounded_note = ground_llm_output(note, evidence, list(corpus), list(retrieved))
+        # Precedents are citable evidence: their chunk ids join the allowed
+        # citation universe, so a note may reference [src:prec-...] and still
+        # pass the citation guard. Their numbers stay ungrounded by design.
+        grounded_note = ground_llm_output(note, evidence,
+                                          list(corpus) + list(precedents),
+                                          list(retrieved))
         return {
             "suggested_action": action,
             "note": grounded_note,
