@@ -52,6 +52,14 @@ from decision_engine.engine import DecisionEngine
 from decision_engine.scorer import StoreSignal
 from decision_engine.simulator import simulate_intervention
 from decision_engine.verifier import verify_batch
+from execution.connector import (
+    ExecutionAlreadyReversed,
+    ExecutionNotFound,
+    ExecutionRefused,
+    execute_recommendation,
+    execution_state,
+    reverse_execution,
+)
 from memory.history import append_log, read_log
 from phase2.contracts import (
     COMPLETED,
@@ -710,6 +718,65 @@ def metrics(_auth: str = Depends(_require_approval_auth)):
                 f"retail_last_sweep_timestamp_seconds {epoch:.0f}",
             ]
     return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
+
+def _approved_record_for(store_id: int) -> dict | None:
+    """The latest approved, decided record for a store (system of record = the log)."""
+    approved = [r for r in read_log()
+                if r.get("store_id") == store_id and r.get("approved") is True
+                and r.get("decided_at")]
+    return approved[-1] if approved else None
+
+
+@app.post("/execute/{store_id}")
+def execute_store_recommendation(store_id: int, payload: dict = Body(default={}),
+                                 _auth: str = Depends(_require_approval_auth)):
+    """Execute the store's approved recommendation (the loop's execute stage).
+
+    Fails closed at every step: the caller needs the approval credential, the
+    store needs a human-approved decision, and only approval-gated actions are
+    executable. Idempotent - repeating the call returns the same execution and
+    performs no second action. Reversible via /executions/{id}/reverse.
+
+    The connector is the dry-run default (no external write); a real POS/CRM
+    adapter implements the same two methods and is injected here.
+    """
+    record = _approved_record_for(store_id)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No approved recommendation for store {store_id}; nothing to execute.")
+    try:
+        execution, created = execute_recommendation(
+            record, actor=_decision_principal(_auth).label())
+    except ExecutionRefused as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return {
+        "message": (f"Executed {execution['recommendation']} for store {store_id}." if created
+                    else f"Already executed for store {store_id}; no action taken."),
+        "created": created,
+        "execution": execution,
+    }
+
+
+@app.post("/executions/{execution_id}/reverse")
+def reverse_store_execution(execution_id: str, payload: dict = Body(default={}),
+                            _auth: str = Depends(_require_approval_auth)):
+    """Undo an execution (append-only reversal event in the journal)."""
+    try:
+        execution = reverse_execution(execution_id, actor=_decision_principal(_auth).label())
+    except ExecutionNotFound as error:
+        raise HTTPException(status_code=404, detail=f"No execution {execution_id}.") from error
+    except ExecutionAlreadyReversed as error:
+        raise HTTPException(status_code=409, detail=f"Execution {execution_id} is already reversed.") from error
+    return {"message": f"Reversed execution {execution_id}.", "execution": execution}
+
+
+@app.get("/executions")
+def list_executions(_auth: str = Depends(_require_approval_auth)):
+    """Execution journal state (read-only): what was executed and what was undone."""
+    executions = sorted(execution_state().values(), key=lambda e: str(e.get("created_at")))
+    return {"count": len(executions), "executions": executions}
 
 
 def _parse_phase2_timestamp(value, field_name: str) -> datetime:
