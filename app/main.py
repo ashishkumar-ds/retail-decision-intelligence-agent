@@ -28,6 +28,7 @@ from app.config import (
     llm_explanations_enabled,
     phase2_enabled,
     rag_enabled,
+    root_cause_tagging_enabled,
 )
 from app.meta import VERSION
 from app.monitor import is_campaign_working, rank_attention
@@ -666,6 +667,22 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
     append_decision(rec, "reject", actor, gate, decided_by=principal.label())
     append_log(rec)
     return {"message": f"Recommendation for store {store_id} rejected.", "recommendation": rec}
+
+
+@app.get("/analytics/root-causes")
+def root_cause_analytics(_auth: str = Depends(_require_approval_auth)):
+    """Root-cause tags for every store's latest recommendation (read-only).
+
+    Analytics over the append-only recommendation log via classifier.dev's
+    dimensions surface. Numbers are redacted before egress; a classifier
+    failure degrades to an ``unavailable`` status rather than an error, since
+    no decision depends on this. Token-gated like the other business surfaces.
+
+    Calling this endpoint is the explicit consent for the egress; the board
+    page only renders the section when ROOT_CAUSE_TAGGING_ENABLED is set.
+    """
+    from analytics.root_cause import tag_recommendations
+    return jsonable_encoder(tag_recommendations(read_log()))
 
 
 @app.get("/metrics")
@@ -1347,6 +1364,11 @@ def get_status_board():
         ranked_attention=ranked,
         pending_store_ids=set(_pending_approvals),
     )
+    # Off-path analytics, opt-in: rendering a board must never silently send
+    # reason text to a third-party classifier (see app/config.py).
+    if root_cause_tagging_enabled():
+        from analytics.root_cause import tag_recommendations
+        board["root_causes"] = tag_recommendations(read_log())
     return jsonable_encoder(board)
 
 
@@ -1359,6 +1381,9 @@ def get_status_board_html():
         ranked_attention=ranked,
         pending_store_ids=set(_pending_approvals),
     )
+    if root_cause_tagging_enabled():
+        from analytics.root_cause import tag_recommendations
+        board["root_causes"] = tag_recommendations(read_log())
     return render_board_html(board)
 
 

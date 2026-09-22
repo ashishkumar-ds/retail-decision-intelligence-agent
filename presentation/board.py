@@ -277,6 +277,28 @@ def render_board_html(board: Mapping[str, Any],
             f"<table>{columns}{body}</table>"
         )
 
+    # Optional analytics section (analytics/root_cause.py): present only when
+    # the caller supplied it (the endpoint gates it behind
+    # ROOT_CAUSE_TAGGING_ENABLED, because rendering must not silently send
+    # text to a third party). Absent -> nothing rendered.
+    root_causes = board.get("root_causes") or {}
+    if root_causes.get("counts"):
+        rows = "".join(
+            f"<tr><td>{esc(label)}</td><td>{esc(count)}</td></tr>"
+            for label, count in sorted(root_causes["counts"].items(),
+                                       key=lambda item: -item[1])
+        )
+        drivers = ", ".join(f"{esc(label)} ({esc(count)})"
+                            for label, count in sorted(root_causes.get("driver_counts", {}).items(),
+                                                       key=lambda item: -item[1]))
+        sections.append(
+            f"<h2>Root causes across the estate ({esc(root_causes.get('tagged'))} tagged)</h2>"
+            f"<table><tr><th>Root cause</th><th>Stores</th></tr>{rows}</table>"
+            f"<p class='empty'>Drivers: {drivers or '-'}. "
+            f"{esc(root_causes.get('status'))} — labels are advisory analytics, "
+            "never a decision input.</p>"
+        )
+
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
         f"<title>{esc(title)}</title><style>"

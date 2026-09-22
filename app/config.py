@@ -60,6 +60,18 @@ def llm_advisory_enabled() -> bool:
     return _flag("LLM_ADVISORY_ENABLED", default="false")
 
 
+def root_cause_tagging_enabled() -> bool:
+    """Whether the board may render the root-cause analytics section.
+
+    Off by default and deliberately NOT part of FEATURE_FLAGS: this is not a
+    capability switch of the decision system, it controls whether rendering a
+    page may send redacted reason text to a third-party classifier. An operator
+    opts in; asking the analytics endpoint directly is always allowed (an
+    explicit request is consent).
+    """
+    return _flag("ROOT_CAUSE_TAGGING_ENABLED", default="false")
+
+
 FEATURE_FLAGS = {
     "RAG_ENABLED": rag_enabled,
     "PHASE2_ENABLED": phase2_enabled,
