@@ -39,6 +39,10 @@ python scripts/check.py         # cross-module consistency gate
 python evaluation/run_evals.py  # 22 golden business scenarios
 ```
 
+Deploy a stable URL (Render blueprint, secrets stay in the dashboard):
+see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — including the persistent-disk
+requirement, without which a deploy discards the append-only audit trail.
+
 Run in Docker with the autonomous daily sweep enabled:
 
 ```bash

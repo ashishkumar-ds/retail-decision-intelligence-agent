@@ -1,0 +1,69 @@
+# Render blueprint - infrastructure as code for the production deployment.
+# Render reads this file from the repo; no account credentials are needed by
+# anyone but the owner, and secrets are NEVER stored here: `sync: false` means
+# "fill this in the dashboard". See docs/DEPLOYMENT.md for the walkthrough and
+# for the durable-storage requirement (this system's audit trail is files).
+services:
+  - type: web
+    name: retail-decision-intelligence-agent
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    # `starter` (paid) is required for the persistent disk below. On the free
+    # tier, delete the `disk:` block and read the storage warning in
+    # docs/DEPLOYMENT.md - the append-only audit logs live on this filesystem
+    # and are erased on every deploy/restart without a disk.
+    plan: starter
+    envVars:
+      # Fail-closed gate for every state-mutating endpoint: with this unset the
+      # service serves read-only (503 on approve/reject/execute). Set it in the
+      # dashboard, never in the repo.
+      - key: APPROVAL_AUTH_TOKEN
+        sync: false
+      # Named approver identities + roles (token:user:role,...). Optional; when
+      # set it supersedes the shared token and records `decided_by`.
+      - key: APPROVAL_TOKENS
+        sync: false
+      # The deployed forecast service this agent reads actuals/predictions from.
+      - key: FORECAST_API_URL
+        sync: false
+      - key: CAMPAIGN_AUDIT_API_URL
+        sync: false
+      - key: CAMPAIGN_AUDIT_LOG_PATH
+        sync: false
+      # Heartbeat: autonomous daily sweep. Off by default in code so tests and
+      # local work never fire live calls; on in production.
+      - key: SWEEP_ENABLED
+        value: "1"
+      - key: SWEEP_INTERVAL_SECONDS
+        value: "86400"
+      # Storage backend for the pending-approval store. Unset -> embedded
+      # SQLite inside the container (works, but is erased on restart unless the
+      # disk below is attached). A postgres:// URL is the multi-instance answer.
+      - key: DATABASE_URL
+        sync: false
+      # Optional LLM layers (off by default; every failure degrades to the
+      # deterministic output).
+      - key: LLM_ADVISORY_ENABLED
+        value: "false"
+      - key: LLM_EXPLANATIONS_ENABLED
+        value: "false"
+      - key: LLM_PROVIDER
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Opt-in analytics/egress switches.
+      - key: ROOT_CAUSE_TAGGING_ENABLED
+        value: "false"
+    disk:
+      # The system of record is append-only state under logs/ (recommendation
+      # log, approval ledger, execution journal, phase2 registry, pending
+      # store). Mount it so deploys and restarts do not discard the audit trail.
+      name: agent-logs
+      mountPath: /srv/app/logs
+      sizeGB: 1

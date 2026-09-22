@@ -12,13 +12,17 @@ WORKDIR /srv/app
 # Install dependencies first (layer cache: rebuilds only when deps change).
 COPY pyproject.toml README.md ./
 COPY app ./app
+COPY analytics ./analytics
 COPY approvals ./approvals
 COPY decision_engine ./decision_engine
+COPY evaluation ./evaluation
+COPY execution ./execution
 COPY guardrails ./guardrails
 COPY memory ./memory
 COPY phase2 ./phase2
 COPY presentation ./presentation
 COPY rag ./rag
+COPY storage ./storage
 COPY tools ./tools
 # Editable install: the RAG corpus is rebuilt at startup from
 # rag/sources/*.md resolved relative to the package file, so the package
