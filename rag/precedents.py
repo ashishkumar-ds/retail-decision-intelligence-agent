@@ -61,7 +61,6 @@ def retrieve_precedents(records: Sequence[Mapping[str, Any]], query: str,
     if not chunks:
         return []
     measured = {c.chunk_id: c for c in chunks if "Measured outcome" in c.text}
-    plain = [c for c in chunks if c.chunk_id not in measured]
     ranked = BM25Retriever(chunks).retrieve(query or "prior decision", k=len(chunks))
     # Prefer measured precedents among equally relevant hits: sort by
     # (has-measurement) before truncating to k.
