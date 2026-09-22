@@ -90,3 +90,21 @@ DATABASE_URL=postgresql://... python -m pytest tests/test_live_postgres.py -q
 - **Rollback**: Render keeps previous deploys, but the *state* is the disk -
   rolling back code without the matching disk loses decisions recorded after
   it.
+
+## Hosting alternatives considered (verified against platform docs, 2026-09-21)
+
+| Platform | Verdict for this agent | Cost (always-on, durable) |
+| --- | --- | --- |
+| **Render (chosen)** | Docker web service + persistent disk + health checks in one blueprint; the exact shape this app needs | **~$7.25/mo** (Starter $7 + 1 GB disk $0.25) |
+| Railway | Same shape; Hobby $5/mo includes $5 usage; volumes supported; no spin-down on paid | ~$5–8/mo |
+| Fly.io | Cheapest raw compute (shared-cpu-1x ≈ $2.47–4/mo) + volumes (~$0.15/GB); more DevOps (fly.toml, machines API) | ~$3–5/mo |
+| Vercel | **Rejected.** Serverless functions: ephemeral filesystem, no background daemon threads (the sweep scheduler is a thread), no persistent SQLite/fcntl. Would force a rebuild around external state (Neon/Supabase) + cron + blob storage | n/a — wrong shape |
+| Cloudflare Quick Tunnels (`scripts/public_tunnel.sh`) | Demo-only: public URL for a process on this machine; URL is ephemeral, box must stay awake | free |
+| Cloudflare Workers | **Rejected as a port**: request-scoped Python runtime (Pyodide) — no `fcntl` file locks, no daemon threads, no POSIX filesystem; the append-only audit trail would have to be redesigned onto Durable Objects/R2. Free plan CPU budget (10ms) also cannot run an 85-store sweep | rewrite |
+| Hugging Face Spaces | Free Docker demo hosting; sleeps on free; weak ops story | free (sleeps) |
+| AWS/GCP/Azure containers | The production answer at real-retailer scale; overkill for a portfolio, revisit on adoption | varies |
+
+There is no "retail agent host" norm to copy — the audit-trail requirement is
+this system's differentiator, and a persistent disk is the cheapest way to
+keep it. Render Starter + disk is the chosen posture: cheapest always-on
+durable deployment with the least new machinery.

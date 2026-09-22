@@ -115,6 +115,16 @@ def test_render_blueprint_mounts_the_durable_log_volume():
     assert service["disk"]["mountPath"] == "/srv/app/logs"
 
 
+def test_disk_is_never_mounted_on_a_free_plan():
+    """Render rejects a blueprint that mounts a disk on the free plan (free
+    instances have no persistent disks) - the default posture is Starter."""
+    yaml = pytest.importorskip("yaml")
+    service = yaml.safe_load((ROOT / "render.yaml").read_text(encoding="utf-8"))["services"][0]
+    if "disk" in service:
+        assert service.get("plan") not in (None, "free", "hobby"), (
+            "a disk on a free plan makes the blueprint undeployable")
+
+
 def test_deployment_doc_states_the_storage_tradeoff():
     doc = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
     assert "audit trail" in doc and "persistent disk" in doc.lower()

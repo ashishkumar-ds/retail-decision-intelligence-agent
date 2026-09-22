@@ -10,10 +10,11 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeploy: true
-    # `starter` (paid) is required for the persistent disk below. On the free
-    # tier, delete the `disk:` block and read the storage warning in
-    # docs/DEPLOYMENT.md - the append-only audit logs live on this filesystem
-    # and are erased on every deploy/restart without a disk.
+    # `starter` ($7/mo, 512MB) is the cheapest always-on tier and the first
+    # that can mount the persistent disk below ($0.25/GB). The free tier spins
+    # down after ~15 min of inactivity (cold start up to ~1 min on the next
+    # request) and cannot mount disks - fine for a demo, wrong for a portfolio
+    # link that must never look dead. See docs/DEPLOYMENT.md.
     plan: starter
     envVars:
       # Fail-closed gate for every state-mutating endpoint: with this unset the

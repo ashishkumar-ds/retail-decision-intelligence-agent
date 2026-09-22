@@ -10,6 +10,7 @@ stores.
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)](https://docs.astral.sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ashishkumar-ds/retail-decision-intelligence-agent)
 
 - **Deterministic by design** — pure-code decision path, no LLM.
 - **Human-gated by default** — budget-affecting writes fail closed (503) without approval.
@@ -42,6 +43,20 @@ python evaluation/run_evals.py  # 22 golden business scenarios
 Deploy a stable URL (Render blueprint, secrets stay in the dashboard):
 see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — including the persistent-disk
 requirement, without which a deploy discards the append-only audit trail.
+
+### Hosting, briefly (verified against current platform docs)
+
+This is a **stateful** agent: the audit trail is append-only files, the
+pending-approval store is SQLite, and the sweep scheduler is a background
+thread. That rules out serverless hosts (Vercel/Netlify-style functions have
+no persistent filesystem, no background threads) and makes a Docker service
+with a persistent disk the natural fit. Chosen: **Render Starter ($7/mo) +
+1 GB disk ($0.25) — the cheapest always-on, durable posture** (free tier spins
+down after ~15 min idle and can't mount disks). Equivalent alternatives:
+Railway Hobby ($5/mo + usage, volumes included), Fly.io (~$2.5–4/mo VM +
+volume, more DevOps). Hugging Face Spaces is the free ML-demo option but has
+the same sleep/persistence problem as free Render. Cloudflare Quick Tunnels
+(`scripts/public_tunnel.sh`) are for ephemeral demos only.
 
 Run in Docker with the autonomous daily sweep enabled:
 
