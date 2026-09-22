@@ -36,7 +36,7 @@ def _record_chunk(record: Mapping[str, Any]) -> CorpusChunk | None:
         return None
     outcome = record.get("outcome_evidence") or {}
     lift = outcome.get("actual_uplift_pct")
-    measured = (f" Measured outcome: {lift:+.1f}% observed sales lift."
+    measured = (f" Measured outcome: {lift:+.1f}% measured sales uplift."
                 if isinstance(lift, (int, float)) and not isinstance(lift, bool) else "")
     return CorpusChunk(
         chunk_id=f"prec-{record['recommendation_id']}",

@@ -84,9 +84,11 @@ DATABASE_URL=postgresql://... python -m pytest tests/test_live_postgres.py -q
   (decision concentration, sweep failures, sweep staleness, approval backlog);
   `/metrics` is token-gated, so scrape with `authorization: Bearer`.
 - **Egress**: `/metrics`, `/analytics/root-causes` and the board's root-cause
-  section are the only surfaces that leave the process. The analytics section
-  is off unless `ROOT_CAUSE_TAGGING_ENABLED=true`, and reason text is
-  numerically redacted before it is sent.
+  section are the only surfaces that leave the process, and all reason text is
+  numerically redacted before it is sent. `ROOT_CAUSE_TAGGING_ENABLED` gates
+  the **board section only** (a page render must not silently call a third
+  party); the `/analytics/root-causes` endpoint is always available — an
+  authenticated call to it is the explicit consent, by design.
 - **Rollback**: Render keeps previous deploys, but the *state* is the disk -
   rolling back code without the matching disk loses decisions recorded after
   it.

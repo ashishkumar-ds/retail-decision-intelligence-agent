@@ -35,16 +35,12 @@ from __future__ import annotations
 import hashlib
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Any, Mapping, Protocol, Sequence
 
+from approvals.ledger import utcnow_iso
 from guardrails import APPROVAL_REQUIRED_RECOMMENDATIONS
 
 from .journal import append_event, read_events
-
-
-def utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 class ExecutionRefused(ValueError):

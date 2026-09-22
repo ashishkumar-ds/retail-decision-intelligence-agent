@@ -146,7 +146,7 @@ def tag_recommendations(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         return empty
     batch = candidates[:MAX_ITEMS]
     try:
-        results = classify_reasons(candidates)
+        results = classify_reasons(batch)
         if len(results) != len(batch):
             raise ValueError("classifier results do not match input count")
     except Exception as error:

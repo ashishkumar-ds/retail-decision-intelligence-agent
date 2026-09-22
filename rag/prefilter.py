@@ -35,12 +35,12 @@ logger = logging.getLogger("retail_decision_agent.prefilter")
 PREFILTER_ENABLED_ENV = "RAG_PREFILTER_ENABLED"
 TIER_ENV = "RAG_PREFILTER_TIER"
 # Drop gate, set from classifier.dev's measured calibration table rather than
-# from the doc's example: their 0.7-0.9 confidence band is only ~85% accurate on
-# easy (news-like) text and ~49% on hard (emotion-like) text, and methodology
-# prose is closer to the hard end. A dropped chunk is invisible to the reader,
-# so a silent false-drop costs more than carrying one extra chunk - only
-# >= 0.9 answers may drop. Null confidence always keeps (smart-tier escalations
-# return null confidence by design).
+# from the doc's example. Their measured bands: >= 0.9 answers were right
+# ~91.6% (news) / ~82.0% (emotion); 0.7-0.9 answers only ~85.2% / ~49.4%.
+# Methodology prose is closer to the hard end, and a dropped chunk is invisible
+# to the reader - a silent false-drop costs more than carrying one extra chunk,
+# so only >= 0.9 answers may drop. Null confidence always keeps (smart-tier
+# escalations return null confidence by design).
 KEEP_CONFIDENCE_THRESHOLD = 0.9
 # fast = Jev alone; smart = Jev plus a reasoning re-ask of answers under 0.7
 # confidence (those come back with null confidence, so they are always kept).
