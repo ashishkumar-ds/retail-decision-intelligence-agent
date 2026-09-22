@@ -33,9 +33,18 @@ from .corpus import CorpusChunk
 logger = logging.getLogger("retail_decision_agent.prefilter")
 
 PREFILTER_ENABLED_ENV = "RAG_PREFILTER_ENABLED"
-# classifier.dev: the confidence gate "directly encodes keep-bias" (skill doc).
-# Drop only confident no's; <=0.8 or None keeps the chunk.
-KEEP_CONFIDENCE_THRESHOLD = 0.8
+TIER_ENV = "RAG_PREFILTER_TIER"
+# Drop gate, set from classifier.dev's measured calibration table rather than
+# from the doc's example: their 0.7-0.9 confidence band is only ~85% accurate on
+# easy (news-like) text and ~49% on hard (emotion-like) text, and methodology
+# prose is closer to the hard end. A dropped chunk is invisible to the reader,
+# so a silent false-drop costs more than carrying one extra chunk - only
+# >= 0.9 answers may drop. Null confidence always keeps (smart-tier escalations
+# return null confidence by design).
+KEEP_CONFIDENCE_THRESHOLD = 0.9
+# fast = Jev alone; smart = Jev plus a reasoning re-ask of answers under 0.7
+# confidence (those come back with null confidence, so they are always kept).
+_ALLOWED_TIERS = ("fast", "smart")
 _LABELS = ["relevant", "not relevant"]
 _USER_AGENT = "retail-decision-intelligence-agent/1.0 (rag-prefilter)"
 _ENDPOINT = "https://classifier.dev"
@@ -43,9 +52,13 @@ _ENDPOINT = "https://classifier.dev"
 
 def _classify_relevance(question: str, texts: Sequence[str]) -> list[dict[str, Any]]:
     """One batched classifier.dev call; returns results in input order."""
+    tier = os.getenv(TIER_ENV, "fast").strip().lower()
+    if tier not in _ALLOWED_TIERS:
+        tier = "fast"  # an unknown tier is a 400 upstream; never send one
     body = json.dumps({
         "labels": list(_LABELS),
         "inputs": list(texts),
+        "tier": tier,
         "instructions": (
             f'Relevant means the methodology chunk helps answer: {question}. '
             '"When in doubt, keep it."'

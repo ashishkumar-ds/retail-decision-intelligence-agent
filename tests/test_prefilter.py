@@ -1,6 +1,8 @@
 """Tests for the classifier.dev pre-filter (rag/prefilter.py)."""
 from __future__ import annotations
 
+import json
+
 import pytest
 
 import rag.prefilter as prefilter
@@ -26,6 +28,39 @@ def test_confident_not_relevant_dropped(monkeypatch):
     ])
     kept = filter_retrieved(QUESTION, RETRIEVED)
     assert [c.chunk_id for c, _ in kept] == ["src:0", "src:2", "src:3"]
+
+
+def test_mid_confidence_not_relevant_is_kept(monkeypatch):
+    """0.7-0.9 confidence is not enough to silently drop context (classifier.dev's
+    measured calibration: that band is ~49-85% accurate depending on the task)."""
+    monkeypatch.setattr(prefilter, "_classify_relevance", lambda q, t: [
+        _result("not relevant", 0.85)] * 4)
+    assert len(filter_retrieved(QUESTION, RETRIEVED)) == 4
+
+
+def test_tier_defaults_to_fast_and_rejects_unknown(monkeypatch):
+    bodies = []
+
+    class FakeResponse:
+        def read(self):
+            return b'{"results": []}'
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(request, timeout=None):
+        bodies.append(json.loads(request.data.decode()))
+        return FakeResponse()
+    monkeypatch.setattr(prefilter.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.delenv("RAG_PREFILTER_TIER", raising=False)
+    prefilter.filter_retrieved(QUESTION, [])
+    prefilter._classify_relevance(QUESTION, ["x"])
+    monkeypatch.setenv("RAG_PREFILTER_TIER", "ultra")
+    prefilter._classify_relevance(QUESTION, ["x"])
+    monkeypatch.setenv("RAG_PREFILTER_TIER", "smart")
+    prefilter._classify_relevance(QUESTION, ["x"])
+    assert [b["tier"] for b in bodies] == ["fast", "fast", "smart"]
 
 
 def test_null_confidence_keeps_chunk(monkeypatch):
