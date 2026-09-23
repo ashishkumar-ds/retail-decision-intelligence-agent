@@ -195,7 +195,7 @@ stage "Render account"
 say "The agent deploys from your GitHub repo via the render.yaml blueprint."
 step "Sign in (GitHub login is easiest) or create a free account."
 step "Have a payment card ready: the blueprint uses the Starter plan + a disk"
-step "(~$7.25/mo total). Free tier spins down after ~15 min and cannot mount"
+step "(~\$7.25/mo total). Free tier spins down after ~15 min and cannot mount"
 step "the disk — the audit trail would reset on every deploy."
 open_url "https://dashboard.render.com/register"
 pause "Signed in to the Render dashboard?"
@@ -205,10 +205,18 @@ stage "Credentials and settings"
 say "These are written to $ENV_FILE (local-only) and pasted into the"
 say "Render prompts at stage 3. Press Enter to keep any existing value."
 say ""
-TOKEN=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
-printf '  %sGenerated approval token (copy this into the dashboard later):%s\n' "$BOLD" "$RESET"
-printf '  %s%s%s\n' "$GREEN" "$TOKEN" "$RESET"
-write_env APPROVAL_AUTH_TOKEN "$TOKEN"
+# Reuse the token already in $ENV_FILE when re-running: rotating it here would
+# silently break the token already configured in the Render dashboard, and this
+# wizard tells the human to re-run after a failed first deploy.
+TOKEN=$(_existing APPROVAL_AUTH_TOKEN || true)
+if [[ -z "$TOKEN" ]]; then
+  TOKEN=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  printf '  %sGenerated approval token (copy this into the dashboard later):%s\n' "$BOLD" "$RESET"
+  printf '  %s%s%s\n' "$GREEN" "$TOKEN" "$RESET"
+  write_env APPROVAL_AUTH_TOKEN "$TOKEN"
+else
+  printf '  %sKeeping the approval token already in %s.%s\n' "$DIM" "$ENV_FILE" "$RESET"
+fi
 
 ask_secret APPROVAL_TOKENS "APPROVAL_TOKENS (named approvers, tok:user:role; Enter to skip):"
 if [[ -n "${APPROVAL_TOKENS:-}" ]]; then write_env APPROVAL_TOKENS "$APPROVAL_TOKENS"; fi
@@ -228,7 +236,7 @@ if confirm "Enable the LLM layers on Render (advisory + narrative)?"; then
   write_env LLM_BASE_URL "$LLM_BASE_URL"
   write_env LLM_PROVIDER "openai_compat"
   ask_secret LLM_API_KEY "LLM_API_KEY (Enter keeps the value already in $ENV_FILE):"
-  write_env LLM_API_KEY "$LLM_API_KEY"
+  [[ -n "${LLM_API_KEY:-}" ]] && write_env LLM_API_KEY "$LLM_API_KEY"
   ask_secret ANTHROPIC_API_KEY "ANTHROPIC_API_KEY (only for the anthropic provider; Enter to skip):"
   [[ -n "${ANTHROPIC_API_KEY:-}" ]] && write_env ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
 else
