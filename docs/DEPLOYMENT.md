@@ -15,6 +15,16 @@ Nothing is needed from any third party beyond **your own** Render account -
 no credentials are passed around, and no secrets live in the repo. The whole
 deploy is a click-through:
 
+Prefer a guided walkthrough? Run the wizard — it opens each dashboard URL,
+generates the approval token, captures every value into `.env.local`, waits
+for the first deploy, verifies the live loop, and records the URL:
+
+```bash
+bash scripts/deploy_render_wizard.sh
+```
+
+Manual click-through, if you'd rather:
+
 1. Render dashboard → **New → Blueprint** → connect this GitHub repo.
    Render reads `render.yaml` and proposes the service.
 2. Fill the variables marked `sync: false` in the dashboard (never in git):
