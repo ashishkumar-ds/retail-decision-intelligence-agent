@@ -34,4 +34,22 @@ storage = [
 ]
 
 [tool.setuptools]
-packages = ["app", "approvals", "decision_engine", "guardrails", "memory", "phase2", "presentation", "rag", "tools"]
+# Every importable top-level package must be listed here: an editable install
+# maps exactly these names, so a package left out is unimportable from outside
+# the repo root (and bare `pytest` does not put the CWD on sys.path). Listed
+# alphabetically; `agent/` and `evaluation/` have no __init__.py and are not
+# importable packages.
+packages = [
+    "analytics",
+    "app",
+    "approvals",
+    "decision_engine",
+    "execution",
+    "guardrails",
+    "memory",
+    "phase2",
+    "presentation",
+    "rag",
+    "storage",
+    "tools",
+]
