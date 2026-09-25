@@ -25,9 +25,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 import urllib.request
 from typing import Any, Sequence
 
+from . import llm_telemetry as telemetry
 from .corpus import CorpusChunk
 
 logger = logging.getLogger("retail_decision_agent.prefilter")
@@ -81,7 +83,9 @@ def filter_retrieved(question: str,
     """Keep-biased relevance pre-filter over retrieved chunks. Never raises.
 
     Returns the (possibly shortened) list in original order. The dropped
-    chunks never enter the LLM context.
+    chunks never enter the LLM context. Kept/dropped counts are recorded to the
+    off-path telemetry log so a silent regression becomes a visible metric
+    (a dropped chunk is invisible to the reader - see KEEP_CONFIDENCE_THRESHOLD).
     """
     if not retrieved:
         return list(retrieved)
@@ -91,6 +95,7 @@ def filter_retrieved(question: str,
     # instructions, so the same structural guard applies here.
     from .question_guard import sanitize_question
     question = sanitize_question(question)
+    started = time.monotonic()
     try:
         results = _classify_relevance(question, [c.text for c, _ in retrieved])
         if len(results) != len(retrieved):
@@ -98,9 +103,14 @@ def filter_retrieved(question: str,
     except Exception as error:
         logger.warning("[PREFILTER UNAVAILABLE] keeping all %d chunks: %s: %s",
                        len(retrieved), type(error).__name__, error)
+        telemetry.record("prefilter", telemetry.OUTCOME_UNAVAILABLE,
+                         latency_ms=(time.monotonic() - started) * 1000,
+                         detail=f"{type(error).__name__}: {error}",
+                         counts={"kept": len(retrieved), "dropped": 0})
         return list(retrieved)
 
     kept: list[tuple[CorpusChunk, float]] = []
+    dropped = 0
     for (chunk, score), result in zip(retrieved, results):
         label = result.get("label")
         confidence = result.get("confidence")
@@ -109,8 +119,12 @@ def filter_retrieved(question: str,
         if unsure:
             kept.append((chunk, score))
         else:
+            dropped += 1
             logger.debug("[PREFILTER] dropped [src:%s] (confidence %.2f)",
                          chunk.chunk_id, confidence)
     logger.info("[PREFILTER] kept %d/%d chunks for the LLM context",
                 len(kept), len(retrieved))
+    telemetry.record("prefilter", telemetry.OUTCOME_SERVED,
+                     latency_ms=(time.monotonic() - started) * 1000,
+                     counts={"kept": len(kept), "dropped": dropped})
     return kept

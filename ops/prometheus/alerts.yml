@@ -66,3 +66,42 @@ groups:
             Undecided recommendations beyond the expected operating backlog.
             Either reviewers are not seeing the queue (see the board UI) or the
             sweep is outrunning human capacity.
+
+      # --- off-path LLM: a guard nobody measures is not a guard --------------
+      - alert: RetailOffpathLlmGuardRejectionSurge
+        expr: |
+          (
+            sum(rate(retail_offpath_llm_guard_rejections_total[1h]))
+            /
+            clamp_min(sum(rate(retail_offpath_llm_events_total[1h])), 0.001)
+          ) > 0.3
+          and
+          sum(increase(retail_offpath_llm_events_total[1h])) >= 10
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Over 30% of off-path LLM drafts vetoed by the grounding gates"
+          description: >-
+            The explainer/advisory layers are producing untraceable numbers,
+            invented citations or unknown engine vocabulary far more often than
+            the calibrated baseline. Nothing on the decision path is affected
+            (the deterministic template is served) - which is precisely why this
+            needs an alert: the service looks perfectly healthy while the LLM
+            layer is useless. Usual causes: a substituted/upgraded model, a
+            drifted prompt, or a changed evidence block. See rag/llm_telemetry.py
+            and the pinned cases in evaluation/llm_evals.py.
+
+      - alert: RetailOffpathLlmDegradedToTemplate
+        expr: increase(retail_offpath_llm_events_total{outcome="unavailable"}[1h]) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Off-path LLM layer failing; deterministic output served instead"
+          description: >-
+            Provider or parse failures are absorbed silently by design
+            (fail-closed: the template or engine output is served). Absence of
+            user-visible errors is not health - check the API key, base URL and
+            provider status, and confirm the layer is meant to be on (/health
+            reports the LLM flags).

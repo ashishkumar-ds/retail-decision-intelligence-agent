@@ -14,8 +14,10 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, Mapping, Sequence
 
+from . import llm_telemetry as telemetry
 from .corpus import CorpusChunk
 
 logger = logging.getLogger("retail_decision_agent.llm_explainer")
@@ -279,28 +281,47 @@ def rephrase(store_id: int, question: str, template_narrative: str,
     return text
 
 
+class GroundingViolation(ValueError):
+    """A grounding gate vetoed the LLM draft; ``reason`` names the gate.
+
+    Subclasses ValueError so every existing fail-closed handler keeps working,
+    while telemetry can label the veto without parsing message text.
+    """
+
+    def __init__(self, reason: str, message: str) -> None:
+        super().__init__(message)
+        self.reason = reason
+
+
 def ground_llm_output(text: str, evidence: Mapping[str, Any],
                       corpus: Sequence[CorpusChunk],
                       retrieved: Sequence[tuple[CorpusChunk, float]]) -> str:
     """The gate: same guards the template must pass, applied to the LLM draft.
 
-    Raises ValueError (fail-closed) for empty output, untraceable numbers, or
-    invented citations."""
+    Raises GroundingViolation (fail-closed, a ValueError) for empty output,
+    untraceable numbers, invented citations, or unknown engine vocabulary.
+    """
     # Imported lazily: explainer imports this module, so a module-level
     # import of its guards here would be circular.
     from .explainer import numeric_grounding_check, validate_citations
 
     if not text or not text.strip():
-        raise ValueError("LLM returned an empty narrative")
+        raise GroundingViolation(telemetry.REASON_EMPTY, "LLM returned an empty narrative")
     violations = numeric_grounding_check(text, evidence, [c for c, _ in retrieved])
     if violations:
-        raise ValueError(f"numeric grounding guard failed; untraceable numbers: {violations}")
+        raise GroundingViolation(
+            telemetry.REASON_NUMERIC,
+            f"numeric grounding guard failed; untraceable numbers: {violations}")
     unknown = validate_citations(text, evidence, list(corpus))
     if unknown:
-        raise ValueError(f"citation guard failed; unknown citations: {unknown}")
+        raise GroundingViolation(
+            telemetry.REASON_CITATION,
+            f"citation guard failed; unknown citations: {unknown}")
     lex_violations = lexicon_check(text, evidence)
     if lex_violations:
-        raise ValueError(f"lexicon guard failed; unknown engine vocabulary: {lex_violations}")
+        raise GroundingViolation(
+            telemetry.REASON_LEXICON,
+            f"lexicon guard failed; unknown engine vocabulary: {lex_violations}")
     return text
 
 
@@ -309,17 +330,33 @@ def maybe_llm_narrative(store_id: int, question: str, template_narrative: str,
                         retrieved: Sequence[tuple[CorpusChunk, float]],
                         llm_enabled: bool) -> tuple[str, str]:
     """Return (narrative, guard_llm_status). Never raises: every failure mode
-    degrades to the deterministic template."""
+    degrades to the deterministic template.
+
+    Each attempt is recorded to the off-path telemetry log (see
+    ``rag/llm_telemetry.py``) so guard vetoes and silent degradations are
+    countable; telemetry never influences this function's result.
+    """
     if not llm_enabled:
         return template_narrative, "deterministic-template (LLM_EXPLANATIONS_ENABLED off)"
+    started = time.monotonic()
+
+    def _record(outcome: str, **fields: Any) -> None:
+        telemetry.record("explainer", outcome,
+                         latency_ms=(time.monotonic() - started) * 1000, **fields)
+
     try:
         draft = rephrase(store_id, question, template_narrative, evidence, retrieved)
         grounded = ground_llm_output(draft, evidence, corpus, retrieved)
+        _record(telemetry.OUTCOME_SERVED, detail=f"model={_model_name()}")
         return grounded, "llm-grounded"
     except ValueError as error:
         logger.warning("[LLM GROUNDING FAILURE] store %s: %s - serving template", store_id, error)
+        _record(telemetry.OUTCOME_GUARD_REJECTED,
+                reason=getattr(error, "reason", telemetry.REASON_PARSE),
+                detail=str(error))
         return template_narrative, f"llm-grounding-failed ({error}); template served"
     except Exception as error:
         logger.warning("[LLM EXPLAIN UNAVAILABLE] store %s: %s: %s - serving template",
                        store_id, type(error).__name__, error)
+        _record(telemetry.OUTCOME_UNAVAILABLE, detail=f"{type(error).__name__}: {error}")
         return template_narrative, f"llm-unavailable ({type(error).__name__}); template served"

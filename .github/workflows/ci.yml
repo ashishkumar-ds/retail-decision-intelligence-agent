@@ -25,6 +25,8 @@ jobs:
         run: python scripts/check.py
       - name: Golden decision evals (offline)
         run: python evaluation/run_evals.py --quiet
+      - name: Off-path LLM eval gate (offline; grounding vetoes + provider swap)
+        run: python evaluation/llm_evals.py --quiet
       - name: Offline test suite (live_api excluded by pytest.ini)
         run: pytest -q
       - name: "Complexity gate (15+ must split; D+ fails the build)"

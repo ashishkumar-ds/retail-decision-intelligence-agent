@@ -108,6 +108,7 @@ from presentation.site import (
 from rag.advisor import maybe_advisory_triage
 from rag.corpus import load_corpus
 from rag.explainer import explain_store
+from rag.llm_telemetry import summarise as summarise_llm_telemetry
 from rag.question_guard import sanitize_question
 from tools.campaign_tool import (
     CampaignAuditResponseError,
@@ -734,6 +735,31 @@ def metrics(_auth: str = Depends(_require_approval_auth)):
                 "# TYPE retail_last_sweep_timestamp_seconds gauge",
                 f"retail_last_sweep_timestamp_seconds {epoch:.0f}",
             ]
+    # Off-path LLM layers: measured, never trusted (rag/llm_telemetry.py).
+    # A guard that is never counted cannot be shown to work, and a silent
+    # degradation to the deterministic output looks identical to health.
+    llm = summarise_llm_telemetry()
+    if llm["total"]:
+        lines.append("# TYPE retail_offpath_llm_events_total counter")
+        for (layer, outcome), count in sorted(llm["outcomes"].items()):
+            lines.append(
+                f'retail_offpath_llm_events_total{{layer="{layer}",outcome="{outcome}"}} {count}')
+        if llm["reasons"]:
+            lines.append("# TYPE retail_offpath_llm_guard_rejections_total counter")
+            for (layer, reason), count in sorted(llm["reasons"].items()):
+                lines.append(
+                    f'retail_offpath_llm_guard_rejections_total'
+                    f'{{layer="{layer}",reason="{reason}"}} {count}')
+        if llm["latency_ms_avg"]:
+            lines.append("# TYPE retail_offpath_llm_latency_ms_avg gauge")
+            for layer, average in sorted(llm["latency_ms_avg"].items()):
+                lines.append(f'retail_offpath_llm_latency_ms_avg{{layer="{layer}"}} {average:.1f}')
+        prefilter = {key: value for (layer, key), value in llm["counts"].items()
+                     if layer == "prefilter" and key in ("kept", "dropped")}
+        if prefilter:
+            lines.append("# TYPE retail_prefilter_chunks_total counter")
+            for key, value in sorted(prefilter.items()):
+                lines.append(f'retail_prefilter_chunks_total{{result="{key}"}} {value}')
     return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 

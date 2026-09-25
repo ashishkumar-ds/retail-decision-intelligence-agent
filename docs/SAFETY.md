@@ -84,5 +84,21 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
 ## 9. CI invariants (`scripts/check.py` + `evaluation/`)
 - Cross-module drift gates (planner/steps, guardrails↔emittable set, schema↔
   read-model parity, state disjointness, derived artifacts, flow specs, ledger
-  probes) and golden decision evals. Recalibration requires updating the golden
-  cases in the same commit with a stated reason.
+  probes), golden decision evals, and the off-path LLM eval gate
+  (`evaluation/llm_evals.py`: grounding vetoes + adversarial provider swap).
+  Recalibration requires updating the golden cases in the same commit with a
+  stated reason.
+
+## 10. Off-path LLM measurement (evidence layer)
+- **Where:** `rag/llm_telemetry.py` (append-only `logs/offpath_llm.jsonl`),
+  `/metrics` (`retail_offpath_llm_*`, `retail_prefilter_chunks_total`),
+  `ops/prometheus/alerts.yml`, `evaluation/llm_evals.py`.
+- **Rule:** every off-path LLM attempt is recorded (outcome, vetoing gate,
+  latency, kept/dropped chunks) and the guards are *measured*, not assumed: a
+  rejection surge or any provider unavailability alerts, because a fail-closed
+  layer that silently serves templates looks identical to health. The pinned
+  cases prove no provider can get ungrounded content served; the escape count
+  must be 0.
+- **Failure mode:** measurement never gates serving. A broken telemetry path
+  degrades to a logged warning and cannot change a response — measurement is
+  the *evidence* for a control, never the control itself. See ADR-0006.

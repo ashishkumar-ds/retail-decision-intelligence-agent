@@ -38,6 +38,7 @@ Optional quality gates (the same ones CI runs):
 ruff check .                    # lint gate
 python scripts/check.py         # cross-module consistency gate
 python evaluation/run_evals.py  # 22 golden business scenarios
+python evaluation/llm_evals.py  # off-path LLM gate: grounding vetoes + provider swap (offline)
 ```
 
 Deploy a stable URL (Render blueprint, secrets stay in the dashboard):
@@ -123,6 +124,7 @@ unauthenticated writes.
 | `LLM_ADVISORY_ENABLED` / `LLM_EXPLANATIONS_ENABLED` | off / off | Opt-in LLM layers (advisory triage / narrative rephrase); both fail closed to deterministic output |
 | `ROOT_CAUSE_TAGGING_ENABLED` / `ROOT_CAUSE_TIER` | off / `fast` | Whether the board page may render root-cause tags (rendering must not silently send text to a third party; the analytics endpoint itself is always available) |
 | `RAG_PREFILTER_ENABLED` / `RAG_PREFILTER_TIER` | on / `fast` | Off-path pre-filter of retrieved methodology chunks before the LLM context (`fast` = Jev alone, `smart` = Jev + reasoning re-ask of answers under 0.7 confidence). Fails open: any error keeps every chunk |
+| `OFFPATH_LLM_LOG_PATH` | `logs/offpath_llm.jsonl` | Append-only telemetry for the off-path LLM layers (one line per attempt: outcome, vetoing gate, latency, kept/dropped chunks). `/metrics` aggregates it into `retail_offpath_llm_*` and `retail_prefilter_chunks_total`; never read on the decision path |
 | `PORT` | `8001` | FastAPI listen port |
 
 ### Free LLM setup (Groq / Gemini / Ollama)
@@ -164,8 +166,11 @@ serves the deterministic output instead.
 
 Keep the decision path deterministic: a change that alters a recommendation
 must update the pinned golden cases in the same commit, with the rationale
-stated. Run `ruff check .`, `pytest`, and `python scripts/check.py` before
-opening a PR — CI runs all three plus a Docker build smoke test.
+stated. The off-path LLM layers follow the same rule through
+`evaluation/llm_cases.py`. Run `ruff check .`, `pytest`,
+`python scripts/check.py`, `python evaluation/run_evals.py` and
+`python evaluation/llm_evals.py` before opening a PR — CI runs all of them plus
+a Docker build smoke test.
 
 ## License
 

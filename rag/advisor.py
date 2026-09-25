@@ -27,10 +27,12 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Any, Mapping, Sequence
 
 from guardrails import APPROVAL_REQUIRED_RECOMMENDATIONS
 
+from . import llm_telemetry as telemetry
 from .corpus import CorpusChunk
 
 logger = logging.getLogger("retail_decision_agent.advisor")
@@ -213,6 +215,10 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
     The advisory dict is structurally inert: auto_applied is always False,
     requires_human_approval is always True, and nothing here writes to the
     recommendation log or the approvals ledger.
+
+    Each attempt is recorded to the off-path telemetry log (see
+    ``rag/llm_telemetry.py``) so vetoes and silent degradations are countable;
+    telemetry never influences the result.
     """
     fallback = {
         "suggested_action": current_recommendation,
@@ -223,6 +229,12 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
     }
     if not llm_enabled:
         return fallback, "deterministic (LLM_ADVISORY_ENABLED off)"
+    started = time.monotonic()
+
+    def _record(outcome: str, **fields: Any) -> None:
+        telemetry.record("advisory", outcome,
+                         latency_ms=(time.monotonic() - started) * 1000, **fields)
+
     try:
         text = draft_triage(store_id, question, narrative, evidence, precedents)
         action, note = parse_advisory(text)
@@ -235,6 +247,7 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
         grounded_note = ground_llm_output(note, evidence,
                                           list(corpus) + list(precedents),
                                           list(retrieved))
+        _record(telemetry.OUTCOME_SERVED)
         return {
             "suggested_action": action,
             "note": grounded_note,
@@ -244,8 +257,12 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
         }, "llm-advisory (grounded)"
     except ValueError as error:
         logger.warning("[ADVISORY GROUNDING FAILURE] store %s: %s", store_id, error)
+        _record(telemetry.OUTCOME_GUARD_REJECTED,
+                reason=getattr(error, "reason", telemetry.REASON_PARSE),
+                detail=str(error))
         return fallback, f"advisory-grounding-failed ({error}); engine recommendation served"
     except Exception as error:
         logger.warning("[ADVISORY UNAVAILABLE] store %s: %s: %s",
                        store_id, type(error).__name__, error)
+        _record(telemetry.OUTCOME_UNAVAILABLE, detail=f"{type(error).__name__}: {error}")
         return fallback, f"advisory-unavailable ({type(error).__name__}); engine recommendation served"

@@ -132,7 +132,9 @@ _Avoid_: user, approver (role), account
 **Off-Path**:
 Describes anything that cannot influence a decision (the LLM layers, the
 pre-filter, root-cause tags): off-path components may inform humans, never
-decisions.
+decisions. Off-path output is *measured* — every attempt is recorded and the
+guards are pinned by cases (ADR-0006) — because a fail-closed layer that
+silently serves the deterministic output looks identical to a healthy one.
 _Avoid_: side feature, auxiliary
 
 **Golden Cases**:
