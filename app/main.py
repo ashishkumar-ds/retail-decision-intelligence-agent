@@ -686,21 +686,10 @@ def root_cause_analytics(_auth: str = Depends(_require_approval_auth)):
     return jsonable_encoder(tag_recommendations(read_log()))
 
 
-@app.get("/metrics")
-def metrics(_auth: str = Depends(_require_approval_auth)):
-    """Prometheus-format operational metrics (token-gated, read-only).
-
-    Computed on scrape from the durable stores - no scrape state, no drift.
-    Requires the same bearer credential as the decision endpoints because
-    decision counts are sensitive business signal; fail-closed like the rest.
-    """
-    decisions = read_decisions()
+def _ledger_metric_lines(decisions: list[dict]) -> list[str]:
+    """Decision-ledger families: audit totals and per-principal counts."""
     approvals = sum(1 for d in decisions if d.get("decision") == "approve")
     rejections = sum(1 for d in decisions if d.get("decision") == "reject")
-    by_actor: dict[str, int] = {}
-    for entry in decisions:
-        label = str(entry.get("decided_by") or "unknown")
-        by_actor[label] = by_actor.get(label, 0) + 1
     lines = [
         "# HELP retail_decisions_total Double-gated decisions recorded in the audit ledger.",
         "# TYPE retail_decisions_total counter",
@@ -713,53 +702,86 @@ def metrics(_auth: str = Depends(_require_approval_auth)):
         "# TYPE retail_ledger_entries_total counter",
         f"retail_ledger_entries_total {len(decisions)}",
     ]
+    by_actor: dict[str, int] = {}
+    for entry in decisions:
+        label = str(entry.get("decided_by") or "unknown")
+        by_actor[label] = by_actor.get(label, 0) + 1
     for label, count in sorted(by_actor.items()):
         lines.append(f'retail_decisions_by_principal{{principal="{label}"}} {count}')
-    # Heartbeat + backlog signals for the alert rules in ops/prometheus/
-    # alerts.yml: a silently dead scheduler and a growing approval backlog
-    # are the two failure modes that matter operationally.
+    return lines
+
+
+def _sweep_metric_lines() -> list[str]:
+    """Heartbeat + backlog signals for the alert rules in ops/prometheus/alerts.yml.
+
+    A silently dead scheduler and a growing approval backlog are the two failure
+    modes that matter operationally (``RetailSweepStale``).
+    """
     status = _sweep_scheduler.status()
-    lines += [
+    lines = [
         "# TYPE retail_sweeps_total counter",
         f'retail_sweeps_total{{result="completed"}} {status.get("sweeps_completed", 0)}',
         f'retail_sweeps_total{{result="failed"}} {status.get("sweeps_failed", 0)}',
     ]
     last_success = status.get("last_sweep_at")
-    if last_success:
-        try:
-            epoch = datetime.fromisoformat(str(last_success)).timestamp()
-        except ValueError:
-            epoch = None
-        if epoch is not None:
-            lines += [
-                "# TYPE retail_last_sweep_timestamp_seconds gauge",
-                f"retail_last_sweep_timestamp_seconds {epoch:.0f}",
-            ]
-    # Off-path LLM layers: measured, never trusted (rag/llm_telemetry.py).
-    # A guard that is never counted cannot be shown to work, and a silent
-    # degradation to the deterministic output looks identical to health.
+    if not last_success:
+        return lines
+    try:
+        epoch = datetime.fromisoformat(str(last_success)).timestamp()
+    except ValueError:  # unparsable heartbeat: report the counters, skip the gauge
+        return lines
+    lines += [
+        "# TYPE retail_last_sweep_timestamp_seconds gauge",
+        f"retail_last_sweep_timestamp_seconds {epoch:.0f}",
+    ]
+    return lines
+
+
+def _llm_metric_lines() -> list[str]:
+    """Off-path LLM layers: measured, never trusted (rag/llm_telemetry.py).
+
+    A guard that is never counted cannot be shown to work, and a silent
+    degradation to the deterministic output looks identical to health. Empty
+    until the first event lands - an absent series is the honest representation.
+    """
     llm = summarise_llm_telemetry()
-    if llm["total"]:
-        lines.append("# TYPE retail_offpath_llm_events_total counter")
-        for (layer, outcome), count in sorted(llm["outcomes"].items()):
+    if not llm["total"]:
+        return []
+    lines = ["# TYPE retail_offpath_llm_events_total counter"]
+    for (layer, outcome), count in sorted(llm["outcomes"].items()):
+        lines.append(
+            f'retail_offpath_llm_events_total{{layer="{layer}",outcome="{outcome}"}} {count}')
+    if llm["reasons"]:
+        lines.append("# TYPE retail_offpath_llm_guard_rejections_total counter")
+        for (layer, reason), count in sorted(llm["reasons"].items()):
             lines.append(
-                f'retail_offpath_llm_events_total{{layer="{layer}",outcome="{outcome}"}} {count}')
-        if llm["reasons"]:
-            lines.append("# TYPE retail_offpath_llm_guard_rejections_total counter")
-            for (layer, reason), count in sorted(llm["reasons"].items()):
-                lines.append(
-                    f'retail_offpath_llm_guard_rejections_total'
-                    f'{{layer="{layer}",reason="{reason}"}} {count}')
-        if llm["latency_ms_avg"]:
-            lines.append("# TYPE retail_offpath_llm_latency_ms_avg gauge")
-            for layer, average in sorted(llm["latency_ms_avg"].items()):
-                lines.append(f'retail_offpath_llm_latency_ms_avg{{layer="{layer}"}} {average:.1f}')
-        prefilter = {key: value for (layer, key), value in llm["counts"].items()
-                     if layer == "prefilter" and key in ("kept", "dropped")}
-        if prefilter:
-            lines.append("# TYPE retail_prefilter_chunks_total counter")
-            for key, value in sorted(prefilter.items()):
-                lines.append(f'retail_prefilter_chunks_total{{result="{key}"}} {value}')
+                f'retail_offpath_llm_guard_rejections_total'
+                f'{{layer="{layer}",reason="{reason}"}} {count}')
+    if llm["latency_ms_avg"]:
+        lines.append("# TYPE retail_offpath_llm_latency_ms_avg gauge")
+        for layer, average in sorted(llm["latency_ms_avg"].items()):
+            lines.append(f'retail_offpath_llm_latency_ms_avg{{layer="{layer}"}} {average:.1f}')
+    prefilter = {key: value for (layer, key), value in llm["counts"].items()
+                 if layer == "prefilter" and key in ("kept", "dropped")}
+    if prefilter:
+        lines.append("# TYPE retail_prefilter_chunks_total counter")
+        for key, value in sorted(prefilter.items()):
+            lines.append(f'retail_prefilter_chunks_total{{result="{key}"}} {value}')
+    return lines
+
+
+@app.get("/metrics")
+def metrics(_auth: str = Depends(_require_approval_auth)):
+    """Prometheus-format operational metrics (token-gated, read-only).
+
+    Computed on scrape from the durable stores - no scrape state, no drift.
+    Requires the same bearer credential as the decision endpoints because
+    decision counts are sensitive business signal; fail-closed like the rest.
+    Each metric family is built by its own helper: this endpoint is a scrape
+    surface, not a place for branching logic.
+    """
+    decisions = read_decisions()
+    lines = _ledger_metric_lines(decisions) + _sweep_metric_lines() + _llm_metric_lines()
     return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
 
