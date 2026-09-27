@@ -1,10 +1,20 @@
 name: Keep-alive (Render free tier)
 
-# Render free services sleep after ~15 min idle. This pings both deployed
-# APIs every 10 minutes so tests and sweeps never hit a cold start.
-# Note: GitHub disables scheduled workflows after 60 days of repo
-# inactivity - for a guarantee, also add the URLs to a free external
-# pinger (e.g. UptimeRobot / cron-job.org at a 10-minute interval).
+# Render free services sleep after ~15 min idle. This pings the sibling APIs
+# every 10 minutes so tests and sweeps never hit a cold start.
+#
+# It calls scripts/keepalive.sh rather than curling inline:
+#   * the inline version built "…onrender.com//health" (the fallback URL ends in
+#     "/" and the step appended "/health"), which is a 404 - so this workflow
+#     had never actually warmed anything while looking configured;
+#   * the script strips the trailing slash, retries transient 5xx/timeouts with
+#     backoff, treats a 429 as proof the instance is awake, and fails loudly on
+#     a non-transient 4xx. One implementation, also used by cron.
+#
+# Note: GitHub throttles scheduled workflows (a */10 cron runs a few times a
+# day, not 144), and disables them after 60 days of repo inactivity - for a
+# guarantee, also add the URLs to a free external pinger (UptimeRobot /
+# cron-job.org at a 10-minute interval).
 
 on:
   schedule:
@@ -15,7 +25,13 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Warm forecast API
-        run: curl -fsS --max-time 120 "${{ secrets.FORECAST_API_URL || 'https://retail-forecast-api-7sue.onrender.com/' }}/health"
-      - name: Warm campaign audit API
-        run: curl -fsS --max-time 120 "${{ secrets.CAMPAIGN_AUDIT_API_URL || 'https://retail-campaign-automation.onrender.com/audit' }}"
+      - uses: actions/checkout@v4
+      - name: Warm the APIs (retries 5xx; a 429 means the service is awake)
+        env:
+          # Unset secrets fall back to the deployed endpoints in the script;
+          # AGENT_URL is optional (the agent is always-on Starter, so it only
+          # needs pinging if it is ever run as a free-tier demo instance).
+          FORECAST_API_URL: ${{ secrets.FORECAST_API_URL }}
+          AUDIT_API_URL: ${{ secrets.CAMPAIGN_AUDIT_API_URL }}
+          AGENT_URL: ${{ secrets.AGENT_URL }}
+        run: bash scripts/keepalive.sh
