@@ -31,7 +31,11 @@ jobs:
         run: pytest -q
       - name: "Complexity gate (15+ must split; D+ fails the build)"
         run: |
-          radon cc -s -n D app approvals decision_engine phase2 presentation rag tools guardrails memory > /tmp/cc_violations.txt
+          # Every first-party package, alphabetically. A package missing from
+          # this list has no complexity gate at all: analytics, execution and
+          # storage shipped uncovered and `analytics.root_cause` had a D(21)
+          # function sitting behind a green gate.
+          radon cc -s -n D analytics app approvals decision_engine execution guardrails memory phase2 presentation rag storage tools > /tmp/cc_violations.txt
           if [ -s /tmp/cc_violations.txt ]; then
             echo "Cyclomatic complexity gate failed (D+ found):"
             cat /tmp/cc_violations.txt

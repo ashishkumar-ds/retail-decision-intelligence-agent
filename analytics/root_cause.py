@@ -130,30 +130,20 @@ def classify_reasons(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any
     return list(payload.get("results") or [])
 
 
-def tag_recommendations(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Aggregate root-cause tags for the board. Never raises.
+def _empty_section(status: str) -> dict[str, Any]:
+    """The fail-open shape: a board section that shows nothing rather than failing."""
+    return {"status": status, "tagged": 0, "counts": {},
+            "driver_counts": {}, "by_store": {}}
 
-    Returns ``counts`` (root cause -> stores), ``driver_counts``,
-    ``by_store`` (store id -> tags) and a ``status`` naming either the tier
-    used or the failure that degraded the section.
+
+def _aggregate_tags(batch: Sequence[Mapping[str, Any]],
+                    results: Sequence[Mapping[str, Any]],
+                    ) -> tuple[dict[str, int], dict[str, int], dict[int, dict[str, Any]]]:
+    """Tally one classifier response into label counts and per-store tags.
+
+    Labels outside the closed vocabularies are dropped: a changed vocabulary
+    must never invent a category or inflate a count.
     """
-    candidates = [r for r in records
-                  if r.get("reason") and r.get("recommendation")
-                  and isinstance(r.get("store_id"), int)]
-    empty = {"status": "no records to tag", "tagged": 0, "counts": {},
-             "driver_counts": {}, "by_store": {}}
-    if not candidates:
-        return empty
-    batch = candidates[:MAX_ITEMS]
-    try:
-        results = classify_reasons(batch)
-        if len(results) != len(batch):
-            raise ValueError("classifier results do not match input count")
-    except Exception as error:
-        logger.warning("[ROOT CAUSE] tagging unavailable: %s: %s",
-                       type(error).__name__, error)
-        return {**empty, "status": f"unavailable ({type(error).__name__})"}
-
     counts = {label: 0 for label in ROOT_CAUSE_LABELS}
     driver_counts = {label: 0 for label in DRIVER_LABELS}
     by_store: dict[int, dict[str, Any]] = {}
@@ -174,6 +164,32 @@ def tag_recommendations(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "driver": driver_label,
             "model": root.get("model"),
         }
+    return counts, driver_counts, by_store
+
+
+def tag_recommendations(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Aggregate root-cause tags for the board. Never raises.
+
+    Returns ``counts`` (root cause -> stores), ``driver_counts``,
+    ``by_store`` (store id -> tags) and a ``status`` naming either the tier
+    used or the failure that degraded the section.
+    """
+    candidates = [r for r in records
+                  if r.get("reason") and r.get("recommendation")
+                  and isinstance(r.get("store_id"), int)]
+    if not candidates:
+        return _empty_section("no records to tag")
+    batch = candidates[:MAX_ITEMS]
+    try:
+        results = classify_reasons(batch)
+        if len(results) != len(batch):
+            raise ValueError("classifier results do not match input count")
+    except Exception as error:
+        logger.warning("[ROOT CAUSE] tagging unavailable: %s: %s",
+                       type(error).__name__, error)
+        return _empty_section(f"unavailable ({type(error).__name__})")
+
+    counts, driver_counts, by_store = _aggregate_tags(batch, results)
     return {
         "status": f"tagged ({_tier()} tier)",
         "tagged": len(by_store),
