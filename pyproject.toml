@@ -13,6 +13,11 @@ dependencies = [
     "fastapi==0.115.0",
     "uvicorn==0.30.6",
     "requests==2.32.3",
+    # Imported at module load by the serving path itself (app/main.py:20,
+    # tools/forecast_tool.py, tools/campaign_tool.py, phase2/portfolio.py) -
+    # NOT a test/client convenience. The first production deploy died on boot
+    # because this lived only in [dev]; runtime and tests must share it.
+    "httpx==0.27.2",
     # Direct runtime dependency: phase2/schemas.py, tools/campaign_tool.py and
     # presentation/cards.py import pydantic at module load. It used to be only a
     # transitive dependency (via FastAPI), so installing this package's declared
