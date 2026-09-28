@@ -10,9 +10,9 @@ stores.
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)](https://docs.astral.sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Live demo](https://img.shields.io/badge/live%20demo-onrender.com-46E3B7)](https://retail-decision-intelligence-agent.onrender.com/health)
+[![Live demo](https://img.shields.io/badge/live%20demo-onrender.com-46E3B7)](https://retail-decision-intelligence-agent.onrender.com/ui)
 
-**Live demo:** [retail-decision-intelligence-agent.onrender.com](https://retail-decision-intelligence-agent.onrender.com/board) — read-only surfaces are open; write paths need a bearer token.
+**Live demo:** [retail-decision-intelligence-agent.onrender.com](https://retail-decision-intelligence-agent.onrender.com/ui) — the operator dashboard; API consumers have `/health`, `/docs` and `/openapi.json`. Write paths need a bearer token.
 
 - **Deterministic by design** — pure-code decision path, no LLM.
 - **Human-gated by default** — budget-affecting writes fail closed (503) without approval.
@@ -87,6 +87,7 @@ guardrails, tools, RAG, evaluation, stakeholder surfaces — lives in the
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
+| `/` | GET | Redirects to the operator dashboard (`/ui`) instead of a bare 404 — the shared portfolio link |
 | `/health` | GET | Liveness + sweep-scheduler status |
 | `/recommendations` | GET | Latest recommendations (read-only) |
 | `/recommendations/run` | POST | Recompute and persist (auth) |

@@ -20,7 +20,7 @@ from pathlib import Path
 import httpx
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import (
     actuals_feedback_enabled,
@@ -1506,6 +1506,19 @@ def get_recommendation_log():
 
 
 # --- Operator site (server-rendered; the UI is a view, never a second source of truth) ---
+
+@app.get("/")
+def root() -> RedirectResponse:
+    """Send the service root to the operator dashboard instead of a bare 404.
+
+    The root is what a shared portfolio link points at, and FastAPI's default
+    {"detail": "Not Found"} reads like a broken deploy to a stakeholder. API
+    consumers have /health, /docs and /openapi.json. Deliberately kept in the
+    schema: /openapi.json is how scripts/verify_deployment.sh compares this
+    service with the repo for deploy drift.
+    """
+    return RedirectResponse(url="/ui")
+
 
 @app.get("/ui", response_class=HTMLResponse)
 def ui_dashboard():

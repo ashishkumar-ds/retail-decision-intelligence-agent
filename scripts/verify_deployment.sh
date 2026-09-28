@@ -81,6 +81,11 @@ fi
 head2 "3. Read-only stakeholder surface"
 code="$(status "$BASE/board")"
 if [ "$code" = "200" ]; then pass "/board answered 200"; else fail "/board answered $code (expected 200)"; fi
+code="$(status "$BASE/")"
+case "$code" in
+    2??|3??) pass "/ answers $code (no dead end on the shared link)" ;;
+    *)   fail "/ answered $code - a shared portfolio link would land on Not Found" ;;
+esac
 
 head2 "4. Write paths fail closed without a credential"
 code="$(status "$BASE/metrics")"

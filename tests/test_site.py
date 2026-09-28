@@ -45,6 +45,14 @@ def test_all_read_only_pages_render_without_token(client):
         response = client.get(path)
         assert response.status_code == 200, path
         assert "dunnhumby" in response.text  # theme footer present
+def test_root_landing_redirects_to_the_dashboard(client):
+    """The shared portfolio link is the service root: it must not be a 404."""
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code in (302, 303, 307), response.status_code
+    assert response.headers["location"] == "/ui"
+
+
+
 
 
 def test_dashboard_shows_attention_queue_and_kpis(client, monkeypatch):
