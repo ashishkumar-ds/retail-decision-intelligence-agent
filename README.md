@@ -10,7 +10,9 @@ stores.
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230)](https://docs.astral.sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ashishkumar-ds/retail-decision-intelligence-agent)
+[![Live demo](https://img.shields.io/badge/live%20demo-onrender.com-46E3B7)](https://retail-decision-intelligence-agent.onrender.com/health)
+
+**Live demo:** [retail-decision-intelligence-agent.onrender.com](https://retail-decision-intelligence-agent.onrender.com/board) — read-only surfaces are open; write paths need a bearer token.
 
 - **Deterministic by design** — pure-code decision path, no LLM.
 - **Human-gated by default** — budget-affecting writes fail closed (503) without approval.
@@ -41,9 +43,11 @@ python evaluation/run_evals.py  # 22 golden business scenarios
 python evaluation/llm_evals.py  # off-path LLM gate: grounding vetoes + provider swap (offline)
 ```
 
-Deploy a stable URL (Render blueprint, secrets stay in the dashboard):
-see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — including the persistent-disk
-requirement, without which a deploy discards the append-only audit trail.
+Deploy a stable URL (a Render service created by hand — secrets stay in the
+dashboard): see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — including the
+persistent-disk requirement, without which a deploy discards the append-only
+audit trail, and the environment table, without which the service boots with the
+autonomous sweep silently off.
 
 ### Hosting, briefly (verified against current platform docs)
 

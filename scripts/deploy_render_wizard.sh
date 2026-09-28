@@ -192,11 +192,13 @@ banner "Render deployment — Retail Decision Intelligence Agent"
 
 # ── Stage 1: Render account ────────────────────────────────────────────────
 stage "Render account"
-say "The agent deploys from your GitHub repo via the render.yaml blueprint."
+say "The agent deploys from your GitHub repo as a plain Docker web service:"
+say "no blueprint and no render.yaml in the repo. You create the service in"
+say "the dashboard and paste the environment variables collected in stage 2."
 step "Sign in (GitHub login is easiest) or create a free account."
-step "Have a payment card ready: the blueprint uses the Starter plan + a disk"
-step "(~\$7.25/mo total). Free tier spins down after ~15 min and cannot mount"
-step "the disk — the audit trail would reset on every deploy."
+step "Have a payment card ready: Starter + a disk is ~\$7.25/mo total."
+step "Free tier spins down after ~15 min idle and cannot mount the disk -"
+step "the audit trail resetting on every deploy is the wrong demo."
 open_url "https://dashboard.render.com/register"
 pause "Signed in to the Render dashboard?"
 
@@ -247,15 +249,23 @@ say ""
 say "DATABASE_URL stays empty: the service uses embedded SQLite on its disk."
 pause "Values collected?"
 
-# ── Stage 3: blueprint apply ───────────────────────────────────────────────
-stage "Blueprint apply"
-say "Render reads render.yaml from the repo and asks you to fill every value"
-say "marked 'sync: false'. Paste from the list above (also in $ENV_FILE)."
-open_url "https://render.com/deploy?repo=https://github.com/ashishkumar-ds/retail-decision-intelligence-agent"
-step "New → Blueprint → pick this repo (grant access if asked)."
-step "Render shows the resources: one web service + one 1GB disk."
-step "Fill each prompted env var with the matching value from $ENV_FILE."
-step "Click 'Apply' — the first Docker build takes ~5-10 minutes."
+# ── Stage 3: create the web service ────────────────────────────────────────
+stage "Create the web service"
+say "Everything the dashboard asks for was collected above (also in $ENV_FILE)."
+open_url "https://dashboard.render.com/new/web-service"
+step "New → Web Service → 'Build and deploy from a Git repository'."
+step "Connect GitHub, pick ashishkumar-ds/retail-decision-intelligence-agent."
+step "Language: Docker · Branch: main · Dockerfile Path: ./Dockerfile"
+step "Health Check Path: /health  (Render restarts a container that fails it)"
+step "Instance Type: Starter — always-on; free instances sleep and have no disk."
+step "Environment → add the variables docs/DEPLOYMENT.md lists, at minimum:"
+step "  APPROVAL_AUTH_TOKEN=$TOKEN       (secret; unset = writes stay 503)"
+step "  FORECAST_API_URL=$FORECAST_API_URL"
+step "  SWEEP_ENABLED=1                  (the autonomous sweep is opt-in)"
+step "  SWEEP_INTERVAL_SECONDS=86400"
+step "optional: CAMPAIGN_AUDIT_API_URL, APPROVAL_TOKENS, LLM_* / ANTHROPIC_API_KEY"
+step "Advanced → Add Disk: name 'agent-logs', mount path /srv/app/logs, 1 GB."
+step "Create Web Service — the first Docker build takes ~5-10 minutes."
 step "On the service page, copy the public URL (top of the page)."
 ask RENDER_URL "Paste the service URL (e.g. https://retail-decision-intelligence-agent.onrender.com):"
 RENDER_URL="${RENDER_URL%/}"
@@ -280,6 +290,9 @@ fi
 # ── Stage 5: verify the closed loop on the live URL ────────────────────────
 stage "Verify the live agent"
 step "GET /health — done above."
+say "Running the deployment checks (config, auth posture, route drift):"
+bash scripts/verify_deployment.sh "$RENDER_URL" "$TOKEN" || \
+  warn "verify_deployment.sh reported failures above — fix those before sharing the URL."
 if curl -sf -H "Authorization: Bearer $TOKEN" "$RENDER_URL/metrics" | head -3; then
   say "↑ /metrics answers with the token."
 else
@@ -302,12 +315,12 @@ fi
 # ── Stage 6: record the URL ─────────────────────────────────────────────────
 stage "Record the live URL"
 write_env RENDER_URL "$RENDER_URL"
-say "Portfolio next step: add the URL to the README (under the deploy button)."
-if confirm "Add 'Live demo: $RENDER_URL' to README.md and push it now?"; then
-  if grep -q 'Live demo:' README.md; then
-    sed -i "s|Live demo: .*|Live demo: [$RENDER_URL]($RENDER_URL) — always-on; write paths need a token.|" README.md
+say "Portfolio next step: record the URL in README.md (the Live demo line)."
+if confirm "Set 'Live demo: $RENDER_URL' in README.md and push it now?"; then
+  if grep -q '^\*\*Live demo:\*\*' README.md; then
+    sed -i "s|^\*\*Live demo:\*\*.*|**Live demo:** [$RENDER_URL]($RENDER_URL) — read-only surfaces are open; write paths need a bearer token.|" README.md
   else
-    sed -i "/Deploy to Render/a\\\n\\\n**Live demo:** [$RENDER_URL]($RENDER_URL) — always-on; write paths need a token." README.md
+    printf '\n**Live demo:** [%s](%s)\n' "$RENDER_URL" "$RENDER_URL" >> README.md
   fi
   git add README.md && git commit -q -m "docs: live demo URL" && git push origin main \
     && printf '  %s✓ pushed%s\n' "$GREEN" "$RESET" \

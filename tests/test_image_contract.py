@@ -190,42 +190,67 @@ if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
 
 
-# --- deployment blueprint -----------------------------------------------------
+# --- deployment contract (manual Render service; no blueprint) ---------------
 
-def test_render_blueprint_keeps_secrets_out_of_the_repo():
-    """The blueprint may only reference secrets, never contain them: every
-    secret-shaped variable must be `sync: false` (filled in the dashboard)."""
-    yaml = pytest.importorskip("yaml")
-    blueprint = yaml.safe_load((ROOT / "render.yaml").read_text(encoding="utf-8"))
-    service = blueprint["services"][0]
-    assert service["runtime"] == "docker"
-    assert service["healthCheckPath"] == "/health"
-    for var in service["envVars"]:
-        key = var["key"]
-        if any(token in key for token in ("TOKEN", "KEY", "PASSWORD", "SECRET")):
-            assert var.get("sync") is False, f"{key} must be filled in the dashboard, not in git"
-            assert "value" not in var, f"{key} has an in-repo value"
+def _env_vars_read_by_runtime() -> set[str]:
+    """Every environment variable the serving packages read.
+
+    Resolves the ``X_ENV = "X"; os.getenv(X_ENV)`` indirection the runtime
+    actually uses (module-level string constants), plus ``os.environ.get`` and
+    the ``_flag`` helper.
+    """
+    names: set[str] = set()
+    for package in sorted(_first_party_packages()):
+        for source in (ROOT / package).rglob("*.py"):
+            if "__pycache__" in source.parts:
+                continue
+            tree = ast.parse(source.read_text(encoding="utf-8"))
+            constants = {target.id: node.value.value
+                         for node in tree.body if isinstance(node, ast.Assign)
+                         and isinstance(node.value, ast.Constant)
+                         and isinstance(node.value.value, str)
+                         for target in node.targets if isinstance(target, ast.Name)}
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not node.args:
+                    continue
+                func = node.func
+                reads_env = (
+                    (isinstance(func, ast.Attribute) and func.attr == "getenv")
+                    or (isinstance(func, ast.Attribute) and func.attr == "get"
+                        and isinstance(func.value, ast.Attribute)
+                        and func.value.attr == "environ")
+                    or (isinstance(func, ast.Name) and func.id == "_flag")
+                )
+                if not reads_env:
+                    continue
+                argument = node.args[0]
+                if isinstance(argument, ast.Constant) and isinstance(argument.value, str):
+                    names.add(argument.value)
+                elif isinstance(argument, ast.Name) and argument.id in constants:
+                    names.add(constants[argument.id])
+    return names
 
 
-def test_render_blueprint_mounts_the_durable_log_volume():
-    """The append-only audit trail lives in files under logs/; without a disk
-    a deploy discards it (see docs/DEPLOYMENT.md)."""
-    yaml = pytest.importorskip("yaml")
-    service = yaml.safe_load((ROOT / "render.yaml").read_text(encoding="utf-8"))["services"][0]
-    assert service["disk"]["mountPath"] == "/srv/app/logs"
+def test_every_runtime_env_var_is_documented():
+    """A manual deploy has no blueprint to inherit configuration from.
 
-
-def test_disk_is_never_mounted_on_a_free_plan():
-    """Render rejects a blueprint that mounts a disk on the free plan (free
-    instances have no persistent disks) - the default posture is Starter."""
-    yaml = pytest.importorskip("yaml")
-    service = yaml.safe_load((ROOT / "render.yaml").read_text(encoding="utf-8"))["services"][0]
-    if "disk" in service:
-        assert service.get("plan") not in (None, "free", "hobby"), (
-            "a disk on a free plan makes the blueprint undeployable")
+    The service is created by hand, so the documented environment is the only
+    thing between "works" and "silently degraded": production ran with
+    SWEEP_ENABLED unset, which turned the autonomous sweep off with no error
+    anywhere. Every variable the serving code reads must appear in
+    ``.env.example`` or ``docs/DEPLOYMENT.md``.
+    """
+    documented = ((ROOT / ".env.example").read_text(encoding="utf-8")
+                  + (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8"))
+    missing = sorted(name for name in _env_vars_read_by_runtime() if name not in documented)
+    assert not missing, (
+        f"runtime env vars missing from .env.example / docs/DEPLOYMENT.md: {missing}. "
+        "A deploy by hand cannot set what nobody documented."
+    )
 
 
 def test_deployment_doc_states_the_storage_tradeoff():
     doc = (ROOT / "docs" / "DEPLOYMENT.md").read_text(encoding="utf-8")
     assert "audit trail" in doc and "persistent disk" in doc.lower()
     assert "Free tier" in doc  # the demo-only consequence is spelled out
+

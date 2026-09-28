@@ -3,7 +3,7 @@
 #
 # This is a DEMO tool, not hosting: the URL is ephemeral (new one every run),
 # dies with this process, and your machine is the origin. For a permanent URL
-# see docs/DEPLOYMENT.md (Render blueprint or a named Cloudflare Tunnel).
+# see docs/DEPLOYMENT.md (a hand-created Render service, or a named Cloudflare Tunnel).
 #
 # Usage: scripts/public_tunnel.sh [PORT]
 # Env:   APPROVAL_AUTH_TOKEN should be set so write paths stay gated (the
