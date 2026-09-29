@@ -1,7 +1,14 @@
 # Tests
 
-Full suite: `pytest` (341 tests). Endpoint tests need FastAPI/Pydantic; they
+Full suite: `pytest` (415 tests). Endpoint tests need FastAPI/Pydantic; they
 skip automatically where those aren't installed.
+
+Two `tests/test_live_postgres.py` tests skip without `DATABASE_URL` (a real
+Postgres server). `tests/test_live_api.py` is *not* skipped: it runs against
+the deployed Project 1 forecast API and Project 2 campaign-audit API by
+default, because live connectivity is part of the contract this suite
+verifies. Override `FORECAST_API_URL` / `CAMPAIGN_AUDIT_API_URL` to point at
+local instances, or deselect with `-m "not live_api"` to run offline.
 
 ## Running on this Termux / Android dev box
 

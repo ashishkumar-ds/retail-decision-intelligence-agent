@@ -27,7 +27,7 @@ jobs:
         run: python evaluation/run_evals.py --quiet
       - name: Off-path LLM eval gate (offline; grounding vetoes + provider swap)
         run: python evaluation/llm_evals.py --quiet
-      - name: Offline test suite (live_api excluded by pytest.ini)
+      - name: Test suite (includes the live forecast + campaign-audit contract checks)
         run: pytest -q
       - name: "Complexity gate (15+ must split; D+ fails the build)"
         run: |
