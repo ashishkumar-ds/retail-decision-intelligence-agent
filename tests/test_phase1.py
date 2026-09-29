@@ -523,11 +523,63 @@ def test_campaign_api_surfaces_http_and_malformed_json_failures(monkeypatch):
         "get",
         lambda *args, **kwargs: FakeResponse({}, status_error=_status_error("503")),
     )
+    # Retries are on (a cold Project 2 answers 5xx while it boots); the sleep is
+    # stubbed so the suite does not wait out the real backoff.
     with pytest.raises(httpx.HTTPStatusError):
-        campaign_tool.get_audit_log()
+        campaign_tool.get_audit_log(sleep_fn=lambda _seconds: None)
     monkeypatch.setattr(campaign_tool.httpx, "get", lambda *args, **kwargs: FakeResponse(None, json_error=True))
     with pytest.raises(campaign_tool.CampaignAuditResponseError):
         campaign_tool.get_audit_log()
+
+
+def test_campaign_api_retries_transient_failures_but_not_wiring_errors(monkeypatch):
+    """A cold Project 2 answers 5xx while it boots; a 404 is a wiring error.
+
+    Same policy as ``forecast_tool``: retry 5xx/429/timeouts with backoff, fail
+    immediately on any other 4xx, and let the caller see the final error - the
+    sweep turns that into a 502 rather than serving invented campaign evidence.
+    """
+    monkeypatch.setenv("CAMPAIGN_AUDIT_API_URL", campaign_tool.DEFAULT_AUDIT_API_URL)
+    sleeps: list[float] = []
+    attempts = {"count": 0}
+
+    def flaky_get(url, **kwargs):
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            return FakeResponse({}, status_error=_status_error("503 Service Unavailable"))
+        return FakeResponse({"total_runs": 1, "runs": [{
+            "campaign": "Campaign 18",
+            "timing": "12 PM - 6 PM",
+            "run_timestamp": "2026-08-29T15:18:35+00:00",
+            "store_ids": [317],
+        }]})
+
+    monkeypatch.setattr(campaign_tool.httpx, "get", flaky_get)
+    runs = campaign_tool.get_audit_log(backoffs=(2.0, 4.0), sleep_fn=sleeps.append)
+    assert attempts["count"] == 3
+    assert sleeps == [2.0, 4.0]
+    assert runs[0]["store_ids"] == [317]
+
+    # Exhausted retries still surface the HTTP error.
+    monkeypatch.setattr(
+        campaign_tool.httpx,
+        "get",
+        lambda url, **kwargs: FakeResponse({}, status_error=_status_error("503 Service Unavailable")),
+    )
+    with pytest.raises(httpx.HTTPStatusError):
+        campaign_tool.get_audit_log(retries=1, backoffs=(0.5,), sleep_fn=sleeps.append)
+
+    # A non-transient 4xx is a wiring error: one attempt, no retry.
+    attempts["count"] = 0
+
+    def not_found_get(url, **kwargs):
+        attempts["count"] += 1
+        return FakeResponse({}, status_error=_status_error("404 Not Found"))
+
+    monkeypatch.setattr(campaign_tool.httpx, "get", not_found_get)
+    with pytest.raises(httpx.HTTPStatusError):
+        campaign_tool.get_audit_log(sleep_fn=sleeps.append)
+    assert attempts["count"] == 1
 
 
 def test_campaign_local_jsonl_source_is_unchanged_when_api_is_not_configured(tmp_path, monkeypatch):

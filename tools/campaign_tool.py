@@ -16,9 +16,10 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Sequence
 from urllib.parse import urlparse
 
 import httpx
@@ -28,6 +29,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_AUDIT_API_URL = "https://retail-campaign-automation.onrender.com/audit"
 REQUEST_TIMEOUT_SECONDS = 10
+DEFAULT_RETRY_BACKOFFS = (2.0, 4.0, 8.0)
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 MISSING_STABLE_CAMPAIGN_ID = "MISSING_STABLE_CAMPAIGN_ID"
 
 # This is intentionally a small, documented read model. In particular, Project
@@ -108,7 +111,81 @@ def _audit_api_url() -> str | None:
     return configured.strip() if configured and configured.strip() else None
 
 
-def get_audit_log() -> list[dict[str, Any]]:
+def _is_retryable_error(error: Exception) -> bool:
+    """Whether an error is transient: a cold start or a network failure.
+
+    A 4xx that is not 429 is a wiring/config problem (wrong path, revoked
+    access); retrying cannot fix it, so the caller must see it immediately.
+    """
+    if isinstance(error, (httpx.TransportError, httpx.TimeoutException, TimeoutError)):
+        return True
+    if isinstance(error, httpx.HTTPStatusError):
+        status_code = getattr(getattr(error, "response", None), "status_code", None)
+        return status_code is None or status_code in RETRYABLE_STATUS_CODES
+    return False
+
+
+def _request_with_retry(
+    method: str,
+    url: str,
+    *,
+    retries: int = 3,
+    backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    **kwargs: Any,
+) -> httpx.Response:
+    """Execute a request, retrying transient failures with exponential backoff.
+
+    Project 2 runs on a tier that spins down when idle, so the first read after
+    a quiet period can time out or answer 5xx while the instance boots. Same
+    policy as ``tools/forecast_tool.py``: retry those, never retry a non-429
+    4xx, and let the caller see the final error rather than inventing data.
+    """
+    kwargs.setdefault("timeout", REQUEST_TIMEOUT_SECONDS)
+    last_error: Exception | None = None
+    req_func = getattr(httpx, method.lower(), httpx.request)
+
+    for attempt in range(retries + 1):
+        try:
+            if req_func is httpx.request:
+                response = req_func(method, url, **kwargs)
+            else:
+                response = req_func(url, **kwargs)
+            if hasattr(response, "raise_for_status"):
+                response.raise_for_status()
+            return response
+        except (httpx.TransportError, httpx.TimeoutException, httpx.HTTPStatusError,
+                TimeoutError) as error:
+            last_error = error
+            if not _is_retryable_error(error):
+                logger.warning(
+                    "[CAMPAIGN AUDIT CLIENT ERROR] non-retryable error for %s %s: %s: %s",
+                    method, url, type(error).__name__, error)
+                raise
+            if attempt < retries:
+                backoff = backoffs[attempt] if attempt < len(backoffs) else backoffs[-1]
+                logger.warning(
+                    "[CAMPAIGN AUDIT RETRY] attempt %s/%s for %s %s failed with %s: %s. "
+                    "Retrying in %ss...", attempt + 1, retries, method, url,
+                    type(error).__name__, error, backoff)
+                sleep_fn(backoff)
+            else:
+                logger.error(
+                    "[CAMPAIGN AUDIT EXHAUSTED] all %s attempts for %s %s failed. "
+                    "Last error: %s: %s", retries + 1, method, url,
+                    type(error).__name__, error)
+
+    if last_error:
+        raise last_error
+    raise httpx.HTTPError(f"Failed to execute {method} {url}")
+
+
+def get_audit_log(
+    *,
+    retries: int = 3,
+    backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> list[dict[str, Any]]:
     """Return audit-run objects from the opt-in API or configured JSONL file.
 
     An absent configuration or missing local file is a genuine no-data state
@@ -117,7 +194,8 @@ def get_audit_log() -> list[dict[str, Any]]:
     """
     api_url = _audit_api_url()
     if api_url is not None:
-        return _get_audit_log_from_api(api_url)
+        return _get_audit_log_from_api(api_url, retries=retries, backoffs=backoffs,
+                                       sleep_fn=sleep_fn)
 
     path = _audit_log_path()
     if path is None or not path.exists():
@@ -140,16 +218,24 @@ def get_audit_log() -> list[dict[str, Any]]:
     return runs
 
 
-def _get_audit_log_from_api(api_url: str) -> list[dict[str, Any]]:
+def _get_audit_log_from_api(
+    api_url: str,
+    *,
+    retries: int = 3,
+    backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
+    sleep_fn: Callable[[float], None] = time.sleep,
+) -> list[dict[str, Any]]:
     """Fetch and normalize Project 2's read-only ``GET /audit`` response.
 
-    The API is used only when ``CAMPAIGN_AUDIT_API_URL`` is configured. HTTP
-    failures propagate as ``httpx`` errors and bad payloads raise
+    The API is used only when ``CAMPAIGN_AUDIT_API_URL`` is configured. Transient
+    failures (a cold start's 5xx/timeout) are retried with backoff; HTTP failures
+    that persist propagate as ``httpx`` errors and bad payloads raise
     ``CampaignAuditResponseError``; neither case is silently converted to
     campaign data. No campaign execution endpoint is called.
     """
     _validate_audit_api_url(api_url)
-    response = httpx.get(api_url, timeout=REQUEST_TIMEOUT_SECONDS)
+    response = _request_with_retry("GET", api_url, retries=retries, backoffs=backoffs,
+                                   sleep_fn=sleep_fn)
     response.raise_for_status()
     try:
         payload = response.json()
