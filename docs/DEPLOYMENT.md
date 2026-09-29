@@ -54,7 +54,7 @@ fails if the code reads a variable that is not documented there.
 | `SWEEP_ENABLED` | **`1`** | Opt-in autonomous sweep. Unset → the daily sweep never runs. This is the one that bit us. |
 | `SWEEP_INTERVAL_SECONDS` | `86400` | Sweep cadence (daily). |
 | `FORECAST_API_URL` | the forecast service URL | Where actuals/predictions come from; the code default is the deployed Project 1 API. |
-| `CAMPAIGN_AUDIT_API_URL` | optional | Project 2's audit log; unset → local JSONL fallback. |
+| `CAMPAIGN_AUDIT_API_URL` | **required for the sweep** | Project 2's read-only audit log, and the source of the store universe. Unset with no `CAMPAIGN_AUDIT_LOG_PATH` file → `POST /recommendations/run` answers 400 "No store_ids found in the audit log" and the daily sweep does nothing. |
 | `DATABASE_URL` | optional | `postgres://` for the pending-approval store; unset → SQLite on the disk. |
 | `ROOT_CAUSE_TAGGING_ENABLED` | `false` | The board's root-cause section (third-party egress, redacted before sending). |
 | `LLM_*`, `ANTHROPIC_API_KEY` | off | Optional explanation/advisory layers; every failure degrades to the deterministic output. |
