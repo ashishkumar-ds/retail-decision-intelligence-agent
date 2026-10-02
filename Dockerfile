@@ -15,6 +15,10 @@ COPY app ./app
 COPY analytics ./analytics
 COPY approvals ./approvals
 COPY decision_engine ./decision_engine
+# Demo fixtures (store universe + local forecast stub). Shipped so the image can
+# run the same self-contained demo a fresh clone runs; the runtime never imports
+# them - see demo/README.md.
+COPY demo ./demo
 COPY evaluation ./evaluation
 COPY execution ./execution
 COPY guardrails ./guardrails

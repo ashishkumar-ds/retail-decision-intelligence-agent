@@ -27,10 +27,9 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
   (`app/state.py`, `PENDING_APPROVAL_STATE_PATH`), shared across workers; on a
   fresh state file it is backfilled at startup from the durable recommendation
   log (`app/main._rebuild_pending_approvals` → `seed_from`). The ledger is
-  evidence of decisions, never the source of pending state. A
-  the ledger is evidence of decisions, never the source of pending state. A
-  decision written to the ledger is always accompanied by the decided record in
-  the recommendation log (both writes happen inside the same request; the
+  evidence of decisions, never the source of pending state. A decision written
+  to the ledger is always accompanied by the decided record in the
+  recommendation log (both writes happen inside the same request; the
   ledger write happens first and raises on gate failure).
 
 ## 3. Approval & write authentication

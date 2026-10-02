@@ -1,6 +1,6 @@
 # Tests
 
-Full suite: `pytest` (415 tests). Endpoint tests need FastAPI/Pydantic; they
+Full suite: `pytest` (423 tests). Endpoint tests need FastAPI/Pydantic; they
 skip automatically where those aren't installed.
 
 Two `tests/test_live_postgres.py` tests skip without `DATABASE_URL` (a real
@@ -18,7 +18,7 @@ Python **already has FastAPI/Pydantic installed** - use it, and the endpoint
 tests run instead of skipping:
 
 ```bash
-/usr/bin/python3 -m pytest tests/ -q --ignore=tests/test_live_api.py   # 341 passed
+/usr/bin/python3 -m pytest tests/ -q --ignore=tests/test_live_api.py   # 413 passed
 /usr/bin/python3 scripts/check.py                                      # consistency gate
 /usr/bin/python3 evaluation/run_evals.py                               # 22 golden + 4 simulator
 /usr/local/bin/ruff check .
