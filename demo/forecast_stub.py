@@ -1,86 +1,82 @@
 #!/usr/bin/env python3
-"""Local stand-in for the Project 1 forecast API (demo only; standard library only).
+"""Playback stand-in for the Project 1 forecast API (demo only; stdlib only).
 
 Why this exists: the agent reads every store signal from the deployed forecast
 service, so a fresh clone cannot show anything without a network round-trip to
-someone else's instance. This module serves the SAME contract locally -
-``/health``, ``/stores``, ``/predict``, ``/controls/{id}``, ``/actuals/{id}`` -
-from a small fixed table, so ``scripts/seed_demo.sh`` can run the whole agent
-offline: no API keys, no Render service, no Project 2.
+someone else's instance. This module replays REAL responses recorded from that
+service - ``/health``, ``/stores``, ``/predict``, ``/controls/{id}``,
+``/actuals/{id}`` - from ``demo/recordings.json`` (captured 2026-10-02), so
+``scripts/seed_demo.sh`` runs the whole agent offline with real numbers: no API
+keys, no Render service, no Project 2.
 
-It is a stub, not a model. The numbers are fixed per store and deliberately
-not predictions; the decision path treats them exactly as it treats the real
-feed. It is never imported by the runtime - the agent reaches it over HTTP via
-``FORECAST_API_URL``, the same seam a local forecast instance already used, so
-no production code path changes.
+It is a recording, not a model: every number it serves is a byte the real
+service once returned. It is never imported by the runtime - the agent reaches
+it over HTTP via ``FORECAST_API_URL``, the same seam a local forecast instance
+already used, so no production code path changes.
 
 Usage:
-    python3 demo/forecast_stub.py --port 8097
+    python3 demo/forecast_stub.py --port 8097 [--recordings demo/recordings.json]
 """
 from __future__ import annotations
 
 import argparse
 import json
-from datetime import date, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-# store_id -> (baseline daily sales at the store's last observed day, per-day
-# growth, last observed day). The growth spread is what makes the demo board
-# varied: a recovering store, a flat one, and two underperforming ones.
-_STORES: dict[int, tuple[float, float, int]] = {
-    31642: (2400.0, 0.0018, 560),
-    317: (1750.0, -0.0020, 560),
-    299: (3100.0, 0.0005, 560),
-    289: (1420.0, -0.0035, 560),
-    31582: (2680.0, 0.0030, 560),
-}
-_FALLBACK = (2000.0, 0.0, 560)
-
-# Part 1's calibrated DiD prior, reused verbatim so the stub's causal envelope
-# matches the value the engine already carries in `causal_baseline`.
-_CAUSAL_DID_PCT = 2.84
-_CAUSAL_CI95 = [-0.5, 6.2]
-_EPOCH = date(2024, 1, 1)
+_RECORDINGS = Path(__file__).resolve().parent / "recordings.json"
 
 
-def _predict(store_id: int, day: int) -> float:
-    """Deterministic daily sales for a store on a day index."""
-    base, growth, last_day = _STORES.get(store_id, _FALLBACK)
-    return round(base * (1.0 + growth * (day - last_day)), 2)
-
-
-def _day_date(day: int) -> str:
-    return (_EPOCH + timedelta(days=day)).isoformat()
-
-
-def _stores_payload() -> dict:
-    return {"stores": [{"store_id": store_id, "last_day": params[2]}
-                       for store_id, params in sorted(_STORES.items())]}
-
-
-def _controls_payload(store_id: int) -> dict:
+def _load_recordings(path: Path) -> dict:
+    bundle = json.loads(path.read_text(encoding="utf-8"))
     return {
-        "store_id": store_id,
-        "windows": {"pre_start": 500, "pre_end": 545, "post_start": 547, "post_end": 560},
-        "matched_controls": [{"store_id": 9001, "weight": 0.5},
-                             {"store_id": 9002, "weight": 0.5}],
-        "causal": {"did_uplift_pct": _CAUSAL_DID_PCT, "ci95_pct": list(_CAUSAL_CI95)},
-        "methodology": "demo stub: fixed DiD prior, not a live estimate",
+        "predictions": bundle["predictions"],
+        "controls": bundle["controls"],
+        "actuals": bundle["actuals"],
+        "last_day": {int(store_id): last for store_id, last in bundle["last_day"].items()},
     }
 
 
+_DATA = _load_recordings(_RECORDINGS)
+_STORE_IDS = sorted(int(store_id) for store_id in _DATA["last_day"])
+
+
+def _predict(store_id: int, day: int) -> float:
+    """Replay the recorded prediction, the verbatim real-service byte."""
+    key = f"{store_id}/{day}"
+    if key not in _DATA["predictions"]:
+        raise KeyError(f"no recorded prediction for store {store_id} day {day}")
+    return float(_DATA["predictions"][key])
+
+
+def _stores_payload() -> dict:
+    return {"stores": [{"store_id": store_id, "last_day": _DATA["last_day"][store_id]}
+                       for store_id in _STORE_IDS]}
+
+
+def _controls_payload(store_id: int) -> dict:
+    key = str(store_id)
+    if key not in _DATA["controls"]:
+        raise KeyError(f"no recorded controls for store {store_id}")
+    return _DATA["controls"][key]
+
+
 def _actuals_payload(store_id: int, query: dict) -> dict:
-    start_day = int(query.get("start_day", ["500"])[0])
-    end_day = int(query.get("end_day", [str(start_day)])[0])
-    observations = [{"day": day, "date": _day_date(day), "sales_value": _predict(store_id, day)}
-                    for day in range(start_day, end_day + 1)]
+    key = str(store_id)
+    if key not in _DATA["actuals"]:
+        raise KeyError(f"no recorded actuals for store {store_id}")
+    recorded = _DATA["actuals"][key]
+    start_day = int(query.get("start_day", [str(recorded["start_day"])])[0])
+    end_day = int(query.get("end_day", [str(recorded["end_day"])])[0])
+    observations = [obs for obs in recorded["observations"]
+                    if start_day <= obs["day"] <= end_day]
     return {
         "store_id": store_id,
         "start_day": start_day,
         "end_day": end_day,
-        "range_start_date": _day_date(start_day),
-        "range_end_date": _day_date(end_day),
+        "range_start_date": recorded["range_start_date"],
+        "range_end_date": recorded["range_end_date"],
         "observation_count": len(observations),
         "observations": observations,
     }
@@ -102,13 +98,17 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         parts = [part for part in parsed.path.split("/") if part]
         if parsed.path == "/health":
-            return self._send({"status": "ok", "stores_available": len(_STORES)})
+            return self._send({"status": "ok", "stores_available": len(_STORE_IDS),
+                               "mode": "demo-playback"})
         if parsed.path == "/stores":
             return self._send(_stores_payload())
         if len(parts) == 2 and parts[0] in ("controls", "actuals"):
-            store_id = int(parts[1])
-            payload = (_controls_payload(store_id) if parts[0] == "controls"
-                       else _actuals_payload(store_id, parse_qs(parsed.query)))
+            try:
+                store_id = int(parts[1])
+                payload = (_controls_payload(store_id) if parts[0] == "controls"
+                           else _actuals_payload(store_id, parse_qs(parsed.query)))
+            except (KeyError, ValueError):
+                return self._send({"detail": "outside the recorded demo universe"}, status=404)
             return self._send(payload)
         self._send({"detail": "not found"}, status=404)
 
@@ -120,21 +120,27 @@ class _Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(length) or b"{}")
             store_id = int(body["store_id"])
             day = int(body["day"])
+            value = _predict(store_id, day)
         except (KeyError, TypeError, ValueError, json.JSONDecodeError):
             return self._send({"detail": "store_id and day are required integers"}, status=422)
-        self._send({"store_id": store_id, "day": day,
-                    "predicted_sales_value": _predict(store_id, day)})
+        self._send({"store_id": store_id, "day": day, "predicted_sales_value": value})
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Local forecast-API stub for the demo.")
+    parser = argparse.ArgumentParser(description="Local forecast-API playback for the demo.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8097)
+    parser.add_argument("--recordings", type=Path, default=_RECORDINGS,
+                        help="recorded real-service bundle (see demo/recordings.json)")
     args = parser.parse_args()
 
+    global _DATA, _STORE_IDS  # noqa: PLW0603 - one deliberate load per process start
+    _DATA = _load_recordings(args.recordings)
+    _STORE_IDS = sorted(int(store_id) for store_id in _DATA["last_day"])
+
     server = ThreadingHTTPServer((args.host, args.port), _Handler)
-    print(f"demo forecast stub listening on http://{args.host}:{args.port} "
-          f"({len(_STORES)} stores)", flush=True)
+    print(f"demo forecast playback on http://{args.host}:{args.port} "
+          f"({len(_STORE_IDS)} real recorded stores)", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

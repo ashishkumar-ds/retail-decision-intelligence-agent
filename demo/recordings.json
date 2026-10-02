@@ -1,0 +1,1095 @@
+{
+ "captured_at": "2026-10-02",
+ "source": {
+  "forecast": "https://retail-forecast-api-7sue.onrender.com/",
+  "audit": "https://retail-campaign-automation.onrender.com/audit"
+ },
+ "predictions": {
+  "31642/714": 73.62,
+  "31642/718": 95.43,
+  "31642/711": 99.08,
+  "31642/713": 105.26,
+  "31642/712": 100.16,
+  "31642/716": 89.73,
+  "31642/715": 72.34,
+  "31642/717": 93.87,
+  "31642/719": 110.81,
+  "31642/720": 99.15,
+  "31642/721": 91.13,
+  "31642/723": 90.33,
+  "31642/722": 86.05,
+  "31642/724": 100.04,
+  "31642/726": 118.28,
+  "31642/725": 109.93,
+  "31642/727": 98.75,
+  "317/711": 122.63,
+  "317/712": 136.15,
+  "31642/728": 91.57,
+  "317/714": 67.56,
+  "317/713": 68.46,
+  "317/715": 69.48,
+  "31642/729": 91.57,
+  "317/716": 76.66,
+  "317/717": 64.92,
+  "31642/731": 101.63,
+  "317/719": 106.71,
+  "31642/730": 92.45,
+  "317/718": 79.75,
+  "317/720": 77.78,
+  "317/721": 68.8,
+  "317/722": 70.18,
+  "317/723": 75.78,
+  "317/724": 78.92,
+  "317/726": 101.88,
+  "317/725": 95.34,
+  "299/711": 94.89,
+  "317/727": 87.21,
+  "317/729": 74.98,
+  "299/712": 81.92,
+  "317/728": 74.96,
+  "299/713": 67.82,
+  "299/714": 67.01,
+  "299/715": 80.26,
+  "317/730": 76.67,
+  "299/716": 54.63,
+  "317/731": 89.91,
+  "299/718": 80.19,
+  "299/717": 57.24,
+  "299/719": 87.87,
+  "299/720": 71.59,
+  "299/721": 64.98,
+  "299/722": 68.96,
+  "299/724": 75.17,
+  "299/723": 68.14,
+  "299/726": 95.89,
+  "299/728": 70.65,
+  "289/711": 95.35,
+  "299/727": 79.85,
+  "299/725": 92.08,
+  "289/712": 99.29,
+  "299/729": 75.59,
+  "289/716": 78.64,
+  "289/714": 65.28,
+  "289/713": 80.77,
+  "289/717": 88.08,
+  "289/715": 74.09,
+  "289/718": 103.97,
+  "299/730": 76.61,
+  "289/719": 105.53,
+  "299/731": 85.07,
+  "289/720": 90.26,
+  "289/722": 85.86,
+  "289/721": 80.81,
+  "289/723": 86.87,
+  "289/725": 109.62,
+  "289/724": 96.64,
+  "289/726": 113.0,
+  "289/727": 96.37,
+  "289/728": 86.89,
+  "31582/711": 47.58,
+  "289/730": 88.03,
+  "31582/712": 86.83,
+  "31582/713": 76.05,
+  "289/729": 86.71,
+  "31582/714": 80.78,
+  "31582/715": 80.04,
+  "31582/716": 75.97,
+  "289/731": 99.32,
+  "31582/720": 93.14,
+  "31582/719": 104.6,
+  "31582/717": 89.92,
+  "31582/718": 125.24,
+  "31582/721": 89.33,
+  "31582/722": 89.57,
+  "31582/723": 89.57,
+  "31582/724": 96.15,
+  "31582/725": 118.73,
+  "31582/726": 116.37,
+  "31582/727": 100.11,
+  "31582/728": 92.55,
+  "31582/729": 92.55,
+  "31582/730": 92.45,
+  "31582/731": 103.88
+ },
+ "controls": {
+  "31582": {
+   "store_id": 31582,
+   "windows": {
+    "pre_start": 500,
+    "pre_end": 545,
+    "post_start": 547,
+    "post_end": 560
+   },
+   "matched_controls": [
+    {
+     "store_id": 288,
+     "distance": 0.5569,
+     "pre_log_mean_sales": 3.9371,
+     "pre_trend": -10.52
+    },
+    {
+     "store_id": 295,
+     "distance": 0.5466,
+     "pre_log_mean_sales": 4.2034,
+     "pre_trend": -11.58
+    },
+    {
+     "store_id": 300,
+     "distance": 0.4014,
+     "pre_log_mean_sales": 4.1969,
+     "pre_trend": -7.78
+    },
+    {
+     "store_id": 340,
+     "distance": 0.4569,
+     "pre_log_mean_sales": 3.8838,
+     "pre_trend": 1.95
+    },
+    {
+     "store_id": 358,
+     "distance": 0.5202,
+     "pre_log_mean_sales": 4.317,
+     "pre_trend": -4.17
+    },
+    {
+     "store_id": 363,
+     "distance": 0.3259,
+     "pre_log_mean_sales": 4.2181,
+     "pre_trend": -4.1
+    },
+    {
+     "store_id": 403,
+     "distance": 0.5619,
+     "pre_log_mean_sales": 4.3406,
+     "pre_trend": 3.81
+    },
+    {
+     "store_id": 436,
+     "distance": 0.3669,
+     "pre_log_mean_sales": 4.2478,
+     "pre_trend": 3.45
+    },
+    {
+     "store_id": 441,
+     "distance": 0.2935,
+     "pre_log_mean_sales": 4.2094,
+     "pre_trend": -3.36
+    },
+    {
+     "store_id": 31762,
+     "distance": 0.2634,
+     "pre_log_mean_sales": 3.9756,
+     "pre_trend": 1.98
+    }
+   ],
+   "causal": {
+    "treated_pre_daily_mean": 58.83,
+    "treated_post_daily_mean": 78.47,
+    "control_pre_daily_mean": 63.34,
+    "control_post_daily_mean": 71.08,
+    "treated_change_pct": 33.38,
+    "control_change_pct": 12.22,
+    "did_uplift_pct": 21.16
+   },
+   "methodology": {
+    "matching": "k=10 nearest neighbors on z-scored [log pre-sales level, intra-pre trend] from a pool of 100 stores with >=80% day coverage",
+    "effect": "DiD = treated pre->post change - pooled matched-control pre->post change (%)",
+    "caveat": "observational DiD, not a randomized experiment; treated-vs-control, unlike own-baseline lift, nets out market drift"
+   }
+  },
+  "299": {
+   "store_id": 299,
+   "windows": {
+    "pre_start": 500,
+    "pre_end": 545,
+    "post_start": 547,
+    "post_end": 560
+   },
+   "matched_controls": [
+    {
+     "store_id": 293,
+     "distance": 0.6539,
+     "pre_log_mean_sales": 4.4715,
+     "pre_trend": 4.85
+    },
+    {
+     "store_id": 296,
+     "distance": 0.1641,
+     "pre_log_mean_sales": 4.2732,
+     "pre_trend": 19.2
+    },
+    {
+     "store_id": 313,
+     "distance": 0.5252,
+     "pre_log_mean_sales": 4.3892,
+     "pre_trend": 25.74
+    },
+    {
+     "store_id": 338,
+     "distance": 0.6043,
+     "pre_log_mean_sales": 3.976,
+     "pre_trend": 13.04
+    },
+    {
+     "store_id": 341,
+     "distance": 0.519,
+     "pre_log_mean_sales": 4.1666,
+     "pre_trend": 27.04
+    },
+    {
+     "store_id": 365,
+     "distance": 0.2626,
+     "pre_log_mean_sales": 4.1333,
+     "pre_trend": 16.99
+    },
+    {
+     "store_id": 403,
+     "distance": 0.5266,
+     "pre_log_mean_sales": 4.3406,
+     "pre_trend": 3.81
+    },
+    {
+     "store_id": 436,
+     "distance": 0.5045,
+     "pre_log_mean_sales": 4.2478,
+     "pre_trend": 3.45
+    },
+    {
+     "store_id": 31582,
+     "distance": 0.7323,
+     "pre_log_mean_sales": 4.0915,
+     "pre_trend": 0.09
+    },
+    {
+     "store_id": 31642,
+     "distance": 0.3009,
+     "pre_log_mean_sales": 4.3599,
+     "pre_trend": 11.03
+    }
+   ],
+   "causal": {
+    "treated_pre_daily_mean": 69.17,
+    "treated_post_daily_mean": 73.05,
+    "control_pre_daily_mean": 69.48,
+    "control_post_daily_mean": 78.9,
+    "treated_change_pct": 5.62,
+    "control_change_pct": 13.55,
+    "did_uplift_pct": -7.94
+   },
+   "methodology": {
+    "matching": "k=10 nearest neighbors on z-scored [log pre-sales level, intra-pre trend] from a pool of 100 stores with >=80% day coverage",
+    "effect": "DiD = treated pre->post change - pooled matched-control pre->post change (%)",
+    "caveat": "observational DiD, not a randomized experiment; treated-vs-control, unlike own-baseline lift, nets out market drift"
+   }
+  },
+  "31642": {
+   "store_id": 31642,
+   "windows": {
+    "pre_start": 500,
+    "pre_end": 545,
+    "post_start": 547,
+    "post_end": 560
+   },
+   "matched_controls": [
+    {
+     "store_id": 289,
+     "distance": 0.5671,
+     "pre_log_mean_sales": 4.6052,
+     "pre_trend": 6.32
+    },
+    {
+     "store_id": 293,
+     "distance": 0.3549,
+     "pre_log_mean_sales": 4.4715,
+     "pre_trend": 4.85
+    },
+    {
+     "store_id": 296,
+     "distance": 0.3911,
+     "pre_log_mean_sales": 4.2732,
+     "pre_trend": 19.2
+    },
+    {
+     "store_id": 299,
+     "distance": 0.3009,
+     "pre_log_mean_sales": 4.2509,
+     "pre_trend": 15.47
+    },
+    {
+     "store_id": 306,
+     "distance": 0.5714,
+     "pre_log_mean_sales": 4.491,
+     "pre_trend": -0.78
+    },
+    {
+     "store_id": 324,
+     "distance": 0.5106,
+     "pre_log_mean_sales": 4.5859,
+     "pre_trend": 7.59
+    },
+    {
+     "store_id": 354,
+     "distance": 0.5471,
+     "pre_log_mean_sales": 4.5739,
+     "pre_trend": 4.12
+    },
+    {
+     "store_id": 365,
+     "distance": 0.5511,
+     "pre_log_mean_sales": 4.1333,
+     "pre_trend": 16.99
+    },
+    {
+     "store_id": 403,
+     "distance": 0.3059,
+     "pre_log_mean_sales": 4.3406,
+     "pre_trend": 3.81
+    },
+    {
+     "store_id": 436,
+     "distance": 0.4003,
+     "pre_log_mean_sales": 4.2478,
+     "pre_trend": 3.45
+    }
+   ],
+   "causal": {
+    "treated_pre_daily_mean": 77.25,
+    "treated_post_daily_mean": 65.34,
+    "control_pre_daily_mean": 81.27,
+    "control_post_daily_mean": 78.12,
+    "treated_change_pct": -15.42,
+    "control_change_pct": -3.88,
+    "did_uplift_pct": -11.54
+   },
+   "methodology": {
+    "matching": "k=10 nearest neighbors on z-scored [log pre-sales level, intra-pre trend] from a pool of 100 stores with >=80% day coverage",
+    "effect": "DiD = treated pre->post change - pooled matched-control pre->post change (%)",
+    "caveat": "observational DiD, not a randomized experiment; treated-vs-control, unlike own-baseline lift, nets out market drift"
+   }
+  },
+  "317": {
+   "store_id": 317,
+   "windows": {
+    "pre_start": 500,
+    "pre_end": 545,
+    "post_start": 547,
+    "post_end": 560
+   },
+   "matched_controls": [
+    {
+     "store_id": 298,
+     "distance": 0.4898,
+     "pre_log_mean_sales": 4.7856,
+     "pre_trend": 32.67
+    },
+    {
+     "store_id": 311,
+     "distance": 0.6022,
+     "pre_log_mean_sales": 4.7484,
+     "pre_trend": 28.43
+    },
+    {
+     "store_id": 313,
+     "distance": 0.8647,
+     "pre_log_mean_sales": 4.3892,
+     "pre_trend": 25.74
+    },
+    {
+     "store_id": 316,
+     "distance": 1.0123,
+     "pre_log_mean_sales": 4.5921,
+     "pre_trend": 17.7
+    },
+    {
+     "store_id": 341,
+     "distance": 1.1995,
+     "pre_log_mean_sales": 4.1666,
+     "pre_trend": 27.04
+    },
+    {
+     "store_id": 359,
+     "distance": 0.9589,
+     "pre_log_mean_sales": 4.7688,
+     "pre_trend": 19.8
+    },
+    {
+     "store_id": 364,
+     "distance": 0.6558,
+     "pre_log_mean_sales": 4.8768,
+     "pre_trend": 31.82
+    },
+    {
+     "store_id": 374,
+     "distance": 0.4656,
+     "pre_log_mean_sales": 4.575,
+     "pre_trend": 31.14
+    },
+    {
+     "store_id": 391,
+     "distance": 0.2549,
+     "pre_log_mean_sales": 4.5606,
+     "pre_trend": 37.29
+    },
+    {
+     "store_id": 438,
+     "distance": 0.3661,
+     "pre_log_mean_sales": 4.769,
+     "pre_trend": 35.93
+    }
+   ],
+   "causal": {
+    "treated_pre_daily_mean": 102.74,
+    "treated_post_daily_mean": 72.91,
+    "control_pre_daily_mean": 102.84,
+    "control_post_daily_mean": 100.51,
+    "treated_change_pct": -29.04,
+    "control_change_pct": -2.27,
+    "did_uplift_pct": -26.77
+   },
+   "methodology": {
+    "matching": "k=10 nearest neighbors on z-scored [log pre-sales level, intra-pre trend] from a pool of 100 stores with >=80% day coverage",
+    "effect": "DiD = treated pre->post change - pooled matched-control pre->post change (%)",
+    "caveat": "observational DiD, not a randomized experiment; treated-vs-control, unlike own-baseline lift, nets out market drift"
+   }
+  },
+  "289": {
+   "store_id": 289,
+   "windows": {
+    "pre_start": 500,
+    "pre_end": 545,
+    "post_start": 547,
+    "post_end": 560
+   },
+   "matched_controls": [
+    {
+     "store_id": 293,
+     "distance": 0.2962,
+     "pre_log_mean_sales": 4.4715,
+     "pre_trend": 4.85
+    },
+    {
+     "store_id": 306,
+     "distance": 0.3874,
+     "pre_log_mean_sales": 4.491,
+     "pre_trend": -0.78
+    },
+    {
+     "store_id": 315,
+     "distance": 0.3124,
+     "pre_log_mean_sales": 4.7334,
+     "pre_trend": 9.72
+    },
+    {
+     "store_id": 324,
+     "distance": 0.0679,
+     "pre_log_mean_sales": 4.5859,
+     "pre_trend": 7.59
+    },
+    {
+     "store_id": 354,
+     "distance": 0.1144,
+     "pre_log_mean_sales": 4.5739,
+     "pre_trend": 4.12
+    },
+    {
+     "store_id": 380,
+     "distance": 0.3374,
+     "pre_log_mean_sales": 4.6905,
+     "pre_trend": -0.4
+    },
+    {
+     "store_id": 400,
+     "distance": 0.2968,
+     "pre_log_mean_sales": 4.7375,
+     "pre_trend": 4.49
+    },
+    {
+     "store_id": 439,
+     "distance": 0.459,
+     "pre_log_mean_sales": 4.8067,
+     "pre_trend": 2.96
+    },
+    {
+     "store_id": 442,
+     "distance": 0.0705,
+     "pre_log_mean_sales": 4.6365,
+     "pre_trend": 6.78
+    },
+    {
+     "store_id": 446,
+     "distance": 0.3637,
+     "pre_log_mean_sales": 4.713,
+     "pre_trend": 12.96
+    }
+   ],
+   "causal": {
+    "treated_pre_daily_mean": 99.0,
+    "treated_post_daily_mean": 90.53,
+    "control_pre_daily_mean": 103.54,
+    "control_post_daily_mean": 100.83,
+    "treated_change_pct": -8.56,
+    "control_change_pct": -2.62,
+    "did_uplift_pct": -5.94
+   },
+   "methodology": {
+    "matching": "k=10 nearest neighbors on z-scored [log pre-sales level, intra-pre trend] from a pool of 100 stores with >=80% day coverage",
+    "effect": "DiD = treated pre->post change - pooled matched-control pre->post change (%)",
+    "caveat": "observational DiD, not a randomized experiment; treated-vs-control, unlike own-baseline lift, nets out market drift"
+   }
+  }
+ },
+ "actuals": {
+  "317": {
+   "store_id": 317,
+   "start_day": 540,
+   "end_day": 560,
+   "range_start_date": "2018-06-24",
+   "range_end_date": "2018-07-14",
+   "observation_count": 18,
+   "observations": [
+    {
+     "day": 540,
+     "date": "2018-06-24",
+     "sales_value": 39.4
+    },
+    {
+     "day": 541,
+     "date": "2018-06-25",
+     "sales_value": 194.94
+    },
+    {
+     "day": 542,
+     "date": "2018-06-26",
+     "sales_value": 134.17
+    },
+    {
+     "day": 543,
+     "date": "2018-06-27",
+     "sales_value": 288.89
+    },
+    {
+     "day": 544,
+     "date": "2018-06-28",
+     "sales_value": 132.45
+    },
+    {
+     "day": 545,
+     "date": "2018-06-29",
+     "sales_value": 253.19
+    },
+    {
+     "day": 546,
+     "date": "2018-06-30",
+     "sales_value": 38.58
+    },
+    {
+     "day": 547,
+     "date": "2018-07-01",
+     "sales_value": 37.51
+    },
+    {
+     "day": 548,
+     "date": "2018-07-02",
+     "sales_value": 141.15
+    },
+    {
+     "day": 549,
+     "date": "2018-07-03",
+     "sales_value": 60.4
+    },
+    {
+     "day": 550,
+     "date": "2018-07-04",
+     "sales_value": 18.67
+    },
+    {
+     "day": 552,
+     "date": "2018-07-06",
+     "sales_value": 54.21
+    },
+    {
+     "day": 553,
+     "date": "2018-07-07",
+     "sales_value": 67.7
+    },
+    {
+     "day": 554,
+     "date": "2018-07-08",
+     "sales_value": 16.58
+    },
+    {
+     "day": 555,
+     "date": "2018-07-09",
+     "sales_value": 25.43
+    },
+    {
+     "day": 557,
+     "date": "2018-07-11",
+     "sales_value": 20.11
+    },
+    {
+     "day": 558,
+     "date": "2018-07-12",
+     "sales_value": 119.44
+    },
+    {
+     "day": 559,
+     "date": "2018-07-13",
+     "sales_value": 240.81
+    }
+   ]
+  },
+  "299": {
+   "store_id": 299,
+   "start_day": 540,
+   "end_day": 560,
+   "range_start_date": "2018-06-24",
+   "range_end_date": "2018-07-14",
+   "observation_count": 20,
+   "observations": [
+    {
+     "day": 540,
+     "date": "2018-06-24",
+     "sales_value": 25.17
+    },
+    {
+     "day": 541,
+     "date": "2018-06-25",
+     "sales_value": 26.34
+    },
+    {
+     "day": 542,
+     "date": "2018-06-26",
+     "sales_value": 191.61
+    },
+    {
+     "day": 543,
+     "date": "2018-06-27",
+     "sales_value": 92.56
+    },
+    {
+     "day": 544,
+     "date": "2018-06-28",
+     "sales_value": 125.22
+    },
+    {
+     "day": 545,
+     "date": "2018-06-29",
+     "sales_value": 49.53
+    },
+    {
+     "day": 546,
+     "date": "2018-06-30",
+     "sales_value": 23.36
+    },
+    {
+     "day": 547,
+     "date": "2018-07-01",
+     "sales_value": 1.0
+    },
+    {
+     "day": 548,
+     "date": "2018-07-02",
+     "sales_value": 183.02
+    },
+    {
+     "day": 549,
+     "date": "2018-07-03",
+     "sales_value": 133.96
+    },
+    {
+     "day": 550,
+     "date": "2018-07-04",
+     "sales_value": 121.13
+    },
+    {
+     "day": 551,
+     "date": "2018-07-05",
+     "sales_value": 166.34
+    },
+    {
+     "day": 552,
+     "date": "2018-07-06",
+     "sales_value": 66.54
+    },
+    {
+     "day": 553,
+     "date": "2018-07-07",
+     "sales_value": 4.84
+    },
+    {
+     "day": 555,
+     "date": "2018-07-09",
+     "sales_value": 25.92
+    },
+    {
+     "day": 556,
+     "date": "2018-07-10",
+     "sales_value": 26.65
+    },
+    {
+     "day": 557,
+     "date": "2018-07-11",
+     "sales_value": 33.11
+    },
+    {
+     "day": 558,
+     "date": "2018-07-12",
+     "sales_value": 50.73
+    },
+    {
+     "day": 559,
+     "date": "2018-07-13",
+     "sales_value": 76.58
+    },
+    {
+     "day": 560,
+     "date": "2018-07-14",
+     "sales_value": 59.86
+    }
+   ]
+  },
+  "31642": {
+   "store_id": 31642,
+   "start_day": 540,
+   "end_day": 560,
+   "range_start_date": "2018-06-24",
+   "range_end_date": "2018-07-14",
+   "observation_count": 21,
+   "observations": [
+    {
+     "day": 540,
+     "date": "2018-06-24",
+     "sales_value": 9.58
+    },
+    {
+     "day": 541,
+     "date": "2018-06-25",
+     "sales_value": 36.41
+    },
+    {
+     "day": 542,
+     "date": "2018-06-26",
+     "sales_value": 8.98
+    },
+    {
+     "day": 543,
+     "date": "2018-06-27",
+     "sales_value": 65.26
+    },
+    {
+     "day": 544,
+     "date": "2018-06-28",
+     "sales_value": 54.02
+    },
+    {
+     "day": 545,
+     "date": "2018-06-29",
+     "sales_value": 90.04
+    },
+    {
+     "day": 546,
+     "date": "2018-06-30",
+     "sales_value": 119.42
+    },
+    {
+     "day": 547,
+     "date": "2018-07-01",
+     "sales_value": 52.61
+    },
+    {
+     "day": 548,
+     "date": "2018-07-02",
+     "sales_value": 125.78
+    },
+    {
+     "day": 549,
+     "date": "2018-07-03",
+     "sales_value": 22.17
+    },
+    {
+     "day": 550,
+     "date": "2018-07-04",
+     "sales_value": 16.91
+    },
+    {
+     "day": 551,
+     "date": "2018-07-05",
+     "sales_value": 52.75
+    },
+    {
+     "day": 552,
+     "date": "2018-07-06",
+     "sales_value": 11.36
+    },
+    {
+     "day": 553,
+     "date": "2018-07-07",
+     "sales_value": 15.9
+    },
+    {
+     "day": 554,
+     "date": "2018-07-08",
+     "sales_value": 25.86
+    },
+    {
+     "day": 555,
+     "date": "2018-07-09",
+     "sales_value": 4.49
+    },
+    {
+     "day": 556,
+     "date": "2018-07-10",
+     "sales_value": 41.22
+    },
+    {
+     "day": 557,
+     "date": "2018-07-11",
+     "sales_value": 147.27
+    },
+    {
+     "day": 558,
+     "date": "2018-07-12",
+     "sales_value": 25.3
+    },
+    {
+     "day": 559,
+     "date": "2018-07-13",
+     "sales_value": 349.5
+    },
+    {
+     "day": 560,
+     "date": "2018-07-14",
+     "sales_value": 23.66
+    }
+   ]
+  },
+  "289": {
+   "store_id": 289,
+   "start_day": 540,
+   "end_day": 560,
+   "range_start_date": "2018-06-24",
+   "range_end_date": "2018-07-14",
+   "observation_count": 21,
+   "observations": [
+    {
+     "day": 540,
+     "date": "2018-06-24",
+     "sales_value": 68.97
+    },
+    {
+     "day": 541,
+     "date": "2018-06-25",
+     "sales_value": 96.14
+    },
+    {
+     "day": 542,
+     "date": "2018-06-26",
+     "sales_value": 21.04
+    },
+    {
+     "day": 543,
+     "date": "2018-06-27",
+     "sales_value": 101.37
+    },
+    {
+     "day": 544,
+     "date": "2018-06-28",
+     "sales_value": 129.43
+    },
+    {
+     "day": 545,
+     "date": "2018-06-29",
+     "sales_value": 48.05
+    },
+    {
+     "day": 546,
+     "date": "2018-06-30",
+     "sales_value": 41.3
+    },
+    {
+     "day": 547,
+     "date": "2018-07-01",
+     "sales_value": 46.82
+    },
+    {
+     "day": 548,
+     "date": "2018-07-02",
+     "sales_value": 90.3
+    },
+    {
+     "day": 549,
+     "date": "2018-07-03",
+     "sales_value": 73.33
+    },
+    {
+     "day": 550,
+     "date": "2018-07-04",
+     "sales_value": 5.99
+    },
+    {
+     "day": 551,
+     "date": "2018-07-05",
+     "sales_value": 51.4
+    },
+    {
+     "day": 552,
+     "date": "2018-07-06",
+     "sales_value": 86.63
+    },
+    {
+     "day": 553,
+     "date": "2018-07-07",
+     "sales_value": 29.18
+    },
+    {
+     "day": 554,
+     "date": "2018-07-08",
+     "sales_value": 51.08
+    },
+    {
+     "day": 555,
+     "date": "2018-07-09",
+     "sales_value": 28.44
+    },
+    {
+     "day": 556,
+     "date": "2018-07-10",
+     "sales_value": 53.16
+    },
+    {
+     "day": 557,
+     "date": "2018-07-11",
+     "sales_value": 95.37
+    },
+    {
+     "day": 558,
+     "date": "2018-07-12",
+     "sales_value": 413.49
+    },
+    {
+     "day": 559,
+     "date": "2018-07-13",
+     "sales_value": 116.7
+    },
+    {
+     "day": 560,
+     "date": "2018-07-14",
+     "sales_value": 125.48
+    }
+   ]
+  },
+  "31582": {
+   "store_id": 31582,
+   "start_day": 540,
+   "end_day": 560,
+   "range_start_date": "2018-06-24",
+   "range_end_date": "2018-07-14",
+   "observation_count": 19,
+   "observations": [
+    {
+     "day": 540,
+     "date": "2018-06-24",
+     "sales_value": 68.18
+    },
+    {
+     "day": 541,
+     "date": "2018-06-25",
+     "sales_value": 6.99
+    },
+    {
+     "day": 542,
+     "date": "2018-06-26",
+     "sales_value": 15.73
+    },
+    {
+     "day": 543,
+     "date": "2018-06-27",
+     "sales_value": 27.34
+    },
+    {
+     "day": 544,
+     "date": "2018-06-28",
+     "sales_value": 61.36
+    },
+    {
+     "day": 546,
+     "date": "2018-06-30",
+     "sales_value": 30.63
+    },
+    {
+     "day": 547,
+     "date": "2018-07-01",
+     "sales_value": 3.49
+    },
+    {
+     "day": 548,
+     "date": "2018-07-02",
+     "sales_value": 34.78
+    },
+    {
+     "day": 549,
+     "date": "2018-07-03",
+     "sales_value": 53.93
+    },
+    {
+     "day": 550,
+     "date": "2018-07-04",
+     "sales_value": 120.81
+    },
+    {
+     "day": 551,
+     "date": "2018-07-05",
+     "sales_value": 30.47
+    },
+    {
+     "day": 552,
+     "date": "2018-07-06",
+     "sales_value": 17.33
+    },
+    {
+     "day": 553,
+     "date": "2018-07-07",
+     "sales_value": 139.96
+    },
+    {
+     "day": 554,
+     "date": "2018-07-08",
+     "sales_value": 22.67
+    },
+    {
+     "day": 555,
+     "date": "2018-07-09",
+     "sales_value": 253.66
+    },
+    {
+     "day": 556,
+     "date": "2018-07-10",
+     "sales_value": 71.13
+    },
+    {
+     "day": 558,
+     "date": "2018-07-12",
+     "sales_value": 76.03
+    },
+    {
+     "day": 559,
+     "date": "2018-07-13",
+     "sales_value": 58.64
+    },
+    {
+     "day": 560,
+     "date": "2018-07-14",
+     "sales_value": 137.17
+    }
+   ]
+  }
+ },
+ "last_day": {
+  "31642": 711,
+  "317": 711,
+  "299": 711,
+  "289": 711,
+  "31582": 711
+ }
+}

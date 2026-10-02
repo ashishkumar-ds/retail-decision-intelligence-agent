@@ -1,23 +1,28 @@
-# Demo assets — self-contained, offline
+# Demo assets — a self-contained, offline twin of the two external feeds
 
-Two fixtures that let `bash scripts/seed_demo.sh` run the whole agent with **no
+Two recordings that let `bash scripts/seed_demo.sh` run the whole agent with **no
 API keys, no Render services, and no Project 2**. They exist because a fresh
 clone otherwise boots healthy but empty: the store universe comes from Project 2
 and the store signals come from the deployed forecast service.
 
-| File | Plays the role of | Read by |
+| File | Real source (where the bytes came from) | Read by |
 | --- | --- | --- |
-| `campaign_audit.jsonl` | Project 2's read-only audit log (`GET /audit`) | `tools/campaign_tool.py` via `CAMPAIGN_AUDIT_LOG_PATH` |
-| `forecast_stub.py` | the Project 1 forecast API | `tools/forecast_tool.py` via `FORECAST_API_URL` |
+| `campaign_audit.jsonl` | `GET /audit` on the campaign service — the Campaign 18 run, verbatim | `tools/campaign_tool.py` via `CAMPAIGN_AUDIT_LOG_PATH` |
+| `recordings.json` | the forecast service: `/predict` (5 stores x 21 days), `/controls` and `/actuals` per store, captured 2026-10-02 | `demo/forecast_stub.py`, then `tools/forecast_tool.py` via `FORECAST_API_URL` |
+| `forecast_stub.py` | replay server: serves the recorded bytes over the real contract | started by `scripts/seed_demo.sh` |
 
-**These are fixtures, not models or real data.** The stub's numbers are fixed
-per store so the decision path stays deterministic and recomputable — the same
-property the golden cases pin. Real deployments point the two variables at the
-real services; `scripts/seed_demo.sh` only sets them when you have not.
+**These are recordings, not estimates.** Every sales and uplift number the demo
+shows is a byte the real services once returned - which is exactly why the demo
+recommendations are honest, not theatrical. Refresh them by deleting
+`recordings.json` and asking a maintainer to re-run the capture against the
+live services (the steps are the `curl` commands behind `tools/*`, one endpoint
+each - no new tooling).
 
-The store ids are the real ones from Project 2's `Campaign 18` run, so the demo
-exercise is faithful even though the sales numbers are synthetic.
+Real deployments point the two variables at the real services;
+`scripts/seed_demo.sh` only defaults to these recordings when you have set
+nothing.
 
-`tests/test_demo_fixture.py` pins the contract: the fixture survives the same
-parser the runtime uses, the stub satisfies the real `forecast_tool` validators,
-and every store in the audit fixture has forecast data.
+`tests/test_demo_fixtures.py` pins the contract: both fixtures survive the same
+runtime parsers the live path uses, the playback satisfies the real
+`forecast_tool` validators, and every store in the audit line has recorded
+signal.
