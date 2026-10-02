@@ -24,6 +24,14 @@ export PYTHONPATH=.
 
 PYTHON="$(command -v python3 || command -v python)"
 
+# What the operator already had before this script defaults anything. The
+# closing summary must describe the run that actually happened: fully local
+# only when nothing external was in play. A localhost URL is local tooling,
+# not an external service.
+HAS_FORECAST_URL="${FORECAST_API_URL:-}"
+HAS_AUDIT_URL="${CAMPAIGN_AUDIT_API_URL:-}"
+_is_remote() { case "$1" in *localhost*|*127.0.0.1*|"") return 1;; *) return 0;; esac; }
+
 DEMO_STATE="$(mktemp -d)"
 STUB_PID=""
 cleanup() {
@@ -104,6 +112,17 @@ print("stores: %s | needs_intervention: %s | working_well: %s | recovering: %s |
     d["total_stores"], c["needs_intervention"], c["working_well"], c["recovering"], c["watch"]))
 '
 echo
-echo "Demo is ready - no external services were needed."
+USE_LOCAL_AUDIT=0; [ -z "$HAS_AUDIT_URL" ] && USE_LOCAL_AUDIT=1
+USE_LOCAL_FORECAST=0; [ -z "$HAS_FORECAST_URL" ] && USE_LOCAL_FORECAST=1
+# ponytail: the "no external services" banner stays conditional in the demo
+# entry point (the script owns its claim); no decision-path code changes for
+# a demo.
+if [ "$USE_LOCAL_AUDIT" = 1 ] && [ "$USE_LOCAL_FORECAST" = 1 ]; then
+  echo "Demo is ready - no external services were needed."
+else
+  echo "Demo is ready - served with external services:"
+  _is_remote "$HAS_FORECAST_URL" && echo "  forecast: $HAS_FORECAST_URL"
+  _is_remote "$HAS_AUDIT_URL" && echo "  campaign audit: $HAS_AUDIT_URL"
+fi
 echo "  Dashboard:   http://localhost:8001/ui"
 echo "  Walkthrough: DEMO.md"

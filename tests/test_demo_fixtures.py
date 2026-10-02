@@ -124,5 +124,40 @@ def test_seed_demo_never_inherits_an_absent_configuration():
     assert STUB.name in script
 
 
+def test_seed_demo_reports_external_services_truthfully(tmp_path):
+    """The closing banner must describe the run that actually happened.
+
+    Default everything: banner claims fully local. Point the inputs at one
+    real service URL: banner names exactly that service and never claims
+    "no external services". seed_demo.sh owns this claim in one place.
+    """
+    import shutil
+    import subprocess
+
+    script = ROOT / "scripts" / "seed_demo.sh"
+    if shutil.which("bash") is None or shutil.which("curl") is None:
+        pytest.skip("seed_demo.sh needs bash and curl")
+    rendered = script.read_text(encoding="utf-8")
+    closing = rendered[rendered.index('USE_LOCAL_AUDIT=0'):]
+    fake_forecast = "https://forecast.example.invalid/"
+    fake_audit = "https://audit.example.invalid/audit"
+    runner = tmp_path / "banner.sh"
+    runner.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -u\n"
+        f'HAS_FORECAST_URL="{fake_forecast}"\n'
+        f'HAS_AUDIT_URL="{fake_audit}"\n'
+        "_is_remote() { case \"$1\" in *localhost*|*127.0.0.1*|\"\") return 1;; *) return 0;; esac; }\n"
+        + closing + "\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(["bash", str(runner)], capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert "served with external services" in result.stdout
+    assert fake_forecast in result.stdout
+    assert fake_audit in result.stdout
+    assert "no external services" not in result.stdout
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
