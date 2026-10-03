@@ -112,8 +112,10 @@ print("stores: %s | needs_intervention: %s | working_well: %s | recovering: %s |
     d["total_stores"], c["needs_intervention"], c["working_well"], c["recovering"], c["watch"]))
 '
 echo
-USE_LOCAL_AUDIT=0; [ -z "$HAS_AUDIT_URL" ] && USE_LOCAL_AUDIT=1
-USE_LOCAL_FORECAST=0; [ -z "$HAS_FORECAST_URL" ] && USE_LOCAL_FORECAST=1
+USE_LOCAL_AUDIT=1
+if _is_remote "$HAS_AUDIT_URL"; then USE_LOCAL_AUDIT=0; fi
+USE_LOCAL_FORECAST=1
+if _is_remote "$HAS_FORECAST_URL"; then USE_LOCAL_FORECAST=0; fi
 # ponytail: the "no external services" banner stays conditional in the demo
 # entry point (the script owns its claim); no decision-path code changes for
 # a demo.

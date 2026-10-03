@@ -31,7 +31,7 @@ from app.config import (
     root_cause_tagging_enabled,
 )
 from app.meta import VERSION
-from app.monitor import is_campaign_working, rank_attention
+from app.monitor import rank_attention, ranked_attention_queue
 from app.scheduler import (
     SWEEP_ENABLED_ENV,
     SweepScheduler,
@@ -525,10 +525,7 @@ def get_attention_queue():
     urgency (low health, few days, low confidence, negative lift). Pure read
     over the pending-approval queue; add ?store_id= to filter.
     """
-    ranked = rank_attention(list(_pending_approvals.values()))
-    # Enrich each with is_campaign_working for the dashboard
-    for rec in ranked:
-        rec["campaign_working"] = is_campaign_working(rec)
+    ranked = ranked_attention_queue(list(_pending_approvals.values()))
     return {"count": len(ranked), "queue": ranked}
 
 
@@ -545,9 +542,7 @@ def monitor_sweep(_auth: str = Depends(_require_approval_auth)):
     warm_up()  # absorb a Render cold start once, instead of in every store's first call
     audit_runs, all_store_ids = _fetch_audit_store_ids()
     results, newly_logged, batch_check = _evaluate_and_persist_stores(audit_runs, all_store_ids)
-    ranked = rank_attention(list(_pending_approvals.values()))
-    for rec in ranked:
-        rec["campaign_working"] = is_campaign_working(rec)
+    ranked = ranked_attention_queue(list(_pending_approvals.values()))
     return {
         "swept_at": utcnow_iso(),
         "total_stores_evaluated": len(results),
@@ -1404,9 +1399,7 @@ def get_status_board():
     intervention, where the campaign is working, and why it is not working
     where it is not. Pure classification over the persisted recommendation log;
     intervention entries are ordered by the monitor's attention ranking."""
-    ranked = rank_attention(list(_pending_approvals.values()))
-    for rec in ranked:
-        rec["campaign_working"] = is_campaign_working(rec)
+    ranked = ranked_attention_queue(list(_pending_approvals.values()))
     board = build_board(
         read_log(),
         ranked_attention=ranked,
@@ -1522,7 +1515,7 @@ def root() -> RedirectResponse:
 
 @app.get("/ui", response_class=HTMLResponse)
 def ui_dashboard():
-    attention = rank_attention(list(_pending_approvals.values()))
+    attention = ranked_attention_queue(list(_pending_approvals.values()))
     return render_page(
         "Decision dashboard", "/ui",
         render_dashboard(_pending_approvals.values(), read_log(), attention),

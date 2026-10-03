@@ -21,6 +21,15 @@ from presentation.board import (
 )
 
 
+def ranked_queue_matches_exhaustive_composition(pending, ranked):
+    """The seam contract: one call equals rank + enrich verbatim. Internal seam."""
+    from app.monitor import is_campaign_working as _working
+    from app.monitor import rank_attention as _rank
+    expected = _rank(list(pending))
+    for rec in expected:
+        rec["campaign_working"] = _working(rec)
+    return ranked == expected
+
 def _rec(store_id: int = 1, **overrides) -> dict:
     base = {
         "store_id": store_id,
@@ -42,6 +51,21 @@ def _outcome(assessment="MEETS_TARGET", uplift=4.2, did=3.5, state="CONFIRMED") 
         "target_assessment": assessment, "actual_uplift_pct": uplift,
         "causal_evidence": {"assessment_state": state, "did_uplift_pct": did},
     }}
+
+
+def test_ranked_attention_queue_is_one_call_for_rank_plus_enrich():
+    from app.monitor import ranked_attention_queue
+    pending = [
+        _rec(3, recommendation="ESCALATE", store_health_score=30.0,
+             recovery_pct=-5.0, requires_human_approval=True),
+        _rec(9, recommendation="EXTEND_INTERVENTION", store_health_score=45.0,
+             recovery_pct=-1.0, requires_human_approval=True),
+    ]
+    ranked = ranked_attention_queue(pending)
+    assert [r["store_id"] for r in ranked] == [3, 9]
+    assert all("campaign_working" in r for r in ranked)
+    assert ranked_queue_matches_exhaustive_composition(pending, ranked)
+    assert pending[0].get("campaign_working") is None  # inputs are not mutated
 
 
 def test_working_well_on_health_and_on_outcome():

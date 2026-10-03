@@ -138,7 +138,8 @@ def test_seed_demo_reports_external_services_truthfully(tmp_path):
     if shutil.which("bash") is None or shutil.which("curl") is None:
         pytest.skip("seed_demo.sh needs bash and curl")
     rendered = script.read_text(encoding="utf-8")
-    closing = rendered[rendered.index('USE_LOCAL_AUDIT=0'):]
+    anchor = "USE_LOCAL_AUDIT=1"
+    closing = rendered[rendered.index(anchor):]
     fake_forecast = "https://forecast.example.invalid/"
     fake_audit = "https://audit.example.invalid/audit"
     runner = tmp_path / "banner.sh"

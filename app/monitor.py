@@ -123,3 +123,18 @@ def is_campaign_working(rec: Mapping[str, Any]) -> dict[str, Any]:
     if assess == "REVIEW_ZONE":
         return {"working": None, "evidence": "REVIEW_ZONE 0-3% within noise", "uplift": uplift, "did": did}
     return {"working": None, "evidence": assess or "unknown", "uplift": uplift}
+
+
+def ranked_attention_queue(pending: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """One deep seam for the repeated recipe across serving endpoints.
+
+    codebase-design: ranks pending approvals AND stamps the per-store working
+    verdict in one traversal. The interface is the whole recipe (rank +
+    enrich + campaign verdict), so callers learn one name instead of three
+    and the composition lives in one tested place. Pure function over record
+    dicts: takes a snapshot, returns fresh dicts, writes nothing.
+    """
+    ranked = rank_attention(list(pending))
+    for rec in ranked:
+        rec["campaign_working"] = is_campaign_working(rec)
+    return ranked
