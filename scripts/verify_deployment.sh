@@ -109,8 +109,19 @@ if [ -n "$TOKEN" ]; then
     else
         fail "/metrics answered $code with the token (expected 200 + retail_decisions_total)"
     fi
+    # A *mismatched* token is a 403 by contract: 401 is reserved for a
+    # missing/malformed header, which part 4 already checks. This branch sat
+    # unexercised for as long as it existed - it only runs when a token is
+    # passed, and the live service had no credential until 2026-10-03 - so it
+    # asserted the wrong code and failed the first real run.
     code="$(status "$BASE/metrics" -H "Authorization: Bearer definitely-wrong-token")"
-    if [ "$code" = "401" ]; then pass "a wrong token is rejected (401)"; else fail "a wrong token answered $code (expected 401)"; fi
+    if [ "$code" = "403" ]; then
+        pass "a wrong token is rejected (403 - present but unrecognised)"
+    elif [ "$code" = "401" ]; then
+        fail "a wrong token answered 401: a present-but-wrong token is a mismatch (403), not a missing header"
+    else
+        fail "a wrong token answered $code (expected 403)"
+    fi
 else
     warn "no token supplied - the authenticated checks were skipped (pass it as the 2nd argument)"
 fi
