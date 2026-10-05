@@ -104,6 +104,8 @@ guardrails, tools, RAG, evaluation, stakeholder surfaces — lives in the
 | `/why/{store_id}` | GET | Grounded, cited explanation |
 | `/advisory/{store_id}` | GET | LLM triage suggestion above the human gate (read-only, never auto-applied) |
 | `/simulate/{store_id}` | GET | Pre-approval backtest: calibrated causal prior replayed on the observed baseline |
+| `/simulate/{store_id}/compare` | GET | Pre-approval choice set: CONTINUE vs spend actions ranked by expected margin |
+| `/analytics/decision-quality` | GET | Acceptance, causal confirmation, reversal, margin per intervention, regret (auth) |
 | `/pending-approvals`, `/attention-queue` | GET | Approval queue and triage digest |
 | `/approve/{store_id}`, `/reject/{store_id}` | POST | Human decision (auth) |
 | `/execute/{store_id}` | POST | Execute the store's approved recommendation (gated, idempotent, reversible; auth) |

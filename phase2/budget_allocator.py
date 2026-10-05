@@ -66,10 +66,14 @@ class BudgetAllocationPlan:
             "score": (
                 "expected_incremental_margin * confidence, where margin = "
                 "baseline_daily_sales * " + str(EVALUATION_WINDOW_DAYS)
-                + " days * expected_lift_pct/100 * " + str(MARGIN_RATE)
+                + " days * expected_lift_pct/100 * margin_rate"
                 + " - campaign_cost"
             ),
-            "margin_rate": f"{MARGIN_RATE:.2f} (assumed gross margin; publish-and-pin)",
+            "margin_rate": (
+                f"{MARGIN_RATE:.2f} default (flat gross margin); a candidate may "
+                "override it with its own store-specific margin_rate in "
+                "(0, 1] (see tools/retail_context.py derive_store_margin)"
+            ),
             "eligibility": "is_eligible AND evidence_state == SUFFICIENT AND expected_lift_pct > 0 AND expected_margin > 0",
             "cap": f"per-store allocation capped at {MAX_STORE_SHARE:.0%} of total budget",
             "min_allocation": f"allocations below ${MIN_ALLOCATION} are dropped (unallocated)",
@@ -109,13 +113,20 @@ def _validate_candidate(candidate: object) -> dict[str, Any]:
     if (not isinstance(confidence, (int, float)) or isinstance(confidence, bool)
             or not 0 <= confidence <= 1):
         raise BudgetAllocatorError(f"store {sid}: confidence must be a number in [0, 1]")
+    margin_rate = candidate.get("margin_rate", MARGIN_RATE)
+    if isinstance(margin_rate, bool) or not isinstance(margin_rate, (int, float)):
+        raise BudgetAllocatorError(f"store {sid}: margin_rate must be a number in (0, 1]")
+    if not 0 < margin_rate <= 1:
+        raise BudgetAllocatorError(f"store {sid}: margin_rate must be a number in (0, 1]")
     return {"sid": sid, "lift": lift, "confidence": confidence,
-            "baseline": float(baseline), "campaign_cost": float(campaign_cost)}
+            "baseline": float(baseline), "campaign_cost": float(campaign_cost),
+            "margin_rate": float(margin_rate)}
 
 
-def _expected_margin(lift: float, baseline: float, campaign_cost: float) -> float:
+def _expected_margin(lift: float, baseline: float, campaign_cost: float,
+                     margin_rate: float = MARGIN_RATE) -> float:
     """Expected incremental margin over the evaluation window (money)."""
-    return baseline * EVALUATION_WINDOW_DAYS * lift / 100.0 * MARGIN_RATE - campaign_cost
+    return baseline * EVALUATION_WINDOW_DAYS * lift / 100.0 * margin_rate - campaign_cost
 
 
 def _exclusion_reason(candidate: Mapping[str, Any], lift: float, expected_margin: float) -> str | None:
@@ -142,7 +153,8 @@ def _score_candidates(
     for candidate in candidates:
         validated = _validate_candidate(candidate)
         sid, lift = validated["sid"], validated["lift"]
-        margin = _expected_margin(lift, validated["baseline"], validated["campaign_cost"])
+        margin = _expected_margin(lift, validated["baseline"], validated["campaign_cost"],
+                                  validated["margin_rate"])
         reason = _exclusion_reason(candidate, lift, margin)
         if reason is not None:
             excluded.append({"store_id": sid, "reason": reason})

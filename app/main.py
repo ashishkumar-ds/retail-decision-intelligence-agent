@@ -51,7 +51,7 @@ from approvals.identity import (
 from approvals.ledger import append_decision, decision_gate, read_decisions, utcnow_iso
 from decision_engine.engine import DecisionEngine
 from decision_engine.scorer import StoreSignal
-from decision_engine.simulator import simulate_intervention
+from decision_engine.simulator import compare_candidate_actions, simulate_intervention
 from decision_engine.verifier import verify_batch
 from execution.connector import (
     ExecutionAlreadyReversed,
@@ -125,6 +125,7 @@ from tools.forecast_tool import (
     get_store_info,
     warm_up,
 )
+from tools.retail_context import annotate_retail_context, get_store_retail_row
 
 logger = logging.getLogger("retail_decision_agent")
 logging.basicConfig(level=logging.INFO)
@@ -307,6 +308,10 @@ def _outcome_evidence_by_store() -> dict[int, dict]:
             "actual_uplift_pct": payload.get("actual_uplift_pct"),
             "target_assessment": payload.get("target_assessment"),
             "outcome_id": payload.get("outcome_id"),
+            # Baseline anchors for decision-quality margin math
+            # (analytics/decision_quality.py); absent on old events.
+            "baseline_value": payload.get("baseline_value"),
+            "recent_observation_value": payload.get("recent_observation_value"),
             # Matched-control DiD evidence (Priority 3 causal guardrail), when
             # the outcome was evaluated with auto_controls enabled.
             **({"causal_evidence": payload["causal_evidence"]}
@@ -372,10 +377,44 @@ def evaluate_store(store_id: int, audit_runs: list, outcome_evidence: dict | Non
     if signal is None:
         return None
 
+    # Retail context (P2 store totals → margin proxy) is best-effort and
+    # fail-open: any failure leaves the decision byte-identical.
+    retail_context = None
+    try:
+        row = get_store_retail_row(store_id)
+        retail_context = annotate_retail_context(store_id, row, None)
+        try:
+            from tools.sku_context import annotate_sku_context, get_store_skus
+
+            sku_block = annotate_sku_context(store_id, get_store_skus(store_id))
+        except Exception as sku_error:
+            logger.warning("[SKU CONTEXT] store %s lookup failed: %s",
+                           store_id, type(sku_error).__name__)
+            sku_block = None
+        if sku_block is not None:
+            if retail_context is None:
+                retail_context = {"store_id": store_id, "demand_vs_supply": "UNKNOWN",
+                                  "margin_rate": None, "discount_rate": None,
+                                  "avg_unit_value": None, "ops_flag": None}
+            retail_context = dict(retail_context)
+            retail_context["sku"] = sku_block
+            if sku_block["demand_vs_supply"] == "POSSIBLE_SUPPLY_GAP":
+                retail_context["demand_vs_supply"] = "POSSIBLE_SUPPLY_GAP"
+                retail_context["ops_flag"] = (
+                    "SKU rollup flags suspected stockouts in top sellers - "
+                    "verify inventory with ops before extending spend; "
+                    "low sales here may not be weak demand."
+                )
+    except Exception as error:
+        logger.warning("[RETAIL CONTEXT] store %s margin lookup failed: %s: %s",
+                       store_id, type(error).__name__, error)
+        retail_context = None
+
     # Pure decision core (decision_engine/engine.py): the pipeline runs inside
     # the engine and records its own trajectory into the record. This function
     # keeps the I/O: the adapters above and the flat timestamped run log here.
-    rec = _decision_engine.evaluate(signal, outcome_evidence=outcome_evidence)
+    rec = _decision_engine.evaluate(signal, outcome_evidence=outcome_evidence,
+                                    retail_context=retail_context)
     for step in rec["trajectory"]["steps"]:
         log_run_step(store_id, step["step"], step["status"], step["detail"])
 
@@ -679,6 +718,38 @@ def root_cause_analytics(_auth: str = Depends(_require_approval_auth)):
     """
     from analytics.root_cause import tag_recommendations
     return jsonable_encoder(tag_recommendations(read_log()))
+
+
+@app.get("/analytics/decision-quality")
+def decision_quality_analytics(_auth: str = Depends(_require_approval_auth)):
+    """Decision-quality metrics over the audit trail (read-only, auth).
+
+    Acceptance, causal confirmation, false-intervention and reversal rates,
+    realised incremental margin per intervention, and regret versus the
+    do-nothing counterfactual — all recomputed from the recommendation log,
+    approval ledger and execution journal. Per-store margin overrides come
+    from the P2 store-totals proxy best-effort (fail-open to the default).
+    """
+    from analytics.decision_quality import compute_decision_quality
+    from execution.journal import read_events
+
+    store_margins: dict[int, float] = {}
+    try:
+        for record in read_log():
+            sid = record.get("store_id")
+            if not isinstance(sid, int) or isinstance(sid, bool) or sid in store_margins:
+                continue
+            try:
+                block = annotate_retail_context(sid, get_store_retail_row(sid), None)
+            except Exception:
+                continue
+            if block and isinstance(block.get("margin_rate"), (int, float)):
+                store_margins[sid] = block["margin_rate"]
+    except Exception as error:
+        logger.warning("[DECISION QUALITY] margin lookup failed: %s", type(error).__name__)
+    return jsonable_encoder(compute_decision_quality(
+        read_log(), read_decisions(), read_events(), store_margins=store_margins,
+    ))
 
 
 def _ledger_metric_lines(decisions: list[dict]) -> list[str]:
@@ -1482,6 +1553,65 @@ def simulate_store_intervention(store_id: int, started_day: int):
         started_day,
         pre_window_days=BASELINE_DAYS,
         evaluation_window_days=EVALUATION_WINDOW_DAYS,
+    )
+
+
+@app.get("/simulate/{store_id}/compare")
+def compare_store_actions(
+    store_id: int,
+    started_day: int,
+    margin_rate: float | None = None,
+    campaign_cost: float = 0.0,
+):
+    """Pre-approval choice set: rank CONTINUE vs spend actions by expected margin.
+
+    Spend actions share the calibrated causal prior (same lift); they separate
+    on cost, store margin and reversibility risk. ``margin_rate`` overrides the
+    store margin proxy when given; otherwise the P2 store-totals proxy is used
+    best-effort (fail-open to the 0.25 default). ``campaign_cost`` applies to
+    every spend action; do-nothing actions always cost 0. Read-only, no auth.
+    """
+    if started_day <= BASELINE_DAYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"started_day must exceed the baseline window ({BASELINE_DAYS} days)",
+        )
+    if campaign_cost < 0:
+        raise HTTPException(status_code=422, detail="campaign_cost must be non-negative")
+    if margin_rate is not None and not 0 < margin_rate <= 1:
+        raise HTTPException(status_code=422, detail="margin_rate must be in (0, 1]")
+    try:
+        actuals = get_actuals(store_id, started_day - BASELINE_DAYS, started_day - 1)
+    except (httpx.HTTPError, ForecastResponseError, TypeError, ValueError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Actuals service unavailable for simulation: {type(error).__name__}",
+        ) from error
+    effective_margin = margin_rate
+    if effective_margin is None:
+        try:
+            row = get_store_retail_row(store_id)
+            block = annotate_retail_context(store_id, row, None)
+            if block and isinstance(block.get("margin_rate"), (int, float)):
+                effective_margin = block["margin_rate"]
+        except Exception as error:
+            logger.warning("[SIMULATE COMPARE] store %s margin lookup failed: %s",
+                           store_id, type(error).__name__)
+        if effective_margin is None:
+            effective_margin = 0.25
+    costs = {
+        action: (0.0 if action in ("CONTINUE", "PAUSE_INTERVENTION") else campaign_cost)
+        for action in ("EXTEND_INTERVENTION", "RETARGET_SEGMENT", "TIMING_SHIFT",
+                       "CONTINUE", "PAUSE_INTERVENTION")
+    }
+    return compare_candidate_actions(
+        store_id,
+        actuals.get("observations", []),
+        started_day,
+        pre_window_days=BASELINE_DAYS,
+        evaluation_window_days=EVALUATION_WINDOW_DAYS,
+        margin_rate=effective_margin,
+        campaign_costs=costs,
     )
 
 

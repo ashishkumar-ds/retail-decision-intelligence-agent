@@ -55,7 +55,9 @@ class DecisionEngine:
         self._approval_gate = approval_gate
 
     def evaluate(self, signal: StoreSignal,
-                 outcome_evidence: dict[str, Any] | None = None) -> dict[str, Any]:
+                 outcome_evidence: dict[str, Any] | None = None,
+                 store_context: dict[str, Any] | None = None,
+                 retail_context: dict[str, Any] | None = None) -> dict[str, Any]:
         """Run the full pipeline for one store signal; returns the record.
 
         The pipeline order is fixed (route → plan → score → verify → gate) —
@@ -76,7 +78,9 @@ class DecisionEngine:
         elif "score_and_recommend" in plan:
             causal_evidence = (outcome_evidence or {}).get("causal_evidence")
             rec = self._scorer(signal, outcome_evidence=outcome_evidence,
-                               causal_evidence=causal_evidence)
+                               store_context=store_context,
+                               causal_evidence=causal_evidence,
+                               retail_context=retail_context)
             trajectory.add("score", "done", rec["recommendation"])
         else:
             # Defensive fallback - should be unreachable, but never a silent no-op.

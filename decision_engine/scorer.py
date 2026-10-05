@@ -119,7 +119,8 @@ def _health_recommendation(
 
 def score_and_recommend(signal: StoreSignal, outcome_evidence: dict | None = None,
                         store_context: dict | None = None,
-                        causal_evidence: dict | None = None) -> dict:
+                        causal_evidence: dict | None = None,
+                        retail_context: dict | None = None) -> dict:
     # Decision rules applied in order; first match wins.
     if not signal.forecast_signal_available:
         return no_data_recommendation(signal)
@@ -158,12 +159,23 @@ def score_and_recommend(signal: StoreSignal, outcome_evidence: dict | None = Non
         if diversified is not None:
             rec, reason, confidence, diversification = diversified
 
+    # Retail context (tools/retail_context.py): margin + availability proxy.
+    # Never flips the recommendation — it annotates demand-vs-supply and
+    # tempers confidence when recent coverage collapsed (possible stockout /
+    # closure: low sales may not be weak demand, so don't spend blindly).
+    retail_block = None
+    if isinstance(retail_context, dict):
+        rec, reason, confidence, retail_block = _apply_retail_context(
+            signal, rec, reason, confidence, retail_context,
+        )
+
     return _build_output(
         signal, health_score=health, recovery_pct=recovery_pct,
         recommendation=rec, confidence=confidence, reason=reason,
         requires_approval=requires_human_approval(rec),
         outcome_context=outcome_context,
         diversification=diversification,
+        retail_context=retail_block,
         recovery_velocity=velocity,
         scale_up_eligible=(outcome_context.get("causal_evidence", {}).get("scale_up_eligible")
                            if isinstance(outcome_context, dict) and "causal_evidence" in outcome_context
@@ -189,8 +201,13 @@ def _apply_outcome_feedback(
     assessment = outcome_evidence.get("target_assessment")
     outcome_context = {
         "intervention_id": outcome_evidence.get("intervention_id"),
+        "evidence_state": outcome_evidence.get("evidence_state"),
         "actual_uplift_pct": lift,
         "target_assessment": assessment,
+        # Baseline anchors persist for decision-quality margin math
+        # (analytics/decision_quality.py); None on evidence without them.
+        "baseline_value": outcome_evidence.get("baseline_value"),
+        "recent_observation_value": outcome_evidence.get("recent_observation_value"),
     }
     if assessment == "NEGATIVE" and (isinstance(lift, (int, float)) and lift < 0):
         # The evaluated intervention made things worse - recommend pausing
@@ -255,6 +272,47 @@ def _apply_causal_guardrail(
                    f"but no matched-control DiD confirmation is available - scale-up held "
                    f"pending causal evidence (own-baseline lift is not causal).")
     return rec, reason, confidence, outcome_context
+
+
+def _apply_retail_context(
+    signal: StoreSignal,
+    rec: str,
+    reason: str,
+    confidence: float,
+    retail_context: dict,
+) -> tuple[str, str, float, dict | None]:
+    """Annotate demand-vs-supply without ever flipping the recommendation.
+
+    - ``POSSIBLE_SUPPLY_GAP``: recent coverage collapsed vs a healthy baseline.
+      Temper confidence (``* 0.9``) and append an ops check to the reason.
+    - ``DEMAND`` with a store margin: append the margin to the reason so the
+      human sees the money, not just the health score.
+    - Anything unrecognized: attach the block verbatim, change nothing.
+    """
+    demand_vs_supply = retail_context.get("demand_vs_supply")
+    block = {
+        "demand_vs_supply": demand_vs_supply,
+        "margin_rate": retail_context.get("margin_rate"),
+        "discount_rate": retail_context.get("discount_rate"),
+        "avg_unit_value": retail_context.get("avg_unit_value"),
+        "ops_flag": retail_context.get("ops_flag"),
+    }
+    if isinstance(retail_context.get("sku"), dict):
+        block["sku"] = retail_context["sku"]
+    if demand_vs_supply == "POSSIBLE_SUPPLY_GAP":
+        confidence = round(confidence * 0.9, 2)
+        reason += (
+            " Retail context flags a possible supply/coverage gap "
+            "(recent sales coverage collapsed against a healthy baseline) - "
+            "verify stock/closure with ops before extending spend; "
+            "low sales here may not be weak demand."
+        )
+    elif demand_vs_supply == "DEMAND" and isinstance(block["margin_rate"], (int, float)):
+        reason += (
+            f" Store margin proxy is {block['margin_rate']:.2f} "
+            f"(discount {block['discount_rate']:.0%} from P2 store totals)."
+        )
+    return rec, reason, confidence, block
 
 
 def _diversification_due(outcome_evidence: dict | None, store_context: dict | None) -> bool:
@@ -331,7 +389,8 @@ def _build_output(signal: StoreSignal, health_score: float, recovery_pct: float,
                    outcome_context: dict | None = None,
                    diversification: dict | None = None,
                    scale_up_eligible: bool | None = None,
-                   recovery_velocity: float | None = None) -> dict:
+                   recovery_velocity: float | None = None,
+                   retail_context: dict | None = None) -> dict:
     output = {
         "store_id": signal.store_id,
         "recommendation": recommendation,
@@ -355,4 +414,6 @@ def _build_output(signal: StoreSignal, health_score: float, recovery_pct: float,
         output["scale_up_eligible"] = scale_up_eligible
     if diversification is not None:
         output["diversification"] = diversification
+    if retail_context is not None:
+        output["retail_context"] = retail_context
     return output

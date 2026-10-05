@@ -32,6 +32,7 @@ from typing import Any, Mapping, Sequence
 
 from decision_engine.calibration import CAUSAL_BASELINE
 from decision_engine.causality import assess_causal_evidence
+from guardrails import risk_of
 
 # Baseline evidence floor: at least this fraction of the pre-window days must
 # have observations, or the projection is INSUFFICIENT (fail-closed).
@@ -106,6 +107,145 @@ def _baseline_stats(
         "coverage_ratio": coverage_ratio,
         "own_momentum_pct": momentum,
     }, None
+
+
+# --- Multi-action comparison (approval choice set) ---------------------------
+# All spend actions share the same calibrated causal prior until the caller
+# supplies action-specific evidence via ``expected_lifts`` (e.g. learned lifts
+# from decision_engine.policy_v2 or measured outcome lifts). Differentiation
+# therefore comes from cost, margin and reversibility — never invented lift.
+
+#: Actions the comparison can rank. Do-nothing actions carry lift 0 / cost 0.
+COMPARABLE_ACTIONS = (
+    "CONTINUE",
+    "EXTEND_INTERVENTION",
+    "RETARGET_SEGMENT",
+    "TIMING_SHIFT",
+    "PAUSE_INTERVENTION",
+)
+
+_DO_NOTHING_ACTIONS = frozenset({"CONTINUE", "PAUSE_INTERVENTION"})
+
+#: Projection confidence by guardrail state. A stated mapping, not a calibrated
+#: probability — the prior CI is what carries the real uncertainty.
+GUARDRAIL_CONFIDENCE = {
+    "CONFIRMED": 0.8,
+    "REVIEW_ZONE": 0.5,
+    "REFUTED": 0.3,
+    "UNAVAILABLE": 0.3,
+}
+
+#: Reversibility rank for deterministic tie-breaks (lower = easier to undo).
+_RISK_RANK = {"reversible": 0, "cautious": 1, "irreversible": 2}
+
+
+def compare_candidate_actions(
+    store_id: int,
+    observations: Sequence[Mapping[str, Any]],
+    started_day: int,
+    *,
+    pre_window_days: int,
+    evaluation_window_days: int,
+    prior: Mapping[str, Any] = CAUSAL_BASELINE,
+    margin_rate: float = 0.25,
+    campaign_costs: Mapping[str, float] | None = None,
+    expected_lifts: Mapping[str, float] | None = None,
+) -> dict[str, Any]:
+    """Rank candidate actions by expected incremental margin, pre-approval.
+
+    For each action: ``expected_lift_pct`` (prior point for spend actions, 0.0
+    for do-nothing, caller override wins) → causal guardrail → incremental
+    sales value → ``expected_incremental_margin = base_total * lift/100 *
+    margin_rate - campaign_cost`` (do-nothing cost is forced to 0) → risk tier (``guardrails.risk_of``).
+    Recommends the highest-margin action; ties break toward the lower-risk,
+    then alphabetically-first action (deterministic).
+
+    Fail-closed like :func:`simulate_intervention`: insufficient baseline
+    coverage is ``INSUFFICIENT`` with the reason, never a ranking.
+    """
+    _require_int("store_id", store_id)
+    if isinstance(margin_rate, bool) or not isinstance(margin_rate, (int, float)):
+        raise TypeError("margin_rate must be a number")
+    if not 0 < margin_rate <= 1:
+        raise ValueError("margin_rate must be in (0, 1]")
+    costs = dict(campaign_costs or {})
+    lifts = dict(expected_lifts or {})
+    for action, cost in costs.items():
+        if isinstance(cost, bool) or not isinstance(cost, (int, float)) or cost < 0:
+            raise ValueError(f"campaign cost for {action!r} must be non-negative")
+    try:
+        prior_point = float(prior["estimate_pct"])
+        prior_ci95 = [float(bound) for bound in prior["ci95_pct"]]
+        prior_source = prior.get("source", "unspecified")
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"prior must provide estimate_pct and ci95_pct: {error}") from error
+
+    baseline, reason = _baseline_stats(observations, started_day, pre_window_days)
+    if baseline is None:
+        return {
+            "store_id": store_id,
+            "evidence_state": "INSUFFICIENT",
+            "reason": reason,
+            "limitations": _LIMITATIONS,
+        }
+    baseline_mean = baseline["mean_daily_sales"]
+    base_total = baseline_mean * evaluation_window_days
+
+    ranked: list[dict[str, Any]] = []
+    for action in COMPARABLE_ACTIONS:
+        if action in lifts:
+            lift = float(lifts[action])
+        elif action in _DO_NOTHING_ACTIONS:
+            lift = 0.0
+        else:
+            lift = prior_point
+        cost = 0.0 if action in _DO_NOTHING_ACTIONS else float(costs.get(action, 0.0))
+        guardrail = assess_causal_evidence(
+            {"evidence_state": "SUFFICIENT", "did_uplift_pct": lift}
+        )
+        state = guardrail["assessment_state"]
+        margin = base_total * lift / 100.0 * float(margin_rate) - cost
+        ranked.append({
+            "action": action,
+            "expected_lift_pct": lift,
+            "causal_state": state,
+            "scale_up_eligible": guardrail["scale_up_eligible"],
+            "confidence": GUARDRAIL_CONFIDENCE[state],
+            "risk": risk_of(action),
+            "budget_impact": round(cost, 2),
+            "expected_incremental_margin": round(margin, 2),
+            "incremental_sales_value": round(base_total * lift / 100.0, 2),
+            "lift_source": (
+                "caller-supplied" if action in lifts
+                else ("do-nothing (lift 0 by construction)" if action in _DO_NOTHING_ACTIONS
+                      else f"calibrated prior ({prior_source})")
+            ),
+        })
+    ranked.sort(key=lambda row: (-row["expected_incremental_margin"],
+                                   _RISK_RANK.get(row["risk"], 9), row["action"]))
+    recommended = ranked[0]["action"]
+    return {
+        "store_id": store_id,
+        "evidence_state": "SUFFICIENT",
+        "recommended_action": recommended,
+        "actions": ranked,
+        "baseline": {
+            "mean_daily_sales": baseline_mean,
+            "coverage_days": baseline["coverage_days"],
+            "coverage_ratio": baseline["coverage_ratio"],
+        },
+        "prior": {"source": prior_source, "point_pct": prior_point, "ci95_pct": prior_ci95},
+        "margin_rate": float(margin_rate),
+        "verdict": (
+            f"Recommended action: {recommended} "
+            f"(expected incremental margin "
+            f"{ranked[0]['expected_incremental_margin']:.2f} at margin rate "
+            f"{float(margin_rate):.2f}). Do-nothing actions carry lift 0 by "
+            f"construction; spend actions share the calibrated prior until "
+            f"action-specific evidence is supplied."
+        ),
+        "limitations": _LIMITATIONS,
+    }
 
 
 def simulate_intervention(
