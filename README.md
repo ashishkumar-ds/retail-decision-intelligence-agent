@@ -1,10 +1,10 @@
+<div align="center">
+
 # Retail Decision Intelligence Agent
 
-A deterministic decision-intelligence agent for retail store recovery. The
-brain is code, not a model call: every recommendation is recomputable by
-hand, citable by ID, and approved by a human before any budget moves. It
-closes the loop **plan → execute → measure → re-decide** for underperforming
-stores.
+**A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves.**
+
+[Quickstart](#quickstart) · [Demo](#demo) · [API](#api-surface) · [Configuration](#configuration) · [Documentation](#documentation)
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
@@ -14,10 +14,23 @@ stores.
 
 **Live demo:** [retail-decision-intelligence-agent.onrender.com](https://retail-decision-intelligence-agent.onrender.com/ui) — the operator dashboard; API consumers have `/health`, `/docs` and `/openapi.json`. Write paths need a bearer token.
 
-- **Deterministic by design** — pure-code decision path, no LLM.
-- **Human-gated by default** — budget-affecting writes fail closed (503) without approval.
-- **Grounded explanations** — `/why/{store_id}` cites exact evidence; the LLM only rephrases, under the same guards.
-- **Golden-case gated** — 22 pinned scenarios run in CI; recalibration updates them in the same commit.
+</div>
+
+> **Status:** deterministic core with human-gated writes — write paths fail closed (503) without a token, and unset variables keep silent defaults. See [Configuration](#configuration).
+
+## Demo
+
+No keys, no services — one command runs the whole loop on recorded data:
+
+```bash
+bash scripts/seed_demo.sh
+```
+
+Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full 5-minute walkthrough: [DEMO.md](DEMO.md).
+
+## What it is
+
+A decision-intelligence agent that closes the loop **plan → execute → measure → re-decide** for underperforming retail stores. The decision path is pure code — no LLM — and every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
 
 ## Quickstart
 
@@ -59,6 +72,16 @@ curl http://localhost:8001/health
 Every store evaluation runs a fixed pipeline — `route → plan → score →
 verify → approval gate` — with each stage recorded in a `DecisionTrajectory`
 embedded in the recommendation record itself.
+
+```mermaid
+flowchart LR
+    Route --> Plan --> Score --> Verify --> Gate
+    Gate -->|approval required| Human[Human decision]
+    Gate -->|informational| Log[(Append-only log)]
+    Human --> Log
+    Log --> Why["/why — grounded explanation"]
+    Log --> Board["/board — stakeholder view"]
+```
 
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
 *The decision path is pure code with no LLM; the optional LLM layer sits off-path and may only rephrase grounded, cited explanations. (Themed after dunnhumby's "The Complete Journey" user guide.)*
