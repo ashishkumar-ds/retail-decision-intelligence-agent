@@ -43,23 +43,11 @@ python evaluation/run_evals.py  # 22 golden business scenarios
 python evaluation/llm_evals.py  # off-path LLM gate: grounding vetoes + provider swap (offline)
 ```
 
-Deploy a stable URL (a Docker service with the secrets in the hosting
-dashboard): see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — including the
-persistent-disk requirement, without which a deploy discards the append-only
-audit trail, and the environment table, without which the service boots with the
-autonomous sweep silently off.
-
-### Hosting, briefly (verified against current platform docs)
-
-This is a **stateful** agent: the audit trail is append-only files, the
-pending-approval store is SQLite, and the sweep scheduler is a background
-thread. That rules out serverless hosts (Vercel/Netlify-style functions have
-no persistent filesystem, no background threads) and makes a Docker service
-with a persistent disk the natural fit. Any always-on Docker host with a disk
-works; the reference deploy is Render with a 1 GB disk. Cloudflare Quick
-Tunnels (`scripts/public_tunnel.sh`) are for ephemeral demos only.
-
-Run in Docker with the autonomous daily sweep enabled:
+Deploy with Docker: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). This agent is
+stateful (append-only files, SQLite, background thread) — it needs an always-on
+Docker host with a persistent disk. The hosting dashboard's environment table
+must be complete: unset variables keep silent defaults, and the sweep stays
+off unless enabled.
 
 ```bash
 APPROVAL_AUTH_TOKEN=change-me docker compose up -d --build
