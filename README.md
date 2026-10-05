@@ -2,6 +2,8 @@
 
 # Retail Decision Intelligence Agent
 
+> **Part 3 of the Dunnhumby series** — [Part 1: Store Performance Analysis](https://github.com/ashishkumar-ds/data-science-projects/tree/main/dunnhumby-retail-performance-analysis) proved what works · [Part 2: Campaign Automation](https://github.com/ashishkumar-ds/retail-campaign-automation-with-n8n) scaled it across 85 stores · **this project decides what's next per store.**
+
 **A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves.**
 
 [Quickstart](#quickstart) · [Demo](#demo) · [API](#api-surface) · [Configuration](#configuration) · [Documentation](#documentation)
