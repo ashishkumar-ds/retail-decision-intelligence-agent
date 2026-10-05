@@ -43,7 +43,7 @@ python evaluation/run_evals.py  # 22 golden business scenarios
 python evaluation/llm_evals.py  # off-path LLM gate: grounding vetoes + provider swap (offline)
 ```
 
-Deploy a stable URL (a Render service created by hand — secrets stay in the
+Deploy a stable URL (a Docker service with the secrets in the hosting
 dashboard): see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — including the
 persistent-disk requirement, without which a deploy discards the append-only
 audit trail, and the environment table, without which the service boots with the
@@ -55,13 +55,9 @@ This is a **stateful** agent: the audit trail is append-only files, the
 pending-approval store is SQLite, and the sweep scheduler is a background
 thread. That rules out serverless hosts (Vercel/Netlify-style functions have
 no persistent filesystem, no background threads) and makes a Docker service
-with a persistent disk the natural fit. Chosen: **Render Starter ($7/mo) +
-1 GB disk ($0.25) — the cheapest always-on, durable posture** (free tier spins
-down after ~15 min idle and can't mount disks). Equivalent alternatives:
-Railway Hobby ($5/mo + usage, volumes included), Fly.io (~$2.5–4/mo VM +
-volume, more DevOps). Hugging Face Spaces is the free ML-demo option but has
-the same sleep/persistence problem as free Render. Cloudflare Quick Tunnels
-(`scripts/public_tunnel.sh`) are for ephemeral demos only.
+with a persistent disk the natural fit. Any always-on Docker host with a disk
+works; the reference deploy is Render with a 1 GB disk. Cloudflare Quick
+Tunnels (`scripts/public_tunnel.sh`) are for ephemeral demos only.
 
 Run in Docker with the autonomous daily sweep enabled:
 
