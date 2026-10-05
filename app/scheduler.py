@@ -11,6 +11,14 @@ Design constraints (fail-safe, per project philosophy):
   existing verification gate inside the sweep itself).
 - stdlib threading only: no new dependencies; daemon thread stops cleanly
   on shutdown via an Event.
+- Retry discipline for a failed sweep: the observed failure is a transient
+  upstream throttle (HTTP 429 from a sibling service at boot), so one failure
+  re-arms after RETRY_INTERVAL_SECONDS (15 min) instead of costing a full
+  day of empty board. After MAX_CONSECUTIVE_FAILURES (8, ~2 h) the loop
+  sleeps until the next daily tick so a genuinely down dependency is not
+  hammered. A success always restores the daily heartbeat. Both values are
+  constants on purpose - no retry tuning surface, testable via the status
+  counters below.
 """
 from __future__ import annotations
 
@@ -24,6 +32,12 @@ from approvals.ledger import utcnow_iso as _utcnow_iso
 logger = logging.getLogger("retail_decision_agent.scheduler")
 
 DEFAULT_INTERVAL_SECONDS = 24 * 60 * 60  # daily heartbeat
+# Post-failure retry: a failed sweep (transient 429 at boot is the observed
+# case) re-arms after this, not after a full day, so one bad second never
+# costs 24 h of empty board. Fixed, not exponential: one value, no tuning
+# surface, and a success restores the daily heartbeat immediately.
+RETRY_INTERVAL_SECONDS = 15 * 60  # one Render-coffee break
+MAX_CONSECUTIVE_FAILURES = 8  # ~2 h of retries, then sleep until the next tick
 SWEEP_ENABLED_ENV = "SWEEP_ENABLED"
 SWEEP_INTERVAL_ENV = "SWEEP_INTERVAL_SECONDS"
 
@@ -53,10 +67,13 @@ class SweepScheduler:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self._consecutive_failures = 0
         self._status: dict = {
             "enabled": False,
             "running": False,
             "interval_seconds": self._interval,
+            "retry_interval_seconds": RETRY_INTERVAL_SECONDS,
+            "consecutive_failures": 0,
             "sweeps_completed": 0,
             "sweeps_failed": 0,
             "last_sweep_at": None,
@@ -92,22 +109,34 @@ class SweepScheduler:
 
     def _run_loop(self) -> None:
         while not self._stop_event.is_set():
-            self._tick()
+            failed = self._tick()
+            # A failure re-arms soon (transient upstream, the observed case);
+            # sustained failure sleeps so a down dependency is not hammered.
+            # Success always restores the daily heartbeat.
+            if failed and self._consecutive_failures < MAX_CONSECUTIVE_FAILURES:
+                self._stop_event.wait(min(RETRY_INTERVAL_SECONDS, self._interval))
+                continue
             self._stop_event.wait(self._interval)
             with self._lock:
                 self._status["next_sweep_at"] = _utcnow_iso()
 
-    def _tick(self) -> None:
+    def _tick(self) -> bool:
+        """Run one sweep; returns True when it failed (fail-safe: never kills the loop)."""
         try:
             self._sweep_fn()
-        except Exception as error:  # fail-safe: never let one bad sweep kill the loop
+        except Exception as error:
             with self._lock:
+                self._consecutive_failures += 1
+                self._status["consecutive_failures"] = self._consecutive_failures
                 self._status["sweeps_failed"] += 1
                 self._status["last_error"] = f"{type(error).__name__}: {error}"
                 self._status["last_sweep_at"] = _utcnow_iso()
             logger.error("[SWEEP SCHEDULER] sweep failed: %s: %s", type(error).__name__, error)
-            return
+            return True
         with self._lock:
+            self._consecutive_failures = 0
+            self._status["consecutive_failures"] = 0
             self._status["sweeps_completed"] += 1
             self._status["last_sweep_at"] = _utcnow_iso()
             self._status["next_sweep_at"] = _utcnow_iso()
+        return False

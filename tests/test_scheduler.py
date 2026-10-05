@@ -80,6 +80,55 @@ def test_scheduler_runs_and_survives_failures():
     assert len(calls) >= 2
 
 
+def test_failed_tick_rearms_soon_then_sleeps(monkeypatch):
+    """The 24h retry cliff, pinned: one failure waits the retry interval, not a day.
+
+    Uses the internal seam (one _tick, then the loop's own wait decision) with
+    the stop event reversed as a probe: the wait length is the only observable
+    that must change, so the test records it instead of sleeping in real time.
+    """
+    from app import scheduler as scheduler_module
+
+    scheduler, _ = _make_scheduler([])
+    waits: list[float] = []
+    stop = scheduler._stop_event
+
+    def probe_wait(self, timeout=None):
+        waits.append(timeout)
+        stop.set()  # one loop pass is all this test observes
+        return True
+
+    monkeypatch.setattr(type(stop), "wait", probe_wait)
+    # Day-long heartbeat: retry must still beat it (this is the cliff test).
+    monkeypatch.setattr(scheduler, "_interval", 10 ** 9)
+    scheduler._sweep_fn = lambda: (_ for _ in ()).throw(RuntimeError("transient 429"))
+    scheduler._run_loop()
+    expected = min(scheduler_module.RETRY_INTERVAL_SECONDS, 10 ** 9)
+    assert waits == [expected], waits
+    assert scheduler.status()["consecutive_failures"] == 1
+    assert scheduler.status()["sweeps_failed"] == 1
+    assert "RuntimeError" in scheduler.status()["last_error"]
+
+    # Sustained failure: the 9th consecutive failure sleeps the full interval.
+    scheduler._consecutive_failures = scheduler_module.MAX_CONSECUTIVE_FAILURES
+    scheduler._stop_event.clear()
+    waits.clear()
+    scheduler._run_loop()
+    assert waits == [scheduler_modules_interval(scheduler)], waits
+
+    # Success resets the streak: the heartbeat is daily again.
+    scheduler._stop_event.clear()
+    scheduler._consecutive_failures = 0
+    scheduler._sweep_fn = lambda: {}
+    assert scheduler._tick() is False
+    assert scheduler.status()["consecutive_failures"] == 0
+    assert scheduler.status()["sweeps_completed"] >= 1
+
+
+def scheduler_modules_interval(scheduler):
+    return scheduler._interval
+
+
 def test_scheduler_stop_is_idempotent():
     scheduler, _ = _make_scheduler([])
     scheduler.start()
