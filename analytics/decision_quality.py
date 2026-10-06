@@ -149,7 +149,7 @@ def compute_decision_quality(
         "total_incremental_margin": round(sum(margins), 2) if margins else 0.0,
         "measured_intervention_count": len(margins),
         "mean_regret_vs_do_nothing": (
-            round(sum(regrets.values()) / len(margins), 2) if margins else None
+            round(sum(regrets.values()) / len(regrets), 2) if regrets else None
         ),
         "total_regret_vs_do_nothing": round(sum(regrets.values()), 2),
         "stores_with_regret": sorted(regrets),

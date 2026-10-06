@@ -63,6 +63,11 @@ def _baseline_stats(
     pre_window_days: int,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Aggregate the pre-window observations; None + reason when insufficient."""
+    if pre_window_days <= 0:
+        return None, (
+            f"invalid pre-window length {pre_window_days} days "
+            f"(must be >= 1 to compute baseline coverage)"
+        )
     window_start = started_day - pre_window_days
     window_end = started_day - 1
     in_window: list[tuple[int, float]] = []
@@ -77,7 +82,7 @@ def _baseline_stats(
         if window_start <= day <= window_end:
             in_window.append((day, float(value)))
 
-    coverage_days = len(in_window)
+    coverage_days = len({day for day, _ in in_window})
     coverage_ratio = coverage_days / pre_window_days
     if coverage_ratio < MIN_BASELINE_COVERAGE_RATIO:
         return None, (
@@ -164,6 +169,15 @@ def compare_candidate_actions(
     coverage is ``INSUFFICIENT`` with the reason, never a ranking.
     """
     _require_int("store_id", store_id)
+    _require_int("started_day", started_day)
+    _require_int("pre_window_days", pre_window_days)
+    _require_int("evaluation_window_days", evaluation_window_days)
+    if pre_window_days < 2 or evaluation_window_days < 1:
+        raise ValueError("pre_window_days must be >= 2 and evaluation_window_days >= 1")
+    if started_day <= pre_window_days:
+        raise ValueError("started_day must exceed pre_window_days (baseline must start at day >= 1)")
+    if not isinstance(observations, Sequence) or isinstance(observations, (str, bytes)):
+        raise TypeError("observations must be a sequence of observation mappings")
     if isinstance(margin_rate, bool) or not isinstance(margin_rate, (int, float)):
         raise TypeError("margin_rate must be a number")
     if not 0 < margin_rate <= 1:
@@ -210,7 +224,7 @@ def compare_candidate_actions(
             "expected_lift_pct": lift,
             "causal_state": state,
             "scale_up_eligible": guardrail["scale_up_eligible"],
-            "confidence": GUARDRAIL_CONFIDENCE[state],
+            "confidence": GUARDRAIL_CONFIDENCE.get(state, 0.3),
             "risk": risk_of(action),
             "budget_impact": round(cost, 2),
             "expected_incremental_margin": round(margin, 2),

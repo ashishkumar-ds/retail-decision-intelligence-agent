@@ -33,14 +33,49 @@ adapter implements the same two methods:
 from __future__ import annotations
 
 import hashlib
+import threading
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Iterator, Mapping, Protocol, Sequence
 
 from approvals.ledger import utcnow_iso
 from guardrails import APPROVAL_REQUIRED_RECOMMENDATIONS
 
-from .journal import append_event, read_events
+from .journal import append_event, journal_path, read_events
+
+_LOCAL_EXECUTION_LOCK = threading.Lock()
+
+
+@contextmanager
+def _execution_lock() -> Iterator[None]:
+    """Cross-process + cross-thread lock for check-then-append idempotency.
+
+    Uses a sidecar ``<journal>.lock`` file (not the journal itself) so the
+    nested ``append_event()`` flock on the journal file cannot deadlock with
+    us. Falls back to the in-process lock when ``fcntl`` is unavailable
+    (e.g. Windows).
+    """
+    try:
+        import fcntl
+    except ImportError:  # pragma: no cover - Windows fallback
+        fcntl = None  # type: ignore
+    path = journal_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    lock_path = path.with_name(path.name + ".lock")
+    with _LOCAL_EXECUTION_LOCK:
+        if fcntl is None:
+            yield
+            return
+        with lock_path.open("a+", encoding="utf-8") as lock_file:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
 class ExecutionRefused(ValueError):
@@ -139,35 +174,40 @@ def execute_recommendation(record: Mapping[str, Any],
     _require_gated_approval(record)
     connector = connector or DryRunConnector()
     key = idempotency_key(record)
-    existing = _active_execution(key)
-    if existing is not None:
-        return existing, False
+    # Hold the cross-process lock across check + apply + append so two
+    # concurrent callers cannot both observe "no active execution" and
+    # double-apply. The second caller re-checks under the lock and takes
+    # the idempotent path.
+    with _execution_lock():
+        existing = _active_execution(key)
+        if existing is not None:
+            return existing, False
 
-    handle = connector.apply({
-        "store_id": record.get("store_id"),
-        "recommendation_id": record.get("recommendation_id"),
-        "recommendation": record.get("recommendation"),
-        "approval_id": record.get("approval_id"),
-        "idempotency_key": key,
-        "connector": connector.name,
-    })
-    execution = {
-        "event": "execution",
-        "execution_id": f"exec-{uuid.uuid4().hex}",
-        "idempotency_key": key,
-        "connector": connector.name,
-        "connector_handle": handle,
-        "store_id": record.get("store_id"),
-        "recommendation_id": record.get("recommendation_id"),
-        "recommendation": record.get("recommendation"),
-        "approval_id": record.get("approval_id"),
-        "actor": actor,
-        "created_at": utcnow_iso(),
-        "reversed_at": None,
-        "reversal_id": None,
-    }
-    append_event(execution)
-    return execution, True
+        handle = connector.apply({
+            "store_id": record.get("store_id"),
+            "recommendation_id": record.get("recommendation_id"),
+            "recommendation": record.get("recommendation"),
+            "approval_id": record.get("approval_id"),
+            "idempotency_key": key,
+            "connector": connector.name,
+        })
+        execution = {
+            "event": "execution",
+            "execution_id": f"exec-{uuid.uuid4().hex}",
+            "idempotency_key": key,
+            "connector": connector.name,
+            "connector_handle": handle,
+            "store_id": record.get("store_id"),
+            "recommendation_id": record.get("recommendation_id"),
+            "recommendation": record.get("recommendation"),
+            "approval_id": record.get("approval_id"),
+            "actor": actor,
+            "created_at": utcnow_iso(),
+            "reversed_at": None,
+            "reversal_id": None,
+        }
+        append_event(execution)
+        return execution, True
 
 
 def reverse_execution(execution_id: str,

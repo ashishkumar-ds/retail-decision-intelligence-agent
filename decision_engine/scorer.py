@@ -307,11 +307,20 @@ def _apply_retail_context(
             "verify stock/closure with ops before extending spend; "
             "low sales here may not be weak demand."
         )
-    elif demand_vs_supply == "DEMAND" and isinstance(block["margin_rate"], (int, float)):
-        reason += (
-            f" Store margin proxy is {block['margin_rate']:.2f} "
-            f"(discount {block['discount_rate']:.0%} from P2 store totals)."
-        )
+    elif (demand_vs_supply == "DEMAND"
+            and isinstance(block["margin_rate"], (int, float))
+            and not isinstance(block["margin_rate"], bool)):
+        if (isinstance(block["discount_rate"], (int, float))
+                and not isinstance(block["discount_rate"], bool)):
+            reason += (
+                f" Store margin proxy is {block['margin_rate']:.2f} "
+                f"(discount {block['discount_rate']:.0%} from P2 store totals)."
+            )
+        else:
+            reason += (
+                f" Store margin proxy is {block['margin_rate']:.2f} "
+                f"from P2 store totals."
+            )
     return rec, reason, confidence, block
 
 

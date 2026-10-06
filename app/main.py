@@ -325,8 +325,20 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
     if first_run is None:
         return None
 
-    first_run_date = datetime.fromisoformat(first_run["run_timestamp"])
-    days_elapsed = (datetime.now(timezone.utc) - first_run_date).days
+    try:
+        first_run_date = datetime.fromisoformat(first_run["run_timestamp"])
+    except (KeyError, ValueError, TypeError) as error:
+        # Malformed audit row: skip this store, don't crash the batch
+        # (this runs inside ThreadPoolExecutor.map in
+        # _evaluate_and_persist_stores, where one raise aborts every store).
+        logger.error("[FORECAST INTEGRATION ERROR] store=%s bad run_timestamp: %s: %s",
+                     store_id, type(error).__name__, error)
+        log_run_step(store_id, "forecast_fetch", "technical_error",
+                     f"bad run_timestamp - {type(error).__name__}: {error}")
+        return StoreSignal(store_id, 0, 0, 0, RECOVERY_WINDOW_DAYS, False, "ERROR")
+    if first_run_date.tzinfo is None:
+        first_run_date = first_run_date.replace(tzinfo=timezone.utc)
+    days_elapsed = max((datetime.now(timezone.utc) - first_run_date).days, 0)
     days_remaining = max(RECOVERY_WINDOW_DAYS - days_elapsed, 0)
 
     try:

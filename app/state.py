@@ -125,17 +125,41 @@ class PendingApprovalStore:
             conn.close()
 
     def pop(self, store_id: int, default: Any = None) -> Any:
-        """Atomically remove and return the record for ``store_id``."""
+        """Atomically remove and return the record for ``store_id``.
+
+        Single-statement ``DELETE ... RETURNING`` on Postgres; on SQLite a
+        ``BEGIN IMMEDIATE`` write transaction wraps SELECT+DELETE so two
+        workers/threads cannot both read the same row (check-then-act race).
+        """
         conn = self._connect()
         try:
-            row = conn.execute(
-                self._q("SELECT record FROM pending_approvals WHERE store_id=?"), (store_id,)
-            ).fetchone()
-            if row is None:
-                return default
-            conn.execute(self._q("DELETE FROM pending_approvals WHERE store_id=?"), (store_id,))
-            conn.commit()
-            return json.loads(row[0])
+            if self._dialect == "postgres":
+                row = conn.execute(
+                    self._q("DELETE FROM pending_approvals WHERE store_id=? RETURNING record"),
+                    (store_id,),
+                ).fetchone()
+                conn.commit()
+                if row is None:
+                    return default
+                return json.loads(row[0])
+            # SQLite: atomic SELECT+DELETE under one write transaction.
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                row = conn.execute(
+                    "SELECT record FROM pending_approvals WHERE store_id=?", (store_id,)
+                ).fetchone()
+                if row is None:
+                    conn.rollback()
+                    return default
+                conn.execute("DELETE FROM pending_approvals WHERE store_id=?", (store_id,))
+                conn.commit()
+                return json.loads(row[0])
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                raise
         finally:
             conn.close()
 

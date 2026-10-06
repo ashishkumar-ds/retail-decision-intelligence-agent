@@ -41,6 +41,8 @@ class BM25Retriever:
         }
 
     def score(self, query: str, index: int) -> float:
+        if self.n_docs == 0 or self.avg_length <= 0:
+            return 0.0
         query_tokens = tokenize(query)
         counts = self.doc_counts[index]
         length = self.doc_lengths[index] or 1
@@ -55,6 +57,8 @@ class BM25Retriever:
 
     def retrieve(self, query: str, k: int = 3) -> list[tuple[CorpusChunk, float]]:
         """Top-k chunks for the query; ties broken by chunk_id for determinism."""
+        if self.n_docs == 0 or k <= 0:
+            return []
         scored = [(self.score(query, i), -i, self.chunks[i]) for i in range(self.n_docs)]
         scored = [s for s in scored if s[0] > 0.0]
         scored.sort(key=lambda t: (-t[0], t[2].chunk_id))
