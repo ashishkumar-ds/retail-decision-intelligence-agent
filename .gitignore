@@ -20,3 +20,7 @@ skills-lock.json
 *.db-shm
 .clinerules
 SESSION_HANDOFF.md
+# Engineering-skills config (setup-matt-pocock-skills). Local-only, same rule as
+# .clinerules above: GitHub carries production agent code, never dev tooling.
+AGENTS.md
+docs/agents/
