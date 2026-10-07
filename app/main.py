@@ -14,8 +14,9 @@ import os
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, Mapping, Sequence
 
 import httpx
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
@@ -1655,12 +1656,122 @@ def root() -> RedirectResponse:
     return RedirectResponse(url="/ui")
 
 
+def _iso_day(value: Any) -> date | None:
+    """Calendar day of an ISO timestamp, or None when absent/malformed."""
+    if not isinstance(value, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    return moment.date()
+
+
+def _parse_moment(value: Any) -> datetime | None:
+    """Aware datetime of an ISO timestamp, or None when absent/malformed."""
+    if not isinstance(value, str):
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment
+
+
+def _latest_activity_moment(records: Sequence[Mapping[str, Any]],
+                            sweep_iso: Any) -> str | None:
+    """Newest evaluation work: newest log write vs last scheduler tick.
+
+    Manual sweeps (POST /recommendations/run) write records without touching
+    scheduler status, so freshness must consider both — otherwise the
+    dashboard reads "never" minutes after a manual sweep refreshed the board.
+    No singleton mutation involved (unlike a status note), so tests stay isolated.
+    """
+    moments = [_parse_moment(sweep_iso)]
+    for rec in records or []:
+        if isinstance(rec, Mapping):
+            moments.append(_parse_moment(rec.get("generated_at")))
+    moments = [m for m in moments if m is not None]
+    if not moments:
+        return None
+    return max(moments).isoformat()
+
+
+def _activity_trend(records: Sequence[Mapping[str, Any]],
+                    decisions: Sequence[Mapping[str, Any]],
+                    days: int = 14) -> dict[str, Any]:
+    """New recommendations vs human decisions per day (last ``days`` days).
+
+    Pure function over persisted trails: log ``generated_at`` vs ledger
+    ``decided_at``. Malformed timestamps are skipped, never crash the page.
+    """
+    today = datetime.now(timezone.utc).date()
+    day_list = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
+    logged = {day: 0 for day in day_list}
+    decided = {day: 0 for day in day_list}
+    for rec in records or []:
+        day = _iso_day(rec.get("generated_at")) if isinstance(rec, Mapping) else None
+        if day in logged:
+            logged[day] += 1
+    for entry in decisions or []:
+        day = _iso_day(entry.get("decided_at")) if isinstance(entry, Mapping) else None
+        if day in decided:
+            decided[day] += 1
+    return {
+        "labels": [day.strftime("%b %d") for day in day_list],
+        "logged": [logged[day] for day in day_list],
+        "decided": [decided[day] for day in day_list],
+    }
+
+
 @app.get("/ui", response_class=HTMLResponse)
 def ui_dashboard():
+    from analytics.decision_quality import (
+        DEFAULT_MARGIN_RATE,
+        _realised_margin,
+        compute_decision_quality,
+    )
+    from execution.journal import read_events
+
     attention = ranked_attention_queue(list(_pending_approvals.values()))
+    records = read_log()
+    decisions = read_decisions()
+    for row in attention:
+        # Per-row realised margin where the outcome is measured; None
+        # otherwise (unmeasured rows honestly show "no figure yet" instead
+        # of an invented one). Store margin override when the record has one.
+        rate = None
+        retail = row.get("retail_context")
+        if isinstance(retail, dict):
+            rate = retail.get("margin_rate")
+        if isinstance(rate, bool) or not isinstance(rate, (int, float)):
+            rate = DEFAULT_MARGIN_RATE
+        outcome = row.get("outcome_evidence")
+        try:
+            row["realised_margin"] = _realised_margin(outcome, rate) if isinstance(outcome, dict) else None
+        except Exception:
+            row["realised_margin"] = None
+    try:
+        quality = compute_decision_quality(records, decisions, read_events())
+    except Exception as error:
+        # Analytics must never break the operator view; tiles fall back to dashes.
+        logger.warning("[UI] decision-quality tiles unavailable: %s: %s",
+                       type(error).__name__, error)
+        quality = {}
+    stores = {r.get("store_id") for r in records if isinstance(r, Mapping)
+              and isinstance(r.get("store_id"), int)}
+    sweep_status = dict(_sweep_scheduler.status())
+    sweep_status["last_sweep_at"] = _latest_activity_moment(
+        records, sweep_status.get("last_sweep_at"))
     return render_page(
         "Retail Intelligence Decision Dashboard", "/ui",
-        render_dashboard(_pending_approvals.values(), read_log(), attention),
+        render_dashboard(_pending_approvals.values(), records, attention,
+                         quality=quality, sweep_status=sweep_status,
+                         decisions=decisions,
+                         trend=_activity_trend(records, decisions),
+                         total_stores=len(stores)),
     )
 
 

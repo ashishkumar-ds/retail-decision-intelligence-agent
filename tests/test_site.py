@@ -180,3 +180,77 @@ def test_dashboard_attention_queue_shows_recovery_column(client, monkeypatch):
     response = client.get("/ui")
     assert response.status_code == 200
     assert "Recovery %" in response.text
+
+
+def test_dashboard_hero_trend_and_freshness():
+    from presentation.site import render_dashboard
+    pending = [
+        {"store_id": 1, "generated_at": "2026-10-05T00:00:00+00:00"},
+        {"store_id": 2, "generated_at": "2026-10-06T12:00:00+00:00"},
+    ]
+    attention = [{
+        "store_id": 1, "recommendation": "EXTEND_INTERVENTION",
+        "store_health_score": 35.0, "recovery_pct": -2.5, "days_remaining": 12,
+        "confidence": 0.6, "attention_tier": 0, "attention_rank": 1,
+        "attention_reason": "Must-act: failing or stalled near deadline",
+        "realised_margin": -140.0,
+        "campaign_working": {"working": False, "evidence": "NEGATIVE lift vs own baseline"},
+    }]
+    quality = {"measured_intervention_count": 2,
+               "total_incremental_margin": 1234.5,
+               "total_regret_vs_do_nothing": 140.0}
+    html = render_dashboard(pending, [], attention, quality=quality,
+                            sweep_status={"last_sweep_at": "2026-10-07T00:00:00+00:00"},
+                            decisions=[{"decided_at": "2026-10-06T12:00:00+00:00"}],
+                            trend={"labels": ["Oct 06", "Oct 07"], "logged": [1, 0],
+                                   "decided": [1, 0]},
+                            total_stores=5)
+    assert "Are we turning stores around?" in html
+    assert "1 of 5 stores" in html or "2 of 5 stores" in html
+    assert "+1,234.50" in html and "140.00" in html
+    assert "oldest wait" in html and "last sweep" in html and "ago" in html
+    assert "Activity — last 2 days" in html and "<svg" in html
+    assert "Store recovery watchlist (1)" in html and "Decide on all pending" in html
+    assert "#1 · Must-act: failing or stalled near deadline" in html
+    assert "Data refreshed" in html
+    assert "'working':" not in html
+
+
+def test_dashboard_empty_trend_renders_honest_empty_state():
+    from presentation.site import render_dashboard
+    html = render_dashboard([], [], [], quality={}, sweep_status={}, trend={})
+    assert "No recommendations or decisions recorded yet." in html
+    assert "never" in html
+
+
+def test_activity_trend_buckets_by_day_and_skips_malformed():
+    from app.main import _activity_trend
+    trend = _activity_trend(
+        [{"generated_at": "2026-10-06T10:00:00+00:00"}, {"generated_at": "bad"}, {}],
+        [{"decided_at": "2026-10-06T12:00:00+00:00"}, {"decided_at": None}],
+        days=3)
+    assert sum(trend["logged"]) == 1
+    assert sum(trend["decided"]) == 1
+    assert len(trend["labels"]) == 3
+
+
+def test_ui_dashboard_serves_redesigned_sections(client, monkeypatch):
+    _seed_pending(client, monkeypatch)
+    response = client.get("/ui")
+    assert response.status_code == 200
+    for label in ("Are we turning stores around?", "pending approvals", "realised margin",
+                  "regret vs do-nothing", "oldest wait", "last sweep", "Activity",
+                  "Store recovery watchlist", "Days left", "Priority", "Margin"):
+        assert label in response.text, label
+
+
+def test_freshness_prefers_newest_write_or_tick():
+    from app.main import _latest_activity_moment
+    assert _latest_activity_moment([], None) is None
+    assert _latest_activity_moment([{"generated_at": "bad"}], None) is None
+    fresh = _latest_activity_moment([{"generated_at": "2026-10-06T00:00:00+00:00"}],
+                                    "2026-10-05T00:00:00+00:00")
+    assert fresh.startswith("2026-10-06")
+    fresh = _latest_activity_moment([{"generated_at": "2026-10-05T00:00:00+00:00"}],
+                                    "2026-10-06T00:00:00+00:00")
+    assert fresh.startswith("2026-10-06")

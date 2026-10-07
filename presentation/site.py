@@ -11,6 +11,7 @@ Palette (matches docs/diagrams/architecture-dunnhumby.*):
 from __future__ import annotations
 
 import html
+from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
 TEAL = "#38b2ab"
@@ -54,6 +55,64 @@ def _recovery_label(value: Any) -> str:
     return f"{float(value):+.1f}%"
 
 
+def _money_label(value: Any, signed: bool = True) -> str:
+    """Money figure for tiles and cells (store currency, hence no symbol).
+
+    Missing/non-numeric renders as an em dash; bools are excluded.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "—"
+    return f"{float(value):+,.2f}" if signed else f"{float(value):,.2f}"
+
+
+def _age_label(iso_value: Any) -> str:
+    """Short relative age ("3d", "5h", "20m") for ISO timestamps; "—" when absent."""
+    if not isinstance(iso_value, str):
+        return "—"
+    try:
+        moment = datetime.fromisoformat(iso_value.replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return "—"
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    seconds = (datetime.now(timezone.utc) - moment).total_seconds()
+    if seconds < 0:
+        return "0m"
+    if seconds < 3600:
+        return f"{int(seconds // 60)}m"
+    if seconds < 86400:
+        return f"{int(seconds // 3600)}h"
+    return f"{int(seconds // 86400)}d"
+
+
+def _priority_label(row: Mapping[str, Any]) -> str:
+    """Rank + reason the queue is ordered the way it is (both already computed).
+
+    The reason strings already carry the tier wording ("Must-act: …",
+    "Should-review: …"), so the tier word is only prepended when the reason
+    does not start with it — no stutter.
+    """
+    tier = {0: "Must-act", 1: "Should-review", 2: "Watch"}.get(row.get("attention_tier"))
+    rank = row.get("attention_rank")
+    reason = row.get("attention_reason") or ""
+    if tier and reason.startswith(tier):
+        head = reason
+    elif tier and reason:
+        head = f"{tier} — {reason}"
+    else:
+        head = reason or tier or "—"
+    if isinstance(rank, int) and head != "—":
+        return f"#{rank} · {head}"
+    return head
+
+
+def _days_left_label(value: Any) -> str:
+    """Days remaining in the recovery window; em dash when absent."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "—"
+    return str(int(value))
+
+
 _CSS = f"""
 body {{ font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0;
        color: {INDIGO}; background: {MINT}; }}
@@ -82,6 +141,12 @@ footer {{ margin-top: 40px; border-top: 1px solid #ccc; padding: 10px 0 30px;
 .kpis span {{ display: inline-block; background: #fff; border: 1px solid #d9e5e2;
               padding: 12px 22px; margin: 6px 14px 6px 0; }}
 .kpis b {{ font-size: 24px; display: block; }}
+.hero-q {{ font-size: 22px; font-weight: 700; margin: 18px 0 2px; }}
+.trend {{ background: #fff; border: 1px solid #d9e5e2; padding: 12px 16px; margin: 14px 0; }}
+.trend svg {{ width: 100%; height: auto; display: block; }}
+.trend .legend {{ font-size: 12px; color: {GRAY}; }}
+.swatch {{ display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 12px; }}
+.fresh {{ color: {GRAY}; font-size: 12px; margin: 4px 0 0; }}
 """
 
 _NAV = [("/ui", "Dashboard"), ("/ui/approvals", "Approvals"),
@@ -110,27 +175,112 @@ def _kv_table(rows: Sequence[tuple[str, Any]]) -> str:
     return f'<table>{cells}</table>' if cells else '<p class="muted">No data.</p>'
 
 
+def _trend_svg(labels: Sequence[str], logged: Sequence[int], decided: Sequence[int]) -> str:
+    """Grouped daily bars (logged teal, decided indigo) as dependency-free SVG.
+
+    Inputs are plain ints from the handler's log/ledger bucketing, so the
+    chart can only ever show persisted history — no invented series.
+    """
+    peak = max(list(logged) + list(decided) + [0])
+    if peak <= 0:
+        return ""
+    width, height, base, top = 560, 120, 104, 8
+    n = len(labels)
+    slot = width / max(n, 1)
+    bar_w = max(2.0, slot / 4)
+    bars: list[str] = []
+    for i, (label, lo, de) in enumerate(zip(labels, logged, decided)):
+        x = i * slot + slot / 2
+        for value, color, shift in ((lo, TEAL, -bar_w), (de, INDIGO, 0.0)):
+            h = (float(value) / peak) * (base - top) if value else 0.0
+            if h > 0:
+                bars.append(
+                    f"<rect x='{x + shift:.1f}' y='{base - h:.1f}' width='{bar_w:.1f}' "
+                    f"height='{h:.1f}' fill='{color}'><title>{esc(label)}: {int(value)}</title></rect>"
+                )
+        if i % 2 == 0 or n <= 7:
+            bars.append(
+                f"<text x='{x:.1f}' y='118' font-size='8' text-anchor='middle' "
+                f"fill='{GRAY}'>{esc(label)}</text>"
+            )
+    return (
+        f"<svg viewBox='0 0 {width} {height}' role='img' aria-label='daily activity'>"
+        f"{''.join(bars)}</svg>"
+    )
+
+
 def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
-                     attention: Sequence[Mapping]) -> str:
+                     attention: Sequence[Mapping],
+                     quality: Mapping[str, Any] | None = None,
+                     sweep_status: Mapping[str, Any] | None = None,
+                     decisions: Sequence[Mapping] | None = None,
+                     trend: Mapping[str, Any] | None = None,
+                     total_stores: int | None = None) -> str:
+    quality = quality if isinstance(quality, Mapping) else {}
+    sweep_status = sweep_status if isinstance(sweep_status, Mapping) else {}
+    trend = trend if isinstance(trend, Mapping) else {}
+    measured = quality.get("measured_intervention_count") or 0
+    realised = _money_label(quality.get("total_incremental_margin")) if measured else "—"
+    regret = _money_label(quality.get("total_regret_vs_do_nothing"), signed=False) if measured else "—"
+    waits = [r.get("generated_at") for r in pending if isinstance(r, Mapping)]
+    oldest = "—"
+    if waits:
+        try:
+            oldest = _age_label(sorted(str(w) for w in waits if isinstance(w, str))[0])
+        except Exception:
+            oldest = "—"
+    swept = _age_label(sweep_status.get("last_sweep_at"))
+    swept_label = f"{swept} ago" if swept != "—" else "never"
+    stores = total_stores if isinstance(total_stores, int) else len(
+        {r.get("store_id") for r in log_entries if isinstance(r, Mapping)})
+    hero = (
+        f"<p class='hero-q'>Are we turning stores around?</p>"
+        f"<p class='muted'>{len(pending)} of {stores} stores awaiting a human decision"
+        f"{f' · {measured} measured outcomes' if measured else ''}.</p>"
+    )
     kpis = (
         f'<div class="kpis">'
         f'<span><b>{len(pending)}</b> pending approvals</span>'
-        f'<span><b>{len(attention)}</b> attention queue</span>'
-        f'<span><b>{len(log_entries)}</b> log entries</span></div>'
+        f'<span><b>{esc(realised)}</b> realised margin</span>'
+        f'<span><b>{esc(regret)}</b> regret vs do-nothing</span>'
+        f'<span><b>{esc(oldest)}</b> oldest wait</span>'
+        f'<span><b>{esc(swept_label)}</b> last sweep</span></div>'
     )
+    labels = list(trend.get("labels", []))
+    logged = [int(v) for v in trend.get("logged", [])]
+    decided = [int(v) for v in trend.get("decided", [])]
+    svg = _trend_svg(labels, logged, decided) if labels else ""
+    if svg:
+        activity = (
+            f"<h2>Activity — last {len(labels)} days</h2>"
+            f"<div class='trend'>{svg}"
+            f"<p class='legend'><span class='swatch' style='background:{TEAL}'></span>"
+            f"recommendations logged ({sum(logged)})"
+            f"<span class='swatch' style='background:{INDIGO}'></span>"
+            f"human decisions ({sum(decided)})</p></div>"
+        )
+    else:
+        activity = ("<h2>Activity</h2>"
+                    "<p class='muted'>No recommendations or decisions recorded yet.</p>")
     queue_rows = "".join(
         f"<tr><td>{esc(r.get('store_id'))}</td>"
         f"<td>{esc(r.get('recommendation'))}</td>"
         f"<td>{esc(r.get('store_health_score'))}</td>"
         f"<td>{esc(_recovery_label(r.get('recovery_pct')))}</td>"
+        f"<td>{esc(_days_left_label(r.get('days_remaining')))}</td>"
+        f"<td>{esc(_priority_label(r))}</td>"
+        f"<td>{esc(_money_label(r.get('realised_margin')))}</td>"
         f"<td>{esc(r.get('confidence'))}</td>"
         f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
         f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"
         for r in attention[:20]
     )
-    queue = (f'<h2>Attention queue</h2>'
+    queue = (f'<h2>Store recovery watchlist ({len(attention)})</h2>'
+             f'<p class="muted">The stores that explain whether the strategy is working. '
+             f'<a href="/ui/approvals">Decide on all pending</a>.</p>'
              f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
-             f'<th>Recovery %</th><th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
+             f'<th>Recovery %</th><th>Days left</th><th>Priority</th><th>Margin</th>'
+             f'<th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
              if attention else '<p class="muted">Attention queue is empty.</p>')
     log_rows = "".join(
         f"<tr><td>{esc(e.get('store_id'))}</td><td>{esc(e.get('recommendation'))}</td>"
@@ -140,7 +290,9 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
     log = (f'<h2>Recent decision log</h2>'
            f'<table><tr><th>Store</th><th>Recommendation</th><th>Forecast</th><th>At</th></tr>'
            f'{log_rows}</table>' if log_entries else '<p class="muted">Decision log is empty.</p>')
-    return f'{kpis}{queue}{log}'
+    fresh = (f"<p class='fresh'>Data refreshed {esc(swept_label)}"
+             f"{' (live sweep)' if swept != 'never' else ' (run a sweep to refresh)'}.</p>")
+    return f'{hero}{kpis}{activity}{queue}{log}{fresh}'
 
 
 def render_approvals(pending: Sequence[Mapping], banner: str | None = None) -> str:
