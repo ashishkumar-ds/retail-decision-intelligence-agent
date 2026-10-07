@@ -31,7 +31,10 @@ COPY tools ./tools
 # Editable install: the RAG corpus is rebuilt at startup from
 # rag/sources/*.md resolved relative to the package file, so the package
 # must be imported from this source tree, not site-packages.
-RUN pip install --no-cache-dir -e .
+# The storage extra ships psycopg: PendingApprovalStore runs on Postgres
+# when DATABASE_URL selects it (free-tier durability without a disk), and
+# that mode crashes at runtime if psycopg is not in the image.
+RUN pip install --no-cache-dir -e ".[storage]"
 
 # Unprivileged runtime user; logs volume is writable by this uid.
 RUN useradd --create-home --uid 10001 agent \
