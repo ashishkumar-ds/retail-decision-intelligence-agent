@@ -554,6 +554,7 @@ def run_recommendations(_auth: str = Depends(_require_approval_auth)):
     """
     audit_runs, all_store_ids = _fetch_audit_store_ids()
     results, newly_logged, batch_check = _evaluate_and_persist_stores(audit_runs, all_store_ids)
+    _sweep_scheduler.note_external_sweep()
     return {
         "total_stores_evaluated": len(results),
         "recommendations": results,
@@ -590,6 +591,18 @@ def monitor_sweep(_auth: str = Depends(_require_approval_auth)):
     (same path as POST /recommendations/run) and returns the ranked queue.
     Idempotent; the scheduler calls the same core on its interval.
     """
+    result = _sweep_core()
+    _sweep_scheduler.note_external_sweep()
+    return result
+
+
+def _sweep_core() -> dict:
+    """Evaluate every store and refresh the attention queue (shared core).
+
+    Used by both the manual ``POST /monitor/sweep`` endpoint and the
+    background scheduler tick. Only the manual path records an external
+    sweep note (ticks record themselves); completion counting stays exact.
+    """
     warm_up()  # absorb a Render cold start once, instead of in every store's first call
     audit_runs, all_store_ids = _fetch_audit_store_ids()
     results, newly_logged, batch_check = _evaluate_and_persist_stores(audit_runs, all_store_ids)
@@ -610,7 +623,7 @@ def _scheduled_sweep() -> dict:
     A tick that raises is recorded by the scheduler and retried next
     interval; nothing here needs the return value.
     """
-    return monitor_sweep()
+    return _sweep_core()
 
 
 _sweep_scheduler = SweepScheduler(_scheduled_sweep, sweep_interval_seconds())
@@ -1657,10 +1670,41 @@ def root() -> RedirectResponse:
 
 @app.get("/ui", response_class=HTMLResponse)
 def ui_dashboard():
+    from analytics.decision_quality import (
+        DEFAULT_MARGIN_RATE,
+        _realised_margin,
+        compute_decision_quality,
+    )
+    from execution.journal import read_events
+
     attention = ranked_attention_queue(list(_pending_approvals.values()))
+    records = read_log()
+    for row in attention:
+        # Per-row realised margin where the outcome is measured; None
+        # otherwise (unmeasured rows honestly show "no figure yet" instead
+        # of an invented one). Store margin override when the record has one.
+        rate = None
+        retail = row.get("retail_context")
+        if isinstance(retail, dict):
+            rate = retail.get("margin_rate")
+        if isinstance(rate, bool) or not isinstance(rate, (int, float)):
+            rate = DEFAULT_MARGIN_RATE
+        outcome = row.get("outcome_evidence")
+        try:
+            row["realised_margin"] = _realised_margin(outcome, rate) if isinstance(outcome, dict) else None
+        except Exception:
+            row["realised_margin"] = None
+    try:
+        quality = compute_decision_quality(records, read_decisions(), read_events())
+    except Exception as error:
+        # Analytics must never break the operator view; tiles fall back to dashes.
+        logger.warning("[UI] decision-quality tiles unavailable: %s: %s",
+                       type(error).__name__, error)
+        quality = {}
     return render_page(
         "Retail Intelligence Decision Dashboard", "/ui",
-        render_dashboard(_pending_approvals.values(), read_log(), attention),
+        render_dashboard(_pending_approvals.values(), records, attention,
+                         quality=quality, sweep_status=_sweep_scheduler.status()),
     )
 
 

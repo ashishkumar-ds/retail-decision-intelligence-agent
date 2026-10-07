@@ -226,3 +226,14 @@ def test_pending_approvals_survive_log_replay():
     assert pending[1]["recommendation_id"] == "r1"
     with mock.patch.object(main, "read_log", return_value=[]):
         assert main._rebuild_pending_approvals() == {}
+
+def test_note_external_sweep_records_freshness_without_a_tick():
+    from app.scheduler import SweepScheduler
+    calls = []
+    scheduler = SweepScheduler(lambda: calls.append(1), interval_seconds=60)
+    assert scheduler.status()["last_sweep_at"] is None
+    scheduler.note_external_sweep()
+    status = scheduler.status()
+    assert status["last_sweep_at"] is not None
+    assert status["sweeps_completed"] == 1
+    assert calls == []  # noting is bookkeeping only; no sweep ran

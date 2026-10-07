@@ -25,3 +25,22 @@ def _isolate_offpath_llm_telemetry(tmp_path, monkeypatch):
     ``OFFPATH_LLM_LOG_PATH``.
     """
     monkeypatch.setenv("OFFPATH_LLM_LOG_PATH", str(tmp_path / "offpath_llm.jsonl"))
+
+
+@pytest.fixture(autouse=True)
+def _isolate_scheduler_status():
+    """Snapshot/restore the module-global sweep-scheduler status per test.
+
+    Manual sweep endpoints record freshness notes on the shared singleton, so
+    without isolation a test that triggers a sweep leaks ``sweeps_completed``
+    into later tests asserting pristine scheduler state. The loop itself never
+    runs under tests (``SWEEP_ENABLED`` unset); only the status counters move.
+    """
+    import app.main as main
+
+    scheduler = main._sweep_scheduler
+    saved_status = scheduler.status()
+    saved_failures = scheduler._consecutive_failures
+    yield
+    scheduler._status.update(saved_status)
+    scheduler._consecutive_failures = saved_failures
