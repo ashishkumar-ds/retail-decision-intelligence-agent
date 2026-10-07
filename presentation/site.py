@@ -23,6 +23,26 @@ def esc(value: Any) -> str:
     return html.escape(str(value if value is not None else ""), quote=True)
 
 
+def working_label(value: Any) -> str:
+    """Human-readable campaign verdict for table cells.
+
+    The queue carries the full ``is_campaign_working`` mapping; rendering the
+    raw dict leaks Python reprs into the operator UI. Collapse it to the
+    verdict plus its evidence instead.
+    """
+    if isinstance(value, dict):
+        working = value.get("working")
+        evidence = value.get("evidence") or "no evidence"
+        if working is True:
+            return f"Yes — {evidence}"
+        if working is False:
+            return f"No — {evidence}"
+        return f"Not yet — {evidence}"
+    if value is None:
+        return "—"
+    return str(value)
+
+
 _CSS = f"""
 body {{ font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0;
        color: {INDIGO}; background: {MINT}; }}
@@ -92,7 +112,7 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
         f"<td>{esc(r.get('recommendation'))}</td>"
         f"<td>{esc(r.get('store_health_score'))}</td>"
         f"<td>{esc(r.get('confidence'))}</td>"
-        f"<td>{esc(r.get('campaign_working'))}</td>"
+        f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
         f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"
         for r in attention[:20]
     )

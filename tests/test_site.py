@@ -145,3 +145,22 @@ def test_evals_page_renders_with_and_without_history(tmp_path, monkeypatch, clie
     )
     response = client.get("/ui/evals")
     assert response.status_code == 200 and "22" in response.text
+
+
+def test_working_label_collapses_verdict_mapping():
+    from presentation.site import working_label
+    assert working_label({"working": True, "evidence": "MEETS_TARGET + CONFIRMED DiD"}) == \
+        "Yes — MEETS_TARGET + CONFIRMED DiD"
+    assert working_label({"working": False, "evidence": "NEGATIVE lift vs own baseline"}) == \
+        "No — NEGATIVE lift vs own baseline"
+    assert working_label({"working": None, "evidence": "no outcome yet"}) == \
+        "Not yet — no outcome yet"
+    assert working_label(None) == "—"
+    assert working_label("plain") == "plain"
+
+
+def test_dashboard_never_renders_raw_verdict_dict(client, monkeypatch):
+    _seed_pending(client, monkeypatch)
+    response = client.get("/ui")
+    assert response.status_code == 200
+    assert "'working':" not in response.text
