@@ -11,7 +11,6 @@ Palette (matches docs/diagrams/architecture-dunnhumby.*):
 from __future__ import annotations
 
 import html
-from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
 TEAL = "#38b2ab"
@@ -53,57 +52,6 @@ def _recovery_label(value: Any) -> str:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return "—"
     return f"{float(value):+.1f}%"
-
-
-def _money_label(value: Any, signed: bool = True) -> str:
-    """Money figure for tiles and cells (store currency, hence no symbol).
-
-    Missing/non-numeric renders as an em dash; bools are excluded.
-    """
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return "—"
-    return f"{float(value):+,.2f}" if signed else f"{float(value):,.2f}"
-
-
-def _age_label(iso_value: Any) -> str:
-    """Short relative age ("3d", "5h", "20m") for ISO timestamps; "—" when absent."""
-    if not isinstance(iso_value, str):
-        return "—"
-    try:
-        moment = datetime.fromisoformat(iso_value.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return "—"
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    seconds = (datetime.now(timezone.utc) - moment).total_seconds()
-    if seconds < 0:
-        return "0m"
-    if seconds < 3600:
-        return f"{int(seconds // 60)}m"
-    if seconds < 86400:
-        return f"{int(seconds // 3600)}h"
-    return f"{int(seconds // 86400)}d"
-
-
-def _priority_label(row: Mapping[str, Any]) -> str:
-    """Rank + reason the queue is ordered the way it is (both already computed).
-
-    The reason strings already carry the tier wording ("Must-act: …",
-    "Should-review: …"), so the tier word is only prepended when the reason
-    does not start with it — no stutter.
-    """
-    tier = {0: "Must-act", 1: "Should-review", 2: "Watch"}.get(row.get("attention_tier"))
-    rank = row.get("attention_rank")
-    reason = row.get("attention_reason") or ""
-    if tier and reason.startswith(tier):
-        head = reason
-    elif tier and reason:
-        head = f"{tier} — {reason}"
-    else:
-        head = reason or tier or "—"
-    if isinstance(rank, int) and head != "—":
-        return f"#{rank} · {head}"
-    return head
 
 
 _CSS = f"""
@@ -163,48 +111,26 @@ def _kv_table(rows: Sequence[tuple[str, Any]]) -> str:
 
 
 def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
-                     attention: Sequence[Mapping],
-                     quality: Mapping[str, Any] | None = None,
-                     sweep_status: Mapping[str, Any] | None = None) -> str:
-    quality = quality if isinstance(quality, Mapping) else {}
-    sweep_status = sweep_status if isinstance(sweep_status, Mapping) else {}
-    measured = quality.get("measured_intervention_count") or 0
-    realised = _money_label(quality.get("total_incremental_margin")) if measured else "—"
-    regret = _money_label(quality.get("total_regret_vs_do_nothing"), signed=False) if measured else "—"
-    waits = [r.get("generated_at") for r in pending if isinstance(r, Mapping)]
-    oldest = "—"
-    if waits:
-        try:
-            oldest = _age_label(sorted(str(w) for w in waits if isinstance(w, str))[0])
-        except Exception:
-            oldest = "—"
-    swept = _age_label(sweep_status.get("last_sweep_at"))
-    swept = f"{swept} ago" if swept != "—" else "never"
+                     attention: Sequence[Mapping]) -> str:
     kpis = (
         f'<div class="kpis">'
         f'<span><b>{len(pending)}</b> pending approvals</span>'
-        f'<span><b>{esc(realised)}</b> realised margin</span>'
-        f'<span><b>{esc(regret)}</b> regret vs do-nothing</span>'
-        f'<span><b>{esc(oldest)}</b> oldest wait</span>'
-        f'<span><b>{esc(swept)}</b> last sweep</span></div>'
+        f'<span><b>{len(attention)}</b> attention queue</span>'
+        f'<span><b>{len(log_entries)}</b> log entries</span></div>'
     )
     queue_rows = "".join(
         f"<tr><td>{esc(r.get('store_id'))}</td>"
         f"<td>{esc(r.get('recommendation'))}</td>"
         f"<td>{esc(r.get('store_health_score'))}</td>"
         f"<td>{esc(_recovery_label(r.get('recovery_pct')))}</td>"
-        f"<td>{esc(r.get('days_remaining') if isinstance(r.get('days_remaining'), (int, float)) and not isinstance(r.get('days_remaining'), bool) else '—')}</td>"
-        f"<td>{esc(_priority_label(r))}</td>"
-        f"<td>{esc(_money_label(r.get('realised_margin')))}</td>"
         f"<td>{esc(r.get('confidence'))}</td>"
         f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
         f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"
         for r in attention[:20]
     )
-    queue = (f'<h2>Attention queue ({len(attention)})</h2>'
+    queue = (f'<h2>Attention queue</h2>'
              f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
-             f'<th>Recovery %</th><th>Days left</th><th>Priority</th><th>Margin</th>'
-             f'<th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
+             f'<th>Recovery %</th><th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
              if attention else '<p class="muted">Attention queue is empty.</p>')
     log_rows = "".join(
         f"<tr><td>{esc(e.get('store_id'))}</td><td>{esc(e.get('recommendation'))}</td>"

@@ -107,22 +107,6 @@ class SweepScheduler:
         with self._lock:
             return dict(self._status)
 
-    def note_external_sweep(self) -> None:
-        """Record a sweep triggered outside the loop (manual endpoint call).
-
-        The dashboard's freshness tile reads ``last_sweep_at``; without this,
-        a manual ``POST /recommendations/run`` leaves it at "never" even
-        though the board is fresh. Scheduled ticks record themselves in
-        :meth:`_tick`, so the scheduler path must not call this (no double
-        counting) — see ``_scheduled_sweep`` in ``app/main.py``.
-        """
-        with self._lock:
-            self._consecutive_failures = 0
-            self._status["consecutive_failures"] = 0
-            self._status["sweeps_completed"] += 1
-            self._status["last_sweep_at"] = _utcnow_iso()
-            self._status["last_error"] = None
-
     def _run_loop(self) -> None:
         while not self._stop_event.is_set():
             failed = self._tick()
