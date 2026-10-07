@@ -28,10 +28,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Warm the APIs (retries 5xx; a 429 means the service is awake)
         env:
-          # Unset secrets fall back to the deployed endpoints in the script;
-          # AGENT_URL is optional (the agent is always-on Starter, so it only
-          # needs pinging if it is ever run as a free-tier demo instance).
+          # Unset secrets fall back to the deployed endpoints: the script has
+          # built-in defaults for the sibling APIs, and the agent URL falls
+          # back below - so the pinger warms all three services with zero
+          # secrets configured (a missing secret must never silently skip
+          # a target; that failure mode cost us the empty board once).
           FORECAST_API_URL: ${{ secrets.FORECAST_API_URL }}
           AUDIT_API_URL: ${{ secrets.CAMPAIGN_AUDIT_API_URL }}
-          AGENT_URL: ${{ secrets.AGENT_URL }}
+          AGENT_URL: ${{ secrets.AGENT_URL || 'https://retail-decision-intelligence-agent.onrender.com' }}
         run: bash scripts/keepalive.sh
