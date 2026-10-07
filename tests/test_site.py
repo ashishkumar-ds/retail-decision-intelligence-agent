@@ -164,3 +164,19 @@ def test_dashboard_never_renders_raw_verdict_dict(client, monkeypatch):
     response = client.get("/ui")
     assert response.status_code == 200
     assert "'working':" not in response.text
+
+
+def test_recovery_label_signs_and_guards():
+    from presentation.site import _recovery_label
+    assert _recovery_label(3.24) == "+3.2%"
+    assert _recovery_label(-1.5) == "-1.5%"
+    assert _recovery_label(None) == "—"
+    assert _recovery_label(True) == "—"
+    assert _recovery_label("x") == "—"
+
+
+def test_dashboard_attention_queue_shows_recovery_column(client, monkeypatch):
+    _seed_pending(client, monkeypatch)
+    response = client.get("/ui")
+    assert response.status_code == 200
+    assert "Recovery %" in response.text

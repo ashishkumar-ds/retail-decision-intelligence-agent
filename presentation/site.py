@@ -43,6 +43,17 @@ def working_label(value: Any) -> str:
     return str(value)
 
 
+def _recovery_label(value: Any) -> str:
+    """Signed recovery percent for table cells (records persist ``recovery_pct``).
+
+    Missing or non-numeric values render as an em dash rather than a blank
+    or a Python repr; bools are excluded (``True`` is not ``100%``).
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return "—"
+    return f"{float(value):+.1f}%"
+
+
 _CSS = f"""
 body {{ font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; margin: 0;
        color: {INDIGO}; background: {MINT}; }}
@@ -111,6 +122,7 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
         f"<tr><td>{esc(r.get('store_id'))}</td>"
         f"<td>{esc(r.get('recommendation'))}</td>"
         f"<td>{esc(r.get('store_health_score'))}</td>"
+        f"<td>{esc(_recovery_label(r.get('recovery_pct')))}</td>"
         f"<td>{esc(r.get('confidence'))}</td>"
         f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
         f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"
@@ -118,7 +130,7 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
     )
     queue = (f'<h2>Attention queue</h2>'
              f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
-             f'<th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
+             f'<th>Recovery %</th><th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
              if attention else '<p class="muted">Attention queue is empty.</p>')
     log_rows = "".join(
         f"<tr><td>{esc(e.get('store_id'))}</td><td>{esc(e.get('recommendation'))}</td>"
