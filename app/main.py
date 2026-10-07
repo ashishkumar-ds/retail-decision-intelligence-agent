@@ -1659,7 +1659,7 @@ def root() -> RedirectResponse:
 def ui_dashboard():
     attention = ranked_attention_queue(list(_pending_approvals.values()))
     return render_page(
-        "Decision dashboard", "/ui",
+        "Retail Intelligence Decision Dashboard", "/ui",
         render_dashboard(_pending_approvals.values(), read_log(), attention),
     )
 

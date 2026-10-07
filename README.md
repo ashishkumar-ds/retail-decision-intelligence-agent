@@ -27,7 +27,7 @@ No keys, no services — one command runs the whole loop on recorded data:
 bash scripts/seed_demo.sh
 ```
 
-![Decision dashboard — KPIs, ranked attention queue, and per-store campaign verdicts](docs/images/dashboard.png)
+![Retail Intelligence Decision Dashboard — KPIs, ranked attention queue, and recent decision log](docs/images/dashboard.png)
 
 Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full 5-minute walkthrough: [DEMO.md](DEMO.md).
 
