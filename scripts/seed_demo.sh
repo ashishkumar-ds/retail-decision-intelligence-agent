@@ -126,5 +126,6 @@ else
   _is_remote "$HAS_FORECAST_URL" && echo "  forecast: $HAS_FORECAST_URL"
   _is_remote "$HAS_AUDIT_URL" && echo "  campaign audit: $HAS_AUDIT_URL"
 fi
-echo "  Dashboard:   http://localhost:8001/ui"
+echo "  Board API:   http://localhost:8001/board"
+echo "  Live board:  https://retail-decision-intelligence-agent.vercel.app/"
 echo "  Walkthrough: DEMO.md"
