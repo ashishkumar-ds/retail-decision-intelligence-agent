@@ -1,0 +1,26 @@
+# Render blueprint — replaces hand-created service config so deploys are reproducible.
+# Render dashboard: New -> Blueprint -> select this repo. Set secrets (APPROVAL_AUTH_TOKEN,
+# CORS_ALLOW_ORIGINS) in dashboard; never commit them.
+services:
+  - type: web
+    name: retail-decision-intelligence-agent
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SWEEP_ENABLED
+        value: 1
+      - key: SWEEP_INTERVAL_SECONDS
+        value: 86400
+      - key: FORECAST_API_URL
+        value: https://retail-forecast-api-7sue.onrender.com/
+      - key: APPROVAL_AUTH_TOKEN
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+    disk:
+      name: agent-logs
+      mountPath: /srv/app/logs
+      sizeGB: 1

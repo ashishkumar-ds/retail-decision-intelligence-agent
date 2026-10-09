@@ -7,7 +7,7 @@ services:
     build: .
     image: retail-decision-intelligence-agent:latest
     ports:
-      - "${PORT:-8001}:8001"
+      - "${PORT:-8001}:${PORT:-8001}"
     environment:
       # Heartbeat: enable the autonomous sweep in deployment (off by default
       # in code so tests and local work never fire live-API calls).
