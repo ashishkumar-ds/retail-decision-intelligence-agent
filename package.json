@@ -1,0 +1,1 @@
+{"name":"retail-decision-board","private":true,"scripts":{"dev":"next dev","build":"next build","start":"next start"},"dependencies":{"lucide-react":"latest","next":"latest","react":"latest","react-dom":"latest"},"devDependencies":{"@types/node":"26.6.4","@types/react":"19.3.0","typescript":"7.0.2"}}
