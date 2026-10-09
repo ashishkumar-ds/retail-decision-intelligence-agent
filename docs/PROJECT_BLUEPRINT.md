@@ -22,16 +22,17 @@ even when later adaptive or language-model capabilities are introduced.
 
 | Capability | Status | Current boundary |
 | --- | --- | --- |
-| Deterministic routing, planning, scoring, verification | IMPLEMENTED | Phase 1 decision engine |
-| Forecast-service integration | IMPLEMENTED | Shared Render forecast API |
-| Project 2 audit-log consumption | IMPLEMENTED | Read-only local JSONL adapter |
-| Human approval gate | IMPLEMENTED | Process-local pending state |
-| Recommendation history | IMPLEMENTED | Append-only JSONL |
-| Intervention/outcome/evidence feedback loop | PLANNED | Phase 2 design and contract work |
-| Adaptive policy/rule calibration | FUTURE | Requires outcome data and governance |
-| RAG and curated retail knowledge retrieval | FUTURE | Not present in Phase 1 |
-| LLM explanation or agentic orchestration | FUTURE | Not present in Phase 1 |
-| Persistent approvals and production authentication | FUTURE | Explicit Phase 1 limitations |
+| Deterministic routing, planning, scoring, verification | IMPLEMENTED | Phase 1 decision engine (`decision_engine/`: route → plan → score → verify → approval-check, pure, no I/O) |
+| Forecast-service integration | IMPLEMENTED | Shared Render forecast API (`tools/forecast_tool.py`: typed adapter, retry/backoff, `AVAILABLE`/`NO_DATA`/`ERROR`; gaps are typed `DataLimitation`, never backfilled) |
+| Project 2 audit-log consumption | IMPLEMENTED | Read-only JSONL + HTTP adapters (`tools/campaign_tool.py`); never imports P2 code, never writes audit records |
+| Human approval gate | IMPLEMENTED | Central policy (`guardrails/`) + double gate at decision time (`approvals/ledger.py::decision_gate`) + durable SQLite pending store (`app/state.py`, Postgres via `DATABASE_URL`); bearer auth fail-closed 503 |
+| Recommendation history | IMPLEMENTED | Append-only fsynced JSONL (`memory/history.py`); malformed lines skipped, never repaired |
+| Intervention/outcome/evidence feedback loop | IMPLEMENTED | Phase 2 registry, checkpoints, outcome evaluator, evidence sufficiency, portfolio joins (`phase2/`); read-only over P2 |
+| Execution (approved → acted) | IMPLEMENTED | Gated, idempotent, reversible journal (`execution/`); default connector is dry-run (no external write) — see §10 |
+| Adaptive policy/rule calibration | IMPLEMENTED (report-only challenger) | V1 heuristic stays production; `decision_engine/policy_v2.py` tabular challenger + `phase2/budget_allocator.py` margin ranking + `evaluation/policy_eval.py` offline report. Promotion requires offline win + golden recalibration, same commit |
+| RAG and curated retail knowledge retrieval | IMPLEMENTED (off-path) | Hand-rolled BM25 over in-repo corpus (`rag/`); retrieval is context, never authority; corpus rebuild pinned by `scripts/check.py` |
+| LLM explanation / advisory | IMPLEMENTED (off-path, opt-in, fail-closed) | Template baseline + gated rephrase (`rag/explainer.py`, `rag/llm_explainer.py`); grounding/citation/lexicon vetoes, telemetry + alerts; `LLM_*_ENABLED` default off |
+| Persistent approvals and approver identity | IMPLEMENTED (demo-grade auth) | SQLite default / Postgres via `DATABASE_URL` + versioned migrations (`storage/`); named tokens + roles (`approvals/identity.py`, `decided_by`). No OIDC/rotation — see §10 |
 
 ## 2. Project 1 → Project 2 → Project 3 relationship
 
@@ -144,14 +145,20 @@ The centralized approval policy requires human approval for:
 - `ESCALATE`
 - `EXTEND_INTERVENTION`
 - `NEEDS_REVIEW`
+- `PAUSE_INTERVENTION`
+- `RETARGET_SEGMENT`, `TIMING_SHIFT`, `REALLOCATE_BUDGET` (diversified spend actions)
 
 `CONTINUE` and `MONITOR` do not require approval. Pending approval state is a
-durable SQLite store (`app/state.py`) derived from, and intentionally separate
-from, the durable recommendation history, and is shared across workers. The
-approval and other state-mutating endpoints require the `APPROVAL_AUTH_TOKEN`
-bearer token and fail closed (503) when it is unset. This is a single shared
-token, not per-user authorization, and these endpoints must still not be
-publicly exposed without an appropriate control layer.
+durable SQLite store (`app/state.py`, `PENDING_APPROVAL_STATE_PATH`) derived from, and intentionally separate
+from, the durable recommendation history, shared across workers (Postgres via
+`DATABASE_URL` with versioned migrations in `storage/database.py`).
+The approval, execute, and Phase-2 write endpoints require a bearer credential
+(`APPROVAL_AUTH_TOKEN` legacy shared token, or `APPROVAL_TOKENS=token:user:role`
+with `approver`/`viewer` roles in `approvals/identity.py`) and fail closed (503)
+when unset; the authenticated principal is recorded as `decided_by` alongside
+the caller-claimed `actor`. Every decision re-runs guardrails + verifier at
+decision time (`approvals/ledger.py::decision_gate`). Risk tiers, default/fallback
+pairs, and cost-of-inaction live in `guardrails/` (choice architecture).
 
 ## 6. Recommendation persistence — IMPLEMENTED
 
@@ -162,10 +169,10 @@ lines are skipped with warnings when read. This is intentionally a simple
 JSONL persistence mechanism, not a database, queue, event bus, or distributed
 concurrency system.
 
-## 7. Phase 2 intervention → outcome → evidence loop — PLANNED
+## 7. Phase 2 intervention → outcome → evidence loop — IMPLEMENTED
 
-Phase 2 should define the smallest traceable loop around the frozen Phase 1
-recommendation:
+Phase 2 defines the smallest traceable loop around the frozen Phase 1
+recommendation (see `docs/PHASE_2_SPEC.md` for the locked contract):
 
 ```text
 recommendation
@@ -191,24 +198,27 @@ Phase 2 should first specify schemas, correlation identifiers, time windows,
 baseline definitions, missing-data behavior, delayed outcomes, and ownership of
 each record. It must not silently turn an observed outcome into a new rule.
 
-## 8. Adaptive decision layer — FUTURE
+## 8. Adaptive decision layer — IMPLEMENTED (report-only challenger)
 
-After sufficient governed outcome history exists, an adaptive layer may propose
-threshold or policy changes, compare intervention strategies, and quantify
-uncertainty. Any adaptive proposal should be evaluated offline, versioned,
-reviewed, and reversible before affecting deterministic production decisions.
-The deterministic engine remains the executable safety boundary until explicit
-governance approves a change.
+V1 (`decision_engine/scorer.py` heuristics) remains the production policy.
+`decision_engine/policy_v2.py` is an offline tabular challenger (health tier ×
+velocity sign × margin tier × availability; Laplace-style backoff to global
+means at `MIN_CELL_N=3`); `phase2/budget_allocator.py` ranks spend by expected
+incremental margin × confidence (money, not lift %); `decision_engine/simulator.py::compare_candidate_actions`
+ranks CONTINUE / spend actions by `margin = base_total × lift/100 × margin_rate − cost`
+with store-margin override (`tools/retail_context.py`) and reversibility risk.
+`evaluation/policy_eval.py` replays V1-vs-V2 on held-out realised margins as a
+CI report (never a gate). Promotion to production requires an offline win,
+versioning, review, and golden-case recalibration in the same commit.
 
-Potential future capabilities include calibration against historical outcomes,
-policy versioning, cohort analysis, uplift measurement, and controlled
-experimentation. None is implemented in Phase 1.
+## 9. Knowledge and LLM layers — IMPLEMENTED (off-path, additive only)
 
-## 9. Knowledge and LLM layers — FUTURE
-
-The original Project 3 draft envisioned RAG, retail knowledge retrieval, LLM
-explanations, and agentic tool orchestration. Those capabilities remain future
-work. If introduced, they must be additive around the deterministic contract:
+RAG (`rag/corpus.py`, hand-rolled BM25 `rag/retriever.py`), the grounded
+`GET /why/{store}` explainer (`rag/explainer.py`), the advisory triage draft
+(`rag/advisor.py`), the retrieval pre-filter (`rag/prefilter.py`, fail-open),
+root-cause tags (`analytics/root_cause.py`, egress redacted per ADR-0005), and
+the LLM rephrase (`rag/llm_explainer.py`, `LLM_*_ENABLED` default off) are all
+shipped strictly off-path around the deterministic contract:
 
 - retrieval may provide policy context, not unverified authority;
 - an LLM may explain a deterministic result, not silently override it;
@@ -216,23 +226,40 @@ work. If introduced, they must be additive around the deterministic contract:
 - generated text must cite the underlying recommendation and evidence; and
 - human approval must remain mandatory for approval-required outcomes.
 
-No vector database, LLM SDK, autonomous agent, or orchestration framework is
-part of the approved Phase 1 system.
+No vector database, autonomous agent, or orchestration framework is
+part of the system (deliberate: determinism over dependency; see
+`docs/adr/0001-decision-path-is-pure-code.md`). Every off-path LLM attempt is
+measured (`rag/llm_telemetry.py` → `logs/offpath_llm.jsonl`, `/metrics`
+`retail_offpath_llm_*`, `ops/prometheus/alerts.yml`, `evaluation/llm_evals.py`
+veto + provider-swap gate).
 
 ## 10. Limitations and security posture
 
 Known intentional limitations are:
 
-- approval state is lost on restart and is not shared across workers;
-- approval/rejection endpoints have no authentication or approver identity;
-- JSONL does not provide database-grade transactions or multi-writer guarantees;
-- Campaign audit data is unavailable from the current Render root and must be
-  supplied through the configured local file;
-- forecast evaluation is synchronous and sequential per store;
+- execution default is dry-run: `execution/connector.py::DryRunConnector`
+  records intent in the journal and performs no external write
+  (`EXECUTION_CONNECTOR=dryrun` in `/health`; a real POS/CRM adapter implements
+  `apply`/`reverse` and is injected at `POST /execute/{store_id}`);
+- approval auth is demo-grade bearer tokens (`APPROVAL_AUTH_TOKEN` shared or
+  `APPROVAL_TOKENS` map with `approver`/`viewer` roles): no rotation, expiry,
+  or OIDC — do not publicly expose write paths without an additional control layer;
+- JSONL is the audit system of record (append-only, flock + fsync); it does not
+  provide database-grade transactions — the pending-approval *cache* is SQLite/Postgres;
+- Campaign audit store universe requires `CAMPAIGN_AUDIT_API_URL` or
+  `CAMPAIGN_AUDIT_LOG_PATH` (shipped `demo/` fallback); without either,
+  `POST /recommendations/run` answers 400 and the sweep idles;
+- forecast is a single upstream (`FORECAST_API_URL`): `ERROR` (integration
+  failure) vs `NO_DATA` (business gap) are distinguished per record and surfaced
+  on `/board`; there is no ensemble or last-good cache — a forecast outage
+  leaves new recommendations in `NEEDS_REVIEW` until the feed recovers
+  (see `docs/DEPLOYMENT.md` SLO);
 - scoring and confidence are interpretable heuristics, not calibrated
-  probabilities; and
-- FastAPI runtime validation was skipped in the Android Python 3.14 environment
-  because FastAPI/Pydantic could not be installed there.
+  probabilities (`HEALTH_LOW/HIGH`, boundary confidence, diversification bars);
+  the V2 challenger + `evaluation/policy_eval.py` report is the path to calibration,
+  never a silent retune;
+- simulator prior is global (Part 1 DiD `+2.84% CI [-0.5, 6.2]`): a gate, not a
+  store ranking — realized effect is only knowable from matched-control DiD.
 
 These limitations should be treated as explicit boundaries, not hidden
 assumptions or completed features.

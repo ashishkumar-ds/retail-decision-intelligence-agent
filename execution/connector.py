@@ -115,6 +115,22 @@ class DryRunConnector:
         return None
 
 
+EXECUTION_CONNECTOR_ENV = "EXECUTION_CONNECTOR"
+
+
+def resolve_connector_name() -> str:
+    """Name of the active execution connector (surfaced in /health).
+
+    The default — and currently only shipped — connector is dry-run: intent is
+    journaled, no external system is touched. A real POS/CRM adapter sets this
+    name and is injected at ``POST /execute/{store_id}``; gating, idempotency,
+    reversal and audit live here, never in the adapter.
+    """
+    import os
+
+    return os.getenv(EXECUTION_CONNECTOR_ENV, "dry-run").strip().lower() or "dry-run"
+
+
 def idempotency_key(record: Mapping[str, Any]) -> str:
     """Stable key: same approval -> same key -> at most one live execution."""
     material = "{}:{}:{}".format(

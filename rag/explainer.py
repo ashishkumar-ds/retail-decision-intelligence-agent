@@ -192,6 +192,24 @@ def build_narrative(evidence: Mapping[str, Any]) -> tuple[str, list[dict[str, st
             f"and the latest lifecycle event is '{latest_decision.get('event_type')}' "
             f"[event:{event_ref}]."
         )
+    # Evidence visibility: what the decision did NOT consider (recorded fields
+    # only, never invented). Margin/availability context and coverage gaps ride
+    # on the recommendation record; surfacing them here keeps the reviewer from
+    # inferring full coverage from silence. No numbers are introduced, so the
+    # numeric-grounding guard is unaffected.
+    retail = latest.get("retail_context") if isinstance(latest, dict) else None
+    if isinstance(retail, dict):
+        ops_flag = retail.get("ops_flag")
+        demand = retail.get("demand_vs_supply")
+        if ops_flag:
+            sentences.append(
+                f"Operations flag on this store: {ops_flag} [rec:{rec_id}]."
+            )
+        elif demand == "UNKNOWN":
+            sentences.append(
+                "No store margin or availability context was available for this "
+                f"decision; it was made on forecast numbers alone [rec:{rec_id}]."
+            )
     return " ".join(sentences), citations
 
 

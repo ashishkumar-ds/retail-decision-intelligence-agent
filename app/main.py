@@ -449,9 +449,12 @@ def _require_phase2_enabled() -> None:
 
 @app.get("/health")
 def health():
+    from execution.connector import resolve_connector_name
+
     return {
         "status": "ok",
         "scheduler": _sweep_scheduler.status(),
+        "execution_connector": resolve_connector_name(),
         "features": {
             "rag": rag_enabled(),
             "phase2": phase2_enabled(),

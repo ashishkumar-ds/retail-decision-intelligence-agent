@@ -4,6 +4,14 @@ Every safety control in this service, where it runs, and how it fails. This is
 the document an auditor reads first. Tier-1 evidence always wins over any
 external or generated content (see `docs/rag_sources.md` for the tier contract).
 
+> Auth boundary: approval/execute/Phase-2 write auth is demo-grade bearer
+> tokens (`APPROVAL_AUTH_TOKEN` shared or `APPROVAL_TOKENS` map,
+> `approvals/identity.py`) — no rotation, expiry, or OIDC. Fail-closed 503
+> without a credential is the control; do not expose write paths publicly
+> without an additional layer. Execution default is dry-run
+> (`execution/connector.py::DryRunConnector`, `EXECUTION_CONNECTOR` in
+> `/health`): journals intent, performs no external write.
+
 ## 1. Human approval gate (decision layer)
 - **Where:** `guardrails/__init__.py` (`APPROVAL_REQUIRED_RECOMMENDATIONS`),
   enforced by `decision_engine/scorer.py` + `decision_engine/verifier.py`.

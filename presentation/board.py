@@ -134,6 +134,10 @@ def _entry(rec: Mapping[str, Any], decision_status: str | None,
         "days_remaining": rec.get("days_remaining"),
         "recommendation_id": rec.get("recommendation_id"),
         "decision_status": decision_status,
+        # Forecast SLO signal: AVAILABLE (fresh) vs NO_DATA (business gap) vs
+        # ERROR (integration failure — feed down, last-good NOT cached, the
+        # store sits in NEEDS_REVIEW until the feed recovers).
+        "forecast_status": rec.get("forecast_status"),
         "uplift_pct": outcome.get("actual_uplift_pct"),
         "did_uplift_pct": causal.get("did_uplift_pct"),
         "causal_state": causal.get("assessment_state"),
