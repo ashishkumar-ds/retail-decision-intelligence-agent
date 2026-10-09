@@ -117,6 +117,9 @@ from tools.campaign_tool import (
     get_audit_log,
     get_store_ids_from_audit_log,
 )
+from tools.campaign_tool import (
+    ping_upstream as ping_campaign_upstream,
+)
 from tools.forecast_tool import (
     ForecastResponseError,
     get_actuals,
@@ -125,6 +128,9 @@ from tools.forecast_tool import (
     get_prediction,
     get_store_info,
     warm_up,
+)
+from tools.forecast_tool import (
+    ping_upstream as ping_forecast_upstream,
 )
 from tools.retail_context import annotate_retail_context, get_store_retail_row
 
@@ -463,6 +469,43 @@ def health():
             "llm_advisory": llm_advisory_enabled(),
         },
     }
+
+
+_WARMUP_COOLDOWN_SECONDS = 300.0  # at most one background ping burst per 5 min
+_last_warmup_kick: float = 0.0
+
+
+def _kick_upstream_warmup() -> None:
+    """Fire best-effort wake-up pings at sleeping free-tier upstreams.
+
+    Render free services sleep after ~15 min idle, so a dashboard click that
+    only reads OUR cache leaves forecast + campaign cold for the NEXT write
+    (sweep/run). This fires both pings in daemon threads (never blocks the
+    response, never raises, throttled to one burst per cooldown) while the
+    board serves persisted records instantly. First click wakes them, second
+    click (after their ~30-60s cold start) sees fresh data.
+    """
+    import threading
+    import time as _time
+
+    global _last_warmup_kick
+    now = _time.monotonic()
+    if now - _last_warmup_kick < _WARMUP_COOLDOWN_SECONDS:
+        return
+    _last_warmup_kick = now
+
+    def _ping() -> None:
+        try:
+            ping_forecast_upstream()
+        except Exception as error:  # never break a read path
+            logger.info("[WARM-UP] forecast ping: %s: %s", type(error).__name__, error)
+        try:
+            ping_campaign_upstream()
+        except Exception as error:
+            logger.info("[WARM-UP] campaign ping: %s: %s", type(error).__name__, error)
+
+    thread = threading.Thread(target=_ping, name="upstream-warmup", daemon=True)
+    thread.start()
 
 
 def _fetch_audit_store_ids() -> list[int]:
@@ -1486,6 +1529,7 @@ def get_status_board():
     intervention, where the campaign is working, and why it is not working
     where it is not. Pure classification over the persisted recommendation log;
     intervention entries are ordered by the monitor's attention ranking."""
+    _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     ranked = ranked_attention_queue(list(_pending_approvals.values()))
     board = build_board(
         read_log(),
@@ -1503,6 +1547,7 @@ def get_status_board():
 @app.get("/board/view", response_class=HTMLResponse)
 def get_status_board_html():
     """Human-readable board: same classification as GET /board, rendered HTML."""
+    _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     ranked = rank_attention(list(_pending_approvals.values()))
     board = build_board(
         read_log(),
@@ -1738,6 +1783,7 @@ def ui_dashboard():
     )
     from execution.journal import read_events
 
+    _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     attention = ranked_attention_queue(list(_pending_approvals.values()))
     records = read_log()
     decisions = read_decisions()

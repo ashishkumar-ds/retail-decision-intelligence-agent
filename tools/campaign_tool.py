@@ -111,6 +111,24 @@ def _audit_api_url() -> str | None:
     return configured.strip() if configured and configured.strip() else None
 
 
+def ping_upstream(timeout_seconds: float = 8.0) -> bool:
+    """Best-effort wake-up ping for the campaign-audit upstream (never raises).
+
+    Render free-tier sleeps after ~15 min idle; a dashboard hit fires this in
+    a daemon thread so the click that warms our service also warms the store
+    universe behind it. Read-only GET, short timeout, any failure is just
+    logged — the board serves cached records either way.
+    """
+    url = _audit_api_url() or DEFAULT_AUDIT_API_URL
+    try:
+        response = httpx.get(url, timeout=timeout_seconds)
+        return response.status_code < 500
+    except Exception as error:  # cold start in progress, DNS, timeout — all fine
+        logger.info("[CAMPAIGN AUDIT WARM-UP] ping %s: %s: %s",
+                    url, type(error).__name__, error)
+        return False
+
+
 def _is_retryable_error(error: Exception) -> bool:
     """Whether an error is transient: a cold start or a network failure.
 

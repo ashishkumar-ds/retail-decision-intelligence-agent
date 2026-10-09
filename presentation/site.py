@@ -291,7 +291,10 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
            f'<table><tr><th>Store</th><th>Recommendation</th><th>Forecast</th><th>At</th></tr>'
            f'{log_rows}</table>' if log_entries else '<p class="muted">Decision log is empty.</p>')
     fresh = (f"<p class='fresh'>Data refreshed {esc(swept_label)}"
-             f"{' (live sweep)' if swept != 'never' else ' (run a sweep to refresh)'}.</p>")
+             f"{' (live sweep)' if swept != 'never' else ' (run a sweep to refresh)'}.</p>"
+             f"<p class='fresh'>Free-tier upstreams sleep when idle: this page serves cached decisions "
+             f"instantly and wakes the forecast + campaign APIs behind it — "
+             f"refresh again in ~1 min if numbers look stale.</p>")
     return f'{hero}{kpis}{activity}{queue}{log}{fresh}'
 
 

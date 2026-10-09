@@ -15,6 +15,13 @@ name: Keep-alive (Render free tier)
 # day, not 144), and disables them after 60 days of repo inactivity - for a
 # guarantee, also add the URLs to a free external pinger (UptimeRobot /
 # cron-job.org at a 10-minute interval).
+#
+# Belt and braces: every dashboard hit (/ui, /board, /board/view) also fires
+# best-effort wake-up pings at both upstreams in a daemon thread
+# (app/main.py::_kick_upstream_warmup, throttled to one burst per 5 min) while
+# serving cached records instantly. First click wakes them, second click after
+# their ~30-60s cold start sees fresh data. The pinger above keeps them warm
+# between visits; the click-trigger covers the gaps it misses.
 
 on:
   schedule:

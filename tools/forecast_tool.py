@@ -236,6 +236,17 @@ def warm_up(max_wait_seconds: float = 120.0, sleep_fn: Callable[[float], None] |
     return False
 
 
+def ping_upstream(timeout_seconds: float = 8.0) -> bool:
+    """Best-effort wake-up ping for the forecast upstream (never raises)."""
+    try:
+        response = httpx.get(f"{_base_url()}/health", timeout=timeout_seconds)
+        return response.status_code < 500
+    except Exception as error:  # cold start in progress, DNS, timeout - all fine
+        logger.info("[FORECAST WARM-UP] ping %s: %s: %s",
+                    _base_url(), type(error).__name__, error)
+        return False
+
+
 def get_prediction(
     store_id: int,
     day: int,

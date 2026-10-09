@@ -119,3 +119,46 @@ def test_board_carries_forecast_status():
     board = build_board(recs)
     entry = board["buckets"]["insufficient_data"][0]
     assert entry["forecast_status"] == "ERROR"
+
+
+def test_upstream_ping_helpers_never_raise_and_warmup_throttled(monkeypatch):
+    import app.main as main
+    from tools import campaign_tool, forecast_tool
+
+    assert campaign_tool.ping_upstream(timeout_seconds=0.01) in (True, False)
+    assert forecast_tool.ping_upstream(timeout_seconds=0.01) in (True, False)
+
+    calls: list[str] = []
+    monkeypatch.setattr(main, "ping_forecast_upstream", lambda *a, **k: calls.append("f") or True)
+    monkeypatch.setattr(main, "ping_campaign_upstream", lambda *a, **k: calls.append("c") or True)
+    main._last_warmup_kick = 0.0
+    main._kick_upstream_warmup()
+    import time as _time
+
+    _time.sleep(0.5)  # daemon thread fires behind the response
+    assert sorted(calls) == ["c", "f"]
+    # second kick inside cooldown: no new burst
+    main._kick_upstream_warmup()
+    _time.sleep(0.2)
+    assert sorted(calls) == ["c", "f"]
+    # dashboard hits never block on upstreams
+    monkeypatch.setattr(main, "ping_forecast_upstream", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(main, "ping_campaign_upstream", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    main._last_warmup_kick = 0.0
+    main._kick_upstream_warmup()  # must not raise
+    _time.sleep(0.3)
+
+
+def test_dashboard_notes_free_tier_wake_up(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import app.main as main
+
+    monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "recommendation.jsonl"))
+    monkeypatch.setenv("PENDING_APPROVAL_STATE_PATH", str(tmp_path / "pending.db"))
+    monkeypatch.setenv(main.APPROVAL_AUTH_TOKEN_ENV, "test-token")
+    main._pending_approvals.clear()
+    with TestClient(main.app) as client:
+        response = client.get("/ui")
+    assert response.status_code == 200
+    assert "wakes the forecast" in response.text
