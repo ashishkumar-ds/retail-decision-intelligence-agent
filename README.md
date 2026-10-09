@@ -11,10 +11,9 @@
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Live board](https://img.shields.io/badge/live%20board-vercel-000000)](https://retail-decision-intelligence-agent.vercel.app/)
-[![Live demo](https://img.shields.io/badge/live%20demo-onrender.com-46E3B7)](https://retail-decision-intelligence-agent.onrender.com/ui)
+[![Live demo](https://img.shields.io/badge/live%20demo-vercel-000000)](https://retail-decision-intelligence-agent.vercel.app/)
 
-**Live demos:** stakeholder board ([Vercel](https://retail-decision-intelligence-agent.vercel.app/)) · operator dashboard ([Render `/ui`](https://retail-decision-intelligence-agent.onrender.com/ui)) · API ([`/health`](https://retail-decision-intelligence-agent.onrender.com/health), [`/docs`](https://retail-decision-intelligence-agent.onrender.com/docs) and `/openapi.json`). Write paths need a bearer token.
+**Live demo:** [retail-decision-intelligence-agent.vercel.app](https://retail-decision-intelligence-agent.vercel.app/) — the stakeholder dashboard (API: `retail-decision-intelligence-agent.onrender.com` — `/health`, `/docs`, `/openapi.json`). Write paths need a bearer token.
 
 </div>
 
