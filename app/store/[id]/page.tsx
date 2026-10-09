@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-function api(path: string) { return `${process.env.NEXT_PUBLIC_API_BASE || ''}${path}` }
+function api(path: string) { return `/api${path}` }
 type Detail = { store_id?: any; narrative?: string; citations?: {type?:any;id?:any;detail?:any}[]; methodology?: {chunk_id?:any;title?:any;part?:any;score?:any}[]; guard?: Record<string,any> }
 export default function StoreDetail({ params }: { params: Promise<{ id: string }> }) { const [id,setId]=useState(''); const [data,setData]=useState<Detail|null>(null); const [error,setError]=useState('')
  useEffect(()=>{params.then(({id})=>{setId(id);fetch(api(`/why/${id}`),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error();return r.json()}).then(setData).catch(()=>setError('This store detail could not be loaded.'))})},[params])
