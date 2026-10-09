@@ -1,13 +1,13 @@
 # Frontend (stakeholder board)
 
-Next.js read-only stakeholder board, deployed on Vercel **with the project
-root set to `frontend/`**:
+The read-only stakeholder board is a **separate Next.js app** deployed on Vercel:
 
 - **Live:** https://retail-decision-intelligence-agent.vercel.app/
 - **Backend it reads:** https://retail-decision-intelligence-agent.onrender.com
-  (`GET /board`, `/recommendations`, `/why/{store_id}`, `/pending-approvals`;
-  same-origin `/api/:path*` rewrite proxies to the backend, so no CORS
-  dependency — see `app/api/[...path]/route.ts`)
+  (`GET /board`, `/recommendations`, `/why/{store_id}`, `/pending-approvals`)
+
+This directory intentionally holds no app code — it documents the contract so the
+two repos can't drift:
 
 - API spec + polling/retry rules: [`docs/FRONTEND_CONTRACT.md`](../docs/FRONTEND_CONTRACT.md)
 - Same-origin bypass (avoids CORS entirely): add a `vercel.json` rewrite in the
