@@ -11,9 +11,10 @@
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live board](https://img.shields.io/badge/live%20board-vercel-000000)](https://retail-decision-intelligence-agent.vercel.app/)
 [![Live demo](https://img.shields.io/badge/live%20demo-onrender.com-46E3B7)](https://retail-decision-intelligence-agent.onrender.com/ui)
 
-**Live demo:** [retail-decision-intelligence-agent.onrender.com](https://retail-decision-intelligence-agent.onrender.com/ui) — the operator dashboard; API consumers have `/health`, `/docs` and `/openapi.json`. Write paths need a bearer token.
+**Live demos:** stakeholder board ([Vercel](https://retail-decision-intelligence-agent.vercel.app/)) · operator dashboard ([Render `/ui`](https://retail-decision-intelligence-agent.onrender.com/ui)) · API ([`/health`](https://retail-decision-intelligence-agent.onrender.com/health), [`/docs`](https://retail-decision-intelligence-agent.onrender.com/docs) and `/openapi.json`). Write paths need a bearer token.
 
 </div>
 
@@ -34,6 +35,8 @@ Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for 
 ## What it is
 
 A decision-intelligence agent that closes the loop **plan → execute → measure → re-decide** for underperforming retail stores. The decision path is pure code — no LLM — and every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
+
+**Why this matters for data-science / AI-ML roles:** the system is built around measurement, not vibes — a calibrated Difference-in-Differences causal prior (estimate + confidence interval) separates intervention effect from market drift, every claim carries a confidence and a citation, LLM output is treated as untrusted input behind numeric-grounding vetoes, and model-style evals (golden scenarios, grounding-failure injection, provider swaps) gate every change.
 
 ## Quickstart
 
