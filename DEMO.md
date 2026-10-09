@@ -22,7 +22,7 @@ or with `curl -s <url> | python3 -m json.tool`.
 > LLM layers are opt-in and fail closed."
 
 ### 2. The whole portfolio at a glance
-`http://localhost:8001/ui`
+`http://localhost:8001/board` (same data as the live [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/))
 > "85 stores scored every cycle. The dashboard is the buyer's first screen:
 > 47 need intervention, 18 are mid-intervention, 20 are working well."
 
@@ -58,7 +58,7 @@ never repeats the hallucination.
 > in Part 1 is exactly what raw lift wrongly credits to the intervention."
 
 ### 7. The human gate
-`http://localhost:8001/ui/approvals`
+Approvals live in the operator console (`/ui/approvals`, operator-only — not part of the public demo).
 Then (with the demo token, optional — skip live if short on time):
 ```bash
 curl -X POST localhost:8001/approve/317 \
@@ -70,7 +70,9 @@ curl -X POST localhost:8001/approve/317 \
 > with 503 — fail closed."
 
 ### 8. The system grades itself
-`http://localhost:8001/ui/eval-history`
+```bash
+python evaluation/run_evals.py   # 22 golden business scenarios + simulator evals
+```
 > "22 golden business scenarios + 4 simulator evals run in CI against a
 > pinned calibration. A decision-behavior change that doesn't update the
 > golden cases in the same commit fails the build."
