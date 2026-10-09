@@ -11,3 +11,4 @@
 | [WHITEPAPER.md](WHITEPAPER.md) | Project whitepaper |
 | [market_benchmark_retail_di.md](market_benchmark_retail_di.md) | Market benchmark for retail decision intelligence |
 | [PHASE_2_SPEC.md](PHASE_2_SPEC.md) | Phase 2 contract spec |
+| [FRONTEND_CONTRACT.md](FRONTEND_CONTRACT.md) | Read-only API contract for an external (v0/Vercel) stakeholder board + paste-ready v0 prompt |

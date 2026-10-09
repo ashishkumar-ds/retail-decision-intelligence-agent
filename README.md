@@ -178,6 +178,7 @@ serves the deterministic output instead.
 - [Phase 2 spec](docs/PHASE_2_SPEC.md) — the intervention lifecycle contract
 - [LLM integration patterns](docs/LLM_INTEGRATION_PATTERNS.md) — how the optional LLM layer is quarantined
 - [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
+- [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec + paste-ready prompt for an external (v0/Vercel) board
 
 ## Contributing
 

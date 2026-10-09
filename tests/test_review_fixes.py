@@ -212,3 +212,42 @@ def test_refresh_observed_baselines_fails_open(tmp_path, monkeypatch):
     main._refresh_observed_baselines()
     assert main._observed_baselines == {9: 100.0}
     main._observed_baselines.clear()
+
+
+def test_cors_origins_parsing_fail_closed(monkeypatch):
+    import app.main as main
+
+    monkeypatch.delenv(main.CORS_ALLOW_ORIGINS_ENV, raising=False)
+    assert main._cors_origins() == []  # unset = no cross-origin access
+    monkeypatch.setenv(main.CORS_ALLOW_ORIGINS_ENV, "  ,, ")
+    assert main._cors_origins() == []  # blanks never become origins
+    monkeypatch.setenv(main.CORS_ALLOW_ORIGINS_ENV,
+                       " https://a.vercel.app/ , https://b.vercel.app , ")
+    assert main._cors_origins() == ["https://a.vercel.app", "https://b.vercel.app"]
+
+
+def _cors_probe(origin_header: str, configured: str | None) -> str:
+    """Fresh-interpreter probe: what ACAO header does /health return?"""
+    script = (
+        "import sys; sys.path.insert(0, sys.argv[1])\n"
+        "from fastapi.testclient import TestClient\n"
+        "import app.main as main\n"
+        "r = TestClient(main.app).get('/health', headers={'Origin': sys.argv[2]})\n"
+        "print(r.headers.get('access-control-allow-origin', 'NONE'))\n"
+    )
+    env = dict(**__import__("os").environ)
+    env.pop("CORS_ALLOW_ORIGINS", None)
+    if configured:
+        env["CORS_ALLOW_ORIGINS"] = configured
+    proc = subprocess.run([sys.executable, "-c", script, str(ROOT), origin_header],
+                          capture_output=True, text=True, env=env, cwd=str(ROOT))
+    assert proc.returncode == 0, proc.stderr[-500:]
+    return proc.stdout.strip().splitlines()[-1]
+
+
+def test_cors_wire_allowlist_not_wildcard():
+    allowed = "https://my-board.vercel.app"
+    # configured origin reads, unknown origin gets no header, unset = none
+    assert _cors_probe(allowed, allowed) == allowed
+    assert _cors_probe("https://evil.example", allowed) == "NONE"
+    assert _cors_probe(allowed, None) == "NONE"
