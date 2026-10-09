@@ -175,12 +175,12 @@ serves the deterministic output instead.
 ## Documentation
 
 - [Whitepaper](docs/WHITEPAPER.md) — the P1 → P2 → P3 series and this agent's place in it
-- [Project blueprint](docs/PROJECT_BLUEPRINT.md) — architecture record; capabilities marked implemented/planned
-- [Safety](docs/SAFETY.md) — canonical list of every safety gate, its rule, and failure mode
-- [Phase 2 spec](docs/PHASE_2_SPEC.md) — the intervention lifecycle contract
+- [Safety](docs/SAFETY.md) — every safety gate, its rule, and failure mode
 - [LLM integration patterns](docs/LLM_INTEGRATION_PATTERNS.md) — how the optional LLM layer is quarantined
 - [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
-- [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec + paste-ready prompt for an external (v0/Vercel) board
+- [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec for the Vercel board
+
+Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
 
 ## Contributing
 
