@@ -162,3 +162,53 @@ def test_dashboard_notes_free_tier_wake_up(tmp_path, monkeypatch):
         response = client.get("/ui")
     assert response.status_code == 200
     assert "wakes the forecast" in response.text
+
+
+def test_projection_fills_unbaselined_stores_from_actuals_overrides():
+    from analytics.decision_quality import projected_portfolio_margin
+
+    recs = [
+        {"store_id": 1, "outcome_evidence": {"baseline_value": 100.0}},
+        {"store_id": 2, "outcome_evidence": None},
+        {"store_id": 3, "outcome_evidence": {"evidence_state": "INSUFFICIENT"}},
+    ]
+    # Outcome baseline wins over the override; override fills the rest.
+    proj = projected_portfolio_margin(
+        recs, margin_rate=0.20, baseline_overrides={2: 50.0, 3: 999.0, 1: 1.0})
+    by_store = {p["store_id"]: p for p in proj["per_store"]}
+    assert by_store[1]["baseline_source"] == "outcome"
+    assert by_store[2]["baseline_source"] == "actuals"
+    assert by_store[3]["baseline_source"] == "actuals"
+    assert proj["unprojected_store_ids"] == []
+    # 100 * 60 * 2.84% * 0.20 = 34.08; 50 -> 17.04; 999 -> 340.45
+    assert by_store[1]["projected_margin"] == 34.08
+    assert by_store[2]["projected_margin"] == 17.04
+    # Without overrides the un-baselined stores stay unprojected, never invented.
+    proj2 = projected_portfolio_margin(recs, margin_rate=0.20)
+    assert proj2["unprojected_store_ids"] == [2, 3]
+
+
+def test_refresh_observed_baselines_fails_open(tmp_path, monkeypatch):
+    import app.main as main
+
+    monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "recommendation.jsonl"))
+    (tmp_path / "recommendation.jsonl").write_text(
+        '{"store_id": 9, "recommendation": "MONITOR"}\n', encoding="utf-8")
+    main._observed_baselines.clear()
+
+    def _boom(*a, **k):
+        raise RuntimeError("upstream cold")
+
+    monkeypatch.setattr("tools.forecast_tool.get_store_info", _boom)
+    main._refresh_observed_baselines()  # must not raise
+    assert main._observed_baselines == {}  # fail-open: nothing cached
+
+    monkeypatch.setattr("tools.forecast_tool.get_store_info",
+                        lambda *a, **k: {"last_day": 711})
+    monkeypatch.setattr(
+        "tools.forecast_tool.get_actuals",
+        lambda *a, **k: {"observations": [{"day": d, "sales_value": 100.0}
+                                          for d in range(690, 711)]})
+    main._refresh_observed_baselines()
+    assert main._observed_baselines == {9: 100.0}
+    main._observed_baselines.clear()

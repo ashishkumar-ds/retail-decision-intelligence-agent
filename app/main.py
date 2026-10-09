@@ -503,9 +503,66 @@ def _kick_upstream_warmup() -> None:
             ping_campaign_upstream()
         except Exception as error:
             logger.info("[WARM-UP] campaign ping: %s: %s", type(error).__name__, error)
+        # After waking upstreams, backfill observed baselines for the labelled
+        # projection (fail-open per store, never blocks a response).
+        _refresh_observed_baselines()
 
     thread = threading.Thread(target=_ping, name="upstream-warmup", daemon=True)
     thread.start()
+
+
+# Observed daily-mean sales per store, derived from the actuals feed in the
+# background (daemon thread above). Used ONLY as the baseline for the labelled
+# prior projection on stores whose outcome evidence has no evaluated baseline
+# yet - a real observation from the dataset, never a measured outcome.
+_observed_baselines: dict[int, float] = {}
+_BASELINE_MIN_OBSERVED_DAYS = 10  # below this the mean is too thin to project
+
+
+def _refresh_observed_baselines() -> None:
+    """Best-effort fill of ``_observed_baselines`` for un-baselined stores.
+
+    Runs in the warmup daemon thread (never blocks a response), fail-open per
+    store: metadata/actuals errors, short coverage or upstream cold starts just
+    leave the store unprojected until a later burst succeeds.
+    """
+    from tools.forecast_tool import get_actuals, get_store_info
+
+    try:
+        records = read_log()
+    except Exception as error:
+        logger.info("[BASELINE] read_log: %s: %s", type(error).__name__, error)
+        return
+    for record in records:
+        if not isinstance(record, Mapping):
+            continue
+        sid = record.get("store_id")
+        if isinstance(sid, bool) or not isinstance(sid, int):
+            continue
+        outcome = record.get("outcome_evidence")
+        if isinstance(outcome, Mapping):
+            base = outcome.get("baseline_value")
+            if (not isinstance(base, bool) and isinstance(base, (int, float)) and base > 0):
+                continue  # evaluated baseline already on the record
+        if sid in _observed_baselines:
+            continue
+        try:
+            info = get_store_info(sid, retries=0, backoffs=())
+            last_day = info.get("last_day") if isinstance(info, Mapping) else None
+            if not isinstance(last_day, int) or isinstance(last_day, bool):
+                continue
+            envelope = get_actuals(sid, last_day - 55, last_day, retries=0, backoffs=())
+            values = [float(o["sales_value"]) for o in envelope.get("observations", [])
+                      if isinstance(o, Mapping)
+                      and isinstance(o.get("sales_value"), (int, float))
+                      and not isinstance(o.get("sales_value"), bool)]
+            if len(values) >= _BASELINE_MIN_OBSERVED_DAYS and sum(values) > 0:
+                _observed_baselines[sid] = round(sum(values) / len(values), 4)
+                logger.info("[BASELINE] store %s observed mean %.2f over %d days",
+                            sid, _observed_baselines[sid], len(values))
+        except Exception as error:  # cold start, no coverage, malformed - fail open
+            logger.info("[BASELINE] store %s skipped: %s: %s",
+                        sid, type(error).__name__, error)
 
 
 def _fetch_audit_store_ids() -> list[int]:
@@ -1780,6 +1837,7 @@ def ui_dashboard():
         DEFAULT_MARGIN_RATE,
         _realised_margin,
         compute_decision_quality,
+        projected_portfolio_margin,
     )
     from execution.journal import read_events
 
@@ -1787,6 +1845,18 @@ def ui_dashboard():
     attention = ranked_attention_queue(list(_pending_approvals.values()))
     records = read_log()
     decisions = read_decisions()
+    # Store margin overrides from the records' own retail context (P2 proxy),
+    # so BOTH measured and projected money use store-specific rates.
+    store_margins: dict[int, float] = {}
+    for rec in records:
+        if not isinstance(rec, Mapping):
+            continue
+        sid = rec.get("store_id")
+        retail = rec.get("retail_context")
+        if isinstance(sid, int) and not isinstance(sid, bool) and isinstance(retail, dict):
+            rate = retail.get("margin_rate")
+            if isinstance(rate, (int, float)) and not isinstance(rate, bool) and 0 < rate <= 1:
+                store_margins[sid] = float(rate)
     for row in attention:
         # Per-row realised margin where the outcome is measured; None
         # otherwise (unmeasured rows honestly show "no figure yet" instead
@@ -1802,8 +1872,33 @@ def ui_dashboard():
             row["realised_margin"] = _realised_margin(outcome, rate) if isinstance(outcome, dict) else None
         except Exception:
             row["realised_margin"] = None
+        # Prior projection for unmeasured rows: record baseline x 60d x
+        # 2.84% x store margin (planning figure, never mixed with realised).
+        # Baseline precedence mirrors projected_portfolio_margin: evaluated
+        # outcome baseline, else the observed actuals mean cached in the
+        # background burst (labelled "actuals" in the projection payload).
+        if row["realised_margin"] is None:
+            try:
+                from analytics.decision_quality import EVALUATION_WINDOW_DAYS, PRIOR_LIFT_PCT
+
+                base = (outcome.get("baseline_value") if isinstance(outcome, dict) else None)
+                if not (isinstance(base, (int, float)) and not isinstance(base, bool) and base > 0):
+                    base = _observed_baselines.get(row.get("store_id"))
+                if isinstance(base, (int, float)) and not isinstance(base, bool) and base > 0:
+                    row["projected_margin"] = round(
+                        float(base) * EVALUATION_WINDOW_DAYS * PRIOR_LIFT_PCT / 100.0 * float(rate), 2)
+                else:
+                    row["projected_margin"] = None
+            except Exception:
+                row["projected_margin"] = None
+        else:
+            row["projected_margin"] = None
     try:
-        quality = compute_decision_quality(records, decisions, read_events())
+        quality = compute_decision_quality(records, decisions, read_events(),
+                                           store_margins=store_margins)
+        quality["projection"] = projected_portfolio_margin(
+            records, store_margins=store_margins,
+            baseline_overrides=dict(_observed_baselines))
     except Exception as error:
         # Analytics must never break the operator view; tiles fall back to dashes.
         logger.warning("[UI] decision-quality tiles unavailable: %s: %s",

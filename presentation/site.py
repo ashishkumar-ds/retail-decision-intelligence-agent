@@ -65,6 +65,22 @@ def _money_label(value: Any, signed: bool = True) -> str:
     return f"{float(value):+,.2f}" if signed else f"{float(value):,.2f}"
 
 
+def _margin_cell(row: Mapping[str, Any]) -> str:
+    """Watchlist margin cell: measured figure wins, else the prior projection.
+
+    Realised outcome renders plain; the projection carries a "~" prefix and
+    "(proj.)" suffix so a reviewer never reads a prior as cash. "—" when
+    neither exists (no baseline on record yet).
+    """
+    realised = row.get("realised_margin")
+    if isinstance(realised, (int, float)) and not isinstance(realised, bool):
+        return _money_label(realised)
+    projected = row.get("projected_margin")
+    if isinstance(projected, (int, float)) and not isinstance(projected, bool):
+        return f"~{_money_label(projected)} (proj.)"
+    return "—"
+
+
 def _age_label(iso_value: Any) -> str:
     """Short relative age ("3d", "5h", "20m") for ISO timestamps; "—" when absent."""
     if not isinstance(iso_value, str):
@@ -220,8 +236,23 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
     sweep_status = sweep_status if isinstance(sweep_status, Mapping) else {}
     trend = trend if isinstance(trend, Mapping) else {}
     measured = quality.get("measured_intervention_count") or 0
-    realised = _money_label(quality.get("total_incremental_margin")) if measured else "—"
-    regret = _money_label(quality.get("total_regret_vs_do_nothing"), signed=False) if measured else "—"
+    if measured:
+        realised = _money_label(quality.get("total_incremental_margin"))
+        realised_sub = f"measured across {measured} store{'s' if measured != 1 else ''}"
+        regret = _money_label(quality.get("total_regret_vs_do_nothing"), signed=False)
+    else:
+        realised = "—"
+        realised_sub = "no measured outcomes yet"
+        regret = "—"
+    projection = quality.get("projection") if isinstance(quality.get("projection"), dict) else {}
+    projected_total = projection.get("projected_total_margin")
+    projected_n = projection.get("projected_store_count") or 0
+    if isinstance(projected_total, (int, float)) and projected_n:
+        projected = _money_label(projected_total)
+        projected_sub = (f"DiD +2.84% prior over {projected_n} store{'s' if projected_n != 1 else ''} "
+                         f"— projection, NOT measured")
+    else:
+        projected, projected_sub = "—", "no projectable baseline"
     waits = [r.get("generated_at") for r in pending if isinstance(r, Mapping)]
     oldest = "—"
     if waits:
@@ -241,7 +272,8 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
     kpis = (
         f'<div class="kpis">'
         f'<span><b>{len(pending)}</b> pending approvals</span>'
-        f'<span><b>{esc(realised)}</b> realised margin</span>'
+        f'<span><b>{esc(realised)}</b> realised margin<br><small>{esc(realised_sub)}</small></span>'
+        f'<span><b>{esc(projected)}</b> projected margin<br><small>{esc(projected_sub)}</small></span>'
         f'<span><b>{esc(regret)}</b> regret vs do-nothing</span>'
         f'<span><b>{esc(oldest)}</b> oldest wait</span>'
         f'<span><b>{esc(swept_label)}</b> last sweep</span></div>'
@@ -269,7 +301,7 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
         f"<td>{esc(_recovery_label(r.get('recovery_pct')))}</td>"
         f"<td>{esc(_days_left_label(r.get('days_remaining')))}</td>"
         f"<td>{esc(_priority_label(r))}</td>"
-        f"<td>{esc(_money_label(r.get('realised_margin')))}</td>"
+        f"<td>{esc(_margin_cell(r))}</td>"
         f"<td>{esc(r.get('confidence'))}</td>"
         f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
         f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"

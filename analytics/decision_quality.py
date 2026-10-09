@@ -27,6 +27,81 @@ from typing import Any, Mapping, Sequence
 DEFAULT_MARGIN_RATE = 0.25
 RECENT_WINDOW_DAYS = 14
 PRIOR_LIFT_PCT = 2.84
+EVALUATION_WINDOW_DAYS = 60  # same window as phase2/evaluator + budget_allocator
+
+
+def projected_portfolio_margin(
+    recommendations: Sequence[Mapping[str, Any]],
+    *,
+    margin_rate: float = DEFAULT_MARGIN_RATE,
+    store_margins: Mapping[int, float] | None = None,
+    prior_lift_pct: float = PRIOR_LIFT_PCT,
+    evaluation_window_days: int = EVALUATION_WINDOW_DAYS,
+    baseline_overrides: Mapping[int, float] | None = None,
+) -> dict[str, Any]:
+    """Honest prior projection over the FULL store panel (uses all dataset).
+
+    Baseline precedence per store:
+    1. ``outcome_evidence.baseline_value`` — the evaluator's measured 56-day
+       baseline (``baseline_source="outcome"``);
+    2. ``baseline_overrides[store_id]`` — an observed daily-mean sales figure
+       the caller derived from the actuals feed (``baseline_source="actuals"``);
+    3. neither → the store lands in ``unprojected`` (never invented).
+
+    Projects ``baseline * 60d * 2.84% * store margin`` — the Part 1 DiD prior,
+    a PLANNING figure (same formula as ``phase2/budget_allocator.py`` and
+    ``simulator.compare_candidate_actions``), never a realised one: measured
+    money lives in ``compute_decision_quality`` only. Pure function, never
+    raises; overrides are caller-supplied data, not fetched here.
+    """
+    store_margins = store_margins or {}
+    overrides = dict(baseline_overrides or {})
+    per_store: list[dict[str, Any]] = []
+    unprojected: list[int] = []
+    for record in recommendations:
+        if not isinstance(record, Mapping):
+            continue
+        sid = record.get("store_id")
+        if isinstance(sid, bool) or not isinstance(sid, int):
+            continue
+        baseline = None
+        source = "outcome"
+        outcome = record.get("outcome_evidence")
+        if isinstance(outcome, Mapping):
+            candidate = outcome.get("baseline_value")
+            if (not isinstance(candidate, bool) and isinstance(candidate, (int, float))
+                    and candidate > 0):
+                baseline = float(candidate)
+        if baseline is None:
+            override = overrides.get(sid)
+            if (not isinstance(override, bool) and isinstance(override, (int, float))
+                    and override > 0):
+                baseline, source = float(override), "actuals"
+        rate = store_margins.get(sid, margin_rate)
+        if isinstance(rate, bool) or not isinstance(rate, (int, float)):
+            rate = margin_rate
+        if baseline is None:
+            unprojected.append(sid)
+            continue
+        projected = baseline * evaluation_window_days * float(prior_lift_pct) / 100.0 * float(rate)
+        per_store.append({"store_id": sid, "baseline_daily_sales": round(baseline, 2),
+                          "baseline_source": source,
+                          "margin_rate": round(float(rate), 4),
+                          "projected_margin": round(projected, 2)})
+    total = round(sum(p["projected_margin"] for p in per_store), 2)
+    return {
+        "projected_total_margin": total,
+        "projected_store_count": len(per_store),
+        "unprojected_store_ids": sorted(set(unprojected)),
+        "per_store": sorted(per_store, key=lambda p: -p["projected_margin"]),
+        "methodology": {
+            "formula": (f"baseline_daily_sales * {evaluation_window_days}d * "
+                        f"{prior_lift_pct}% * store margin_rate"),
+            "baseline": "evaluated 56d baseline when measured, else observed actuals mean",
+            "prior": f"Part 1 DiD +{prior_lift_pct}% (projection, NOT measured)",
+            "warning": "do not add to realised margin; realised lives in compute_decision_quality",
+        },
+    }
 
 _RESOLVED_CAUSAL = frozenset({"CONFIRMED", "REVIEW_ZONE", "REFUTED"})
 
