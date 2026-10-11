@@ -87,6 +87,38 @@ def test_no_data_lands_in_insufficient_data_not_intervention():
     assert classify_store(rec) == BUCKET_NO_DATA
 
 
+def test_no_data_variants_without_explicit_flag_land_in_insufficient_data():
+    # ponytail: live pending-store / legacy records omit forecast_signal_available
+    # or carry only forecast_status — they must not fall through to intervention.
+    missing_flag = _rec(recommendation="NEEDS_REVIEW", store_health_score=0.0,
+                        recovery_pct=0.0, requires_human_approval=True)
+    assert classify_store(missing_flag) == BUCKET_NO_DATA
+    error_status = _rec(recommendation="NEEDS_REVIEW", store_health_score=0.0,
+                        recovery_pct=0.0, requires_human_approval=True,
+                        forecast_status="ERROR")
+    assert classify_store(error_status) == BUCKET_NO_DATA
+    # An explicit True flag still means a real gated decision, not no-data.
+    gated_review = _rec(recommendation="NEEDS_REVIEW", store_health_score=0.0,
+                        recovery_pct=0.0, requires_human_approval=True,
+                        forecast_signal_available=True, forecast_status="AVAILABLE")
+    assert classify_store(gated_review) == BUCKET_INTERVENE
+
+
+def test_needs_decision_counts_gated_rows_across_buckets():
+    from presentation.board import BUCKET_LABELS, build_board
+    records = [
+        _rec(1, recommendation="ESCALATE", store_health_score=30.0,
+             recovery_pct=-5.0, requires_human_approval=True),
+        _rec(2, recommendation="NEEDS_REVIEW", store_health_score=0.0,
+             recovery_pct=0.0, requires_human_approval=True,
+             forecast_signal_available=False),
+        _rec(3),  # ungated CONTINUE
+    ]
+    board = build_board(records)
+    assert board["needs_decision"] == 2
+    assert BUCKET_LABELS["insufficient_data"] == "Needs review (no data)"
+
+
 def test_gated_stores_need_intervention():
     rec = _rec(recommendation="ESCALATE", store_health_score=35.0,
                recovery_pct=-2.0, requires_human_approval=True)
