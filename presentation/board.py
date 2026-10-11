@@ -168,7 +168,7 @@ def _entry(rec: Mapping[str, Any], decision_status: str | None,
         "recovery_direction": rec.get("recovery_direction"),
         "recovery_velocity": rec.get("recovery_velocity"),
         "directional_note": (
-            "forecast-directional, not measured uplift"
+            "Early forecast signal — measured uplift follows once the evaluation window closes."
             if rec.get("forecast_signal_available") is True
             or rec.get("forecast_status") == "AVAILABLE" else None
         ),
