@@ -71,4 +71,7 @@ def test_live_postgres_schema_migrations_recorded():
         assert applied >= {1}
     finally:
         conn.close()
-    assert PendingApprovalStore()._dialect == "postgres"
+    # _dialect resolves lazily on first operation; trigger one before asserting.
+    store = PendingApprovalStore()
+    assert len(store) >= 0
+    assert store._dialect == "postgres"
