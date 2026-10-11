@@ -11,7 +11,9 @@
 .section{margin-bottom:8px}
 .bucket{margin-bottom:18px;border:1px solid var(--line);border-radius:16px;padding:6px 18px 14px;background:var(--surface)}
 button.bucket-head{display:flex;width:100%;align-items:center;gap:12px;background:none;border:0;padding:14px 0;cursor:pointer;font:inherit;color:inherit;text-align:left}
-.bucket-toggle{margin-left:auto;font-size:20px;font-weight:700;color:var(--muted);line-height:1}
+.bucket-toggle{margin-left:auto;width:34px;height:34px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--line);color:var(--muted);background:#f6faf9;transition:transform .2s ease,background .2s ease,color .2s ease}
+.bucket-head:hover .bucket-toggle{border-color:var(--teal);color:#2e9892}
+.bucket-toggle.open{transform:rotate(180deg);background:var(--indigo);border-color:var(--indigo);color:#fff}
 .show-toggle{display:block;margin:4px auto 8px;background:none;border:1px solid var(--line);border-radius:999px;padding:7px 18px;font:600 12px 'DM Sans',sans-serif;color:var(--indigo);cursor:pointer}
 .store-row{display:grid;grid-template-columns:150px 1fr auto;gap:18px;align-items:start;padding:16px 0}
 .metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
