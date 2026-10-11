@@ -115,7 +115,7 @@ def cost_of_inaction(record: Mapping[str, Any]) -> str | None:
     # No-signal records carry recovery_pct=0.0 as a placeholder, not a
     # measurement — stating a trajectory would fabricate evidence.
     if record.get("forecast_signal_available") is not True:
-        if record.get("forecast_status", "NO_DATA") in ("NO_DATA", "ERROR"):
+        if record.get("forecast_status") in ("NO_DATA", "ERROR"):
             try:
                 health = float(record.get("store_health_score", 0.0))
             except (TypeError, ValueError):

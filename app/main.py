@@ -1628,6 +1628,25 @@ def _board_records() -> list[dict[str, Any]]:
                            if rec.get("store_id") not in seen]
 
 
+def _campaign_label() -> dict[str, Any] | None:
+    """Display-only campaign identity for the stakeholder board.
+
+    Operator-configured via CAMPAIGN_LABEL / CAMPAIGN_TIMING_WINDOW (see
+    render.yaml); never inferred from measurements, so it cannot fabricate
+    evidence. Absent (unset) -> omitted and the frontend falls back to
+    generic copy.
+    """
+    import os as _os
+    label = (_os.getenv("CAMPAIGN_LABEL") or "").strip()
+    if not label:
+        return None
+    timing = (_os.getenv("CAMPAIGN_TIMING_WINDOW") or "").strip()
+    campaign: dict[str, Any] = {"label": label}
+    if timing:
+        campaign["timing_window"] = timing
+    return campaign
+
+
 @app.get("/board")
 def get_status_board():
     """Executive status board (the stakeholder surface).
@@ -1652,6 +1671,9 @@ def get_status_board():
     if root_cause_tagging_enabled():
         from analytics.root_cause import tag_recommendations
         board["root_causes"] = tag_recommendations(read_log())
+    campaign = _campaign_label()
+    if campaign is not None:
+        board["campaign"] = campaign
     return jsonable_encoder(board)
 
 
