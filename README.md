@@ -11,9 +11,9 @@
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Live demo](https://img.shields.io/badge/live%20demo-vercel-000000)](https://retail-decision-intelligence-agent.vercel.app/)
-[![API: Render](https://img.shields.io/badge/api-render-46e3b7)](https://retail-decision-intelligence-agent.onrender.com/health)
-[![Store: Supabase](https://img.shields.io/badge/store-supabase-3ecf8e)](https://supabase.com)
+[![Live demo](https://img.shields.io/badge/live_demo-vercel-black)](https://retail-decision-intelligence-agent.vercel.app/)
+[![API on Render](https://img.shields.io/badge/api-render-46e3b7?logo=render&logoColor=white)](https://retail-decision-intelligence-agent.onrender.com/health)
+[![Store on Supabase](https://img.shields.io/badge/store-supabase-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
 
 **Live:** [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/) (Vercel) · [API](https://retail-decision-intelligence-agent.onrender.com/health) (Render — `/health`, `/docs`, `/openapi.json`). Writes need a bearer token, else 503.
 
@@ -78,7 +78,11 @@ flowchart LR
     Log --> Board["/board — stakeholder view"]
 ```
 
-The optional LLM layer sits off-path and may only rephrase grounded, cited explanations — the decision path is pure code with no model calls. Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
+The optional LLM layer sits off-path and may only rephrase grounded, cited explanations — the decision path is pure code with no model calls.
+
+![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
+
+Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 ## API surface
 
