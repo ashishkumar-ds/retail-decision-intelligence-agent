@@ -67,11 +67,16 @@ def latest_by_store(records: Sequence[Mapping[str, Any]]) -> dict[int, Mapping[s
 
 def _no_signal(rec: Mapping[str, Any]) -> bool:
     """The no-data route: nothing was scored, flagged for analyst review."""
-    return (
-        rec.get("recommendation") == "NEEDS_REVIEW"
-        and _num(rec, "store_health_score") == 0.0
-        and rec.get("forecast_signal_available") is False
-    )
+    if rec.get("recommendation") != "NEEDS_REVIEW":
+        return False
+    if _num(rec, "store_health_score") != 0.0:
+        return False
+    # ponytail: pending-store / legacy records may omit the flag or carry only
+    # forecast_status=NO_DATA|ERROR — treat anything but an explicit True as
+    # no-signal so NO_DATA rows can't fall through to needs_intervention.
+    if rec.get("forecast_signal_available") is True:
+        return False
+    return rec.get("forecast_status", "NO_DATA") in ("NO_DATA", "ERROR")
 
 
 def classify_store(rec: Mapping[str, Any]) -> str:
@@ -257,6 +262,8 @@ def render_board_html(board: Mapping[str, Any],
     sections: list[str] = []
     for name in BUCKET_ORDER:
         entries = board.get("buckets", {}).get(name, [])
+        if not entries:
+            continue  # ponytail: zero-count buckets carry no decision value
         rows = []
         for e in entries:
             why = e.get("why_not_working") or e.get("reason") or "-"
