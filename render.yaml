@@ -14,6 +14,10 @@ services:
         value: 86400
       - key: FORECAST_API_URL
         value: https://retail-forecast-api-7sue.onrender.com/
+      - key: CAMPAIGN_LABEL
+        value: Campaign 18
+      - key: CAMPAIGN_TIMING_WINDOW
+        value: 12 PM - 6 PM
       - key: CAMPAIGN_AUDIT_API_URL
         value: https://retail-campaign-automation.onrender.com/audit
       - key: APPROVAL_AUTH_TOKEN
