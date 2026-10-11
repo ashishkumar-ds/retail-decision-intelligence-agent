@@ -159,6 +159,19 @@ def _entry(rec: Mapping[str, Any], decision_status: str | None,
         "did_uplift_pct": causal.get("did_uplift_pct"),
         "causal_state": causal.get("assessment_state"),
         "evidence_state": outcome.get("evidence_state"),
+        # Directional (forecast-derived, explicitly NOT measured uplift):
+        # baseline/current predicted sales, day-in-window, signed momentum.
+        # Absent on pre-change log records — renders as "—" until next sweep.
+        "baseline_forecast": rec.get("baseline_forecast"),
+        "current_forecast": rec.get("current_forecast"),
+        "days_elapsed": rec.get("days_elapsed"),
+        "recovery_direction": rec.get("recovery_direction"),
+        "recovery_velocity": rec.get("recovery_velocity"),
+        "directional_note": (
+            "forecast-directional, not measured uplift"
+            if rec.get("forecast_signal_available") is True
+            or rec.get("forecast_status") == "AVAILABLE" else None
+        ),
         "reason": str(rec.get("reason") or ""),
     }
     if attention is not None:
