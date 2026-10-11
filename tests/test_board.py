@@ -104,6 +104,21 @@ def test_no_data_variants_without_explicit_flag_land_in_insufficient_data():
     assert classify_store(gated_review) == BUCKET_INTERVENE
 
 
+def test_needs_decision_counts_gated_rows_across_buckets():
+    from presentation.board import BUCKET_LABELS, build_board
+    records = [
+        _rec(1, recommendation="ESCALATE", store_health_score=30.0,
+             recovery_pct=-5.0, requires_human_approval=True),
+        _rec(2, recommendation="NEEDS_REVIEW", store_health_score=0.0,
+             recovery_pct=0.0, requires_human_approval=True,
+             forecast_signal_available=False),
+        _rec(3),  # ungated CONTINUE
+    ]
+    board = build_board(records)
+    assert board["needs_decision"] == 2
+    assert BUCKET_LABELS["insufficient_data"] == "Needs review (no data)"
+
+
 def test_gated_stores_need_intervention():
     rec = _rec(recommendation="ESCALATE", store_health_score=35.0,
                recovery_pct=-2.0, requires_human_approval=True)

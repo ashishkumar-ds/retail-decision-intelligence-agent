@@ -41,6 +41,18 @@ BUCKET_WATCH = "watch"
 
 BUCKET_ORDER = (BUCKET_INTERVENE, BUCKET_WORKING, BUCKET_RECOVERING, BUCKET_WATCH, BUCKET_NO_DATA)
 
+# Display labels: the no-data bucket reads as review workload, never dead data.
+# Every NEEDS_REVIEW row stays approval-gated (guardrails.APPROVAL_REQUIRED_
+# RECOMMENDATIONS) and ranked in the attention queue — the label only fixes the
+# stakeholder story, not the gate.
+BUCKET_LABELS = {
+    BUCKET_INTERVENE: "Needs intervention",
+    BUCKET_WORKING: "Working well",
+    BUCKET_RECOVERING: "Recovering",
+    BUCKET_WATCH: "Watch",
+    BUCKET_NO_DATA: "Needs review (no data)",
+}
+
 HEALTH_ON_TRACK = 70.0   # scorer's HEALTH_HIGH decision boundary
 
 
@@ -228,8 +240,12 @@ def build_board(records: Sequence[Mapping[str, Any]],
 
     _sort_buckets(buckets)
     counts = {name: len(entries) for name, entries in buckets.items()}
+    # ponytail: the gated workload spans buckets (NEEDS_REVIEW is approval-gated
+    # but classified as no-data) — one hero count so the gate never reads 0.
+    needs_decision = sum(1 for entries in buckets.values() for e in entries if e.get("decision_status") == "awaiting_decision" or "default_action" in e)
     return {
         "total_stores": sum(counts.values()),
+        "needs_decision": needs_decision,
         "counts": counts,
         "buckets": buckets,
         "questions": _build_questions(buckets),
@@ -245,7 +261,7 @@ def render_board_html(board: Mapping[str, Any],
 
     tiles = "".join(
         f'<div class="tile {esc(name)}"><span class="n">{esc(count)}</span>'
-        f'<span class="label">{esc(name.replace("_", " "))}</span></div>'
+        f'<span class="label">{esc(BUCKET_LABELS.get(name, name))}</span></div>'
         for name, count in board.get("counts", {}).items()
     )
 
@@ -254,7 +270,7 @@ def render_board_html(board: Mapping[str, Any],
         BUCKET_WORKING: "Campaign working well",
         BUCKET_RECOVERING: "Recovering (positive momentum, not yet at target)",
         BUCKET_WATCH: "Watch — no action required yet",
-        BUCKET_NO_DATA: "Insufficient data — flagged for analyst review",
+        BUCKET_NO_DATA: "Needs review (no data) — flagged for analyst review",
     }
     columns = ("<tr><th>Store</th><th>Recommendation</th><th>Health</th><th>Recovery %</th>"
                "<th>Days left</th><th>Uplift %</th><th>DiD %</th><th>Status</th>"
@@ -323,6 +339,6 @@ def render_board_html(board: Mapping[str, Any],
         "th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}"
         "th{background:#f5f5f5}.why{max-width:340px}.decision{max-width:200px}.empty{color:#999;text-align:center}"
         "</style></head><body>"
-        f"<h1>{esc(title)}</h1><div class='tiles'>{tiles}</div>{''.join(sections)}"
+        f"<h1>{esc(title)}</h1><div class='tiles'><div class='tile needs_intervention'><span class='n'>{esc(board.get('needs_decision', ''))}</span><span class='label'>Needs decision</span></div>{tiles}</div>{''.join(sections)}"
         "</body></html>"
     )
