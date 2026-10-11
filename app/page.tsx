@@ -3,14 +3,18 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 
-const ORDER = ['needs_intervention', 'working_well', 'recovering', 'insufficient_data']
-const labels: Record<string, string> = { needs_intervention: 'Needs intervention', working_well: 'On track', recovering: 'Building momentum', insufficient_data: 'Needs review (no data)' }
-const accents: Record<string, string> = { needs_intervention: 'critical', working_well: 'healthy', recovering: 'recovering', insufficient_data: 'neutral' }
-// Watch has no stakeholder KPI tile: flat MONITOR-band stores without momentum
-// still exist in the API bucket, so surface them inside Building momentum
-// (their row direction reads flat/declining) instead of dropping them.
-function rowsFor(board: Board | null, bucket: string) { const rows = [...(board?.buckets?.[bucket] || [])]; if (bucket === 'recovering') rows.push(...(board?.buckets?.watch || [])); return rows }
-function countFor(board: Board | null, bucket: string) { return bucket === 'recovering' ? ((board?.counts?.recovering || 0) + (board?.counts?.watch || 0)) : board?.counts?.[bucket] }
+// Stakeholder view: three tiles only. Backend buckets are unchanged —
+// this is display grouping so a non-technical reviewer sees one answer
+// per store: responding (any positive recovery signal), act now, or no data.
+const ORDER = ['recovering_well', 'needs_intervention', 'insufficient_data']
+const labels: Record<string, string> = { recovering_well: 'Recovering well', needs_intervention: 'Needs intervention', insufficient_data: 'Needs review (no data)' }
+const accents: Record<string, string> = { recovering_well: 'healthy', needs_intervention: 'critical', insufficient_data: 'neutral' }
+// Recovering well = every store with a positive response signal
+// (backend working_well + recovering). Flat/declining watch-band rows, if
+// any ever appear, surface here too with their true flat/declining
+// direction on the row — never dropped, never counted as recovering.
+function rowsFor(board: Board | null, bucket: string) { if (bucket !== 'recovering_well') return [...(board?.buckets?.[bucket] || [])]; return [...(board?.buckets?.working_well || []), ...(board?.buckets?.recovering || []), ...(board?.buckets?.watch || [])] }
+function countFor(board: Board | null, bucket: string) { if (bucket !== 'recovering_well') return board?.counts?.[bucket]; return ((board?.counts?.working_well || 0) + (board?.counts?.recovering || 0) + (board?.counts?.watch || 0)) }
 type Row = Record<string, any>
 type Board = { total_stores?: any; counts?: Record<string, any>; buckets?: Record<string, Row[]> }
 function api(path: string) { return `/api${path}` }
