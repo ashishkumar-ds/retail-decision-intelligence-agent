@@ -246,7 +246,22 @@ else
 fi
 
 say ""
-say "DATABASE_URL stays empty: the service uses embedded SQLite on its disk."
+say "Pending-approval store: embedded SQLite (empty DATABASE_URL) or Supabase Postgres."
+say "Supabase path: Dashboard -> project -> Connect -> Postgres -> Session pooler"
+say "(aws-0-REGION.pooler.supabase.com:5432) + ?sslmode=require; the probe below"
+say "checks shape, SSL flag, real connect, and migrations before you paste it."
+ask_secret DATABASE_URL "DATABASE_URL (Supabase Session pooler URL; Enter keeps SQLite-on-disk):"
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  write_env DATABASE_URL "$DATABASE_URL"
+  if DATABASE_URL="$DATABASE_URL" python scripts/verify_supabase.py; then
+    say "Supabase probe passed - paste this same value into Render at stage 3."
+  else
+    warn "probe failed above - fix the URL now, or leave it empty for SQLite."
+    warn "Tables are created by the app's own migrations; do not hand-create them."
+  fi
+else
+  say "DATABASE_URL stays empty: the service uses embedded SQLite on its disk."
+fi
 pause "Values collected?"
 
 # ── Stage 3: create the web service ────────────────────────────────────────
@@ -265,6 +280,7 @@ step "  SWEEP_ENABLED=1                  (the autonomous sweep is opt-in)"
 step "  SWEEP_INTERVAL_SECONDS=86400"
 step "  CAMPAIGN_AUDIT_API_URL=https://retail-campaign-automation.onrender.com/audit"
 step "                                   (the sweep's store universe; unset = 400)"
+step "  DATABASE_URL=<Session pooler URL from stage 2>  (or leave unset = SQLite)"
 step "optional: APPROVAL_TOKENS, LLM_* / ANTHROPIC_API_KEY"
 step "Advanced → Add Disk: name 'agent-logs', mount path /srv/app/logs, 1 GB."
 step "Create Web Service — the first Docker build takes ~5-10 minutes."

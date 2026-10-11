@@ -672,7 +672,7 @@ def get_recommendations():
     To (re)compute and persist, use ``POST /recommendations/run`` (auth-gated).
     """
     latest: dict[int, dict] = {}
-    for record in read_log():
+    for record in _board_records():
         store_id = record.get("store_id")
         if isinstance(store_id, int):
             latest[store_id] = record
@@ -1607,6 +1607,26 @@ def evaluate_phase2_portfolio(payload: dict = Body(default={}),
     return jsonable_encoder(report)
 
 
+def _board_records() -> list[dict[str, Any]]:
+    """Records the board classifies: JSONL log, else durable pending store.
+
+    Single helper so /board, /board/view and /recommendations share one
+    fallback (diskless durability): the log is the system of record; when it
+    is empty the pending-approval store (Supabase via DATABASE_URL) carries
+    the same full recommendation records.
+    """
+    log_records = read_log()
+    if log_records:
+        return log_records
+    pending_records = list(_pending_approvals.values())
+    if pending_records:
+        # ponytail: one union, no new store — pending records already carry
+        # the full recommendation shape (verified by
+        # test_board_falls_back_to_pending_store).
+        return [dict(rec) for rec in pending_records]
+    return log_records
+
+
 @app.get("/board")
 def get_status_board():
     """Executive status board (the stakeholder surface).
@@ -1614,11 +1634,15 @@ def get_status_board():
     One deterministic view answering: which stores are recovering, which need
     intervention, where the campaign is working, and why it is not working
     where it is not. Pure classification over the persisted recommendation log;
-    intervention entries are ordered by the monitor's attention ranking."""
+    intervention entries are ordered by the monitor's attention ranking.
+    Falls back to the durable pending store when the log is empty
+    (see _board_records) so the stakeholder surface self-heals disklessly.
+    """
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
-    ranked = ranked_attention_queue(list(_pending_approvals.values()))
+    pending_records = list(_pending_approvals.values())
+    ranked = ranked_attention_queue(pending_records)
     board = build_board(
-        read_log(),
+        _board_records(),
         ranked_attention=ranked,
         pending_store_ids=set(_pending_approvals),
     )
@@ -1636,7 +1660,7 @@ def get_status_board_html():
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     ranked = rank_attention(list(_pending_approvals.values()))
     board = build_board(
-        read_log(),
+        _board_records(),
         ranked_attention=ranked,
         pending_store_ids=set(_pending_approvals),
     )

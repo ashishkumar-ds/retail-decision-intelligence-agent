@@ -57,7 +57,7 @@ fails if the code reads a variable that is not documented there.
 | `CAMPAIGN_AUDIT_API_URL` | **required for the sweep** | Project 2's read-only audit log, and the source of the store universe. Unset with no `CAMPAIGN_AUDIT_LOG_PATH` file → `POST /recommendations/run` answers 400 "No store_ids found in the audit log" and the daily sweep does nothing. |
 | `RETAIL_STORE_CONTEXT_URL` | optional | P2 `datasets/stores.csv` for the store margin proxy; unset → code default. Unreachable → layer fails open, decisions unchanged. |
 | `RETAIL_SKU_ROLLUP_PATH` | optional | Store×SKU rollup CSV for inventory-aware demand-vs-supply; unset → SKU layer off, decisions unchanged. |
-| `DATABASE_URL` | optional | `postgres://` for the pending-approval store; unset → SQLite on the disk. |
+| `DATABASE_URL` | Supabase Session pooler URL (see below); unset → SQLite on the disk. | `postgres://` for the pending-approval store. **Supabase shape:** `postgresql://postgres.REF:[PASSWORD]@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=require` — Session pooler (port 5432, IPv4, supports prepared statements), **not** the direct host (IPv6-only, unreachable from Render). Makes pending-approvals durable + multi-instance safe; does **not** replace the JSONL audit logs (keep the disk). |
 | `ROOT_CAUSE_TAGGING_ENABLED` | `false` | The board's root-cause section (third-party egress, redacted before sending). |
 | `LLM_*`, `ANTHROPIC_API_KEY` | off | Optional explanation/advisory layers; every failure degrades to the deterministic output. |
 | `APPROVAL_TOKENS` | optional | Named approvers with roles; supersedes the shared token and records `decided_by`. |
@@ -82,6 +82,53 @@ Three honest options:
 
 `DATABASE_URL` alone does **not** solve this: it makes the pending-approval
 store durable, not the JSONL logs.
+
+### Supabase → Render (pending-approval store on Postgres)
+
+The app needs **zero code changes** for the pending store: `storage/database.py` +
+`app/state.py` already select Postgres when `DATABASE_URL` is a `postgres://`
+URL and run the versioned migrations on first connect. Reads are diskless-durable
+too: `/board`, `/board/view` and `/recommendations` fall back to the durable
+pending store when the JSONL log is empty (see `_board_records` in `app/main.py`;
+log wins when present). This section is the click-through
+(verified against Supabase docs 2026-10-10):
+
+1. **Supabase Dashboard → your project → Connect → Postgres.** Copy the
+   **Session pooler** string (host `aws-0-REGION.pooler.supabase.com`,
+   port **5432**). Why session, not transaction/direct:
+   - Render is IPv4-only → the direct host (IPv6-only, port 5432) is
+     unreachable; the shared pooler is IPv4-only on every plan.
+   - Session mode supports prepared statements; transaction mode does not —
+     and this app opens one short connection per operation, which is exactly
+     the session-mode shape (no server-side pooler tuning needed).
+2. **Append `?sslmode=require`** (Supabase enforces SSL; psycopg defaults to
+   `prefer`, which would silently fall back to plaintext). URL-encode the
+   password (`#` → `%23`, `@` → `%40`, `/` → `%2F`). Final shape:
+   `postgresql://postgres.REF:[PASSWORD]@aws-0-REGION.pooler.supabase.com:5432/postgres?sslmode=require`
+3. **Verify locally before touching Render** (no secrets printed):
+   ```bash
+   DATABASE_URL='postgresql://...' python scripts/verify_supabase.py
+   DATABASE_URL='postgresql://...' python -m pytest tests/test_live_postgres.py -q
+   ```
+   The probe checks URL shape → SSL flag → real connect → migrations
+   (`pending_approvals` + `schema_migrations`). Tables are created by the
+   app's own migrations — do **not** hand-create them in the SQL Editor.
+4. **Render Dashboard → your service → Environment → `DATABASE_URL`** = the
+   same string → Save (triggers redeploy). First boot re-runs migrations
+   (idempotent) and the store flips to `postgres` (`PendingApprovalStore._dialect`).
+   Keep the `agent-logs` disk mounted: the JSONL audit trail still lives there.
+5. **Security notes (Supabase skill checklist):**
+   - The app connects with the `postgres` service role over a direct Postgres
+     wire — it does **not** go through the Data API, so no `GRANT anon/` RLS
+     policy is needed or honoured for this path. Keep the tables out of the
+     Data API: Dashboard → Database → API settings → leave
+     `pending_approvals`/`schema_migrations` unexposed (or, if your project
+     auto-grants `anon`/`authenticated` on `public`, run
+     `REVOKE ALL ON pending_approvals, schema_migrations FROM anon, authenticated;`
+     as defense in depth).
+   - Never commit the URL: `.env.local` is gitignored/dockerignored; Render
+     holds the secret (`render.yaml` declares `DATABASE_URL: sync: false` so
+     the blueprint never carries a value).
 
 ### Post-deploy verification (one command)
 
