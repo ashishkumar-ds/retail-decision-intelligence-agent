@@ -414,6 +414,13 @@ def _build_output(signal: StoreSignal, health_score: float, recovery_pct: float,
         "recovery_velocity": round(recovery_velocity, 4) if recovery_velocity is not None else None,
         "days_remaining": signal.days_remaining,
         "requires_human_approval": requires_approval,
+        # Directional evidence passthrough (forecast-derived, not measured):
+        # baseline/current predicted sales + day-in-window let the stakeholder
+        # surface show "where the store is heading" without claiming uplift.
+        "baseline_forecast": signal.baseline_forecast,
+        "current_forecast": signal.current_forecast,
+        "days_elapsed": signal.days_elapsed,
+        "forecast_signal_available": signal.forecast_signal_available,
         "causal_baseline": dict(CAUSAL_BASELINE),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
