@@ -158,6 +158,7 @@ def _entry(rec: Mapping[str, Any], decision_status: str | None,
         "uplift_pct": outcome.get("actual_uplift_pct"),
         "did_uplift_pct": causal.get("did_uplift_pct"),
         "causal_state": causal.get("assessment_state"),
+        "evidence_state": outcome.get("evidence_state"),
         "reason": str(rec.get("reason") or ""),
     }
     if attention is not None:
