@@ -1608,23 +1608,24 @@ def evaluate_phase2_portfolio(payload: dict = Body(default={}),
 
 
 def _board_records() -> list[dict[str, Any]]:
-    """Records the board classifies: JSONL log, else durable pending store.
+    """Records the board classifies: JSONL log plus durable pending store.
 
-    Single helper so /board, /board/view and /recommendations share one
-    fallback (diskless durability): the log is the system of record; when it
-    is empty the pending-approval store (Supabase via DATABASE_URL) carries
-    the same full recommendation records.
+    Union (log wins per store): the pending queue holds only gated records, so
+    an either/or fallback drops every healthy CONTINUE/MONITOR store whenever
+    the log is empty (Render diskless/disk-wiped -> 85 shows as 48). Pending
+    fills gaps for gated stores missing from the log; it never removes log rows.
     """
     log_records = read_log()
-    if log_records:
-        return log_records
-    pending_records = list(_pending_approvals.values())
-    if pending_records:
-        # ponytail: one union, no new store — pending records already carry
-        # the full recommendation shape (verified by
-        # test_board_falls_back_to_pending_store).
-        return [dict(rec) for rec in pending_records]
-    return log_records
+    seen = {r.get("store_id") for r in log_records if isinstance(r.get("store_id"), int)}
+    try:
+        pending_records = list(_pending_approvals.values())
+    except Exception:  # storage/backend.py fail-closed 503 stays untouched
+        pending_records = []
+    # ponytail: one union, no new store — pending records already carry
+    # the full recommendation shape (verified by
+    # test_board_falls_back_to_pending_store).
+    return log_records + [dict(rec) for rec in pending_records
+                           if rec.get("store_id") not in seen]
 
 
 @app.get("/board")
