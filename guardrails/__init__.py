@@ -112,6 +112,16 @@ def cost_of_inaction(record: Mapping[str, Any]) -> str | None:
     """
     if not requires_human_approval(record.get("recommendation", "")):
         return None
+    # No-signal records carry recovery_pct=0.0 as a placeholder, not a
+    # measurement — stating a trajectory would fabricate evidence.
+    if record.get("forecast_signal_available") is not True:
+        if record.get("forecast_status", "NO_DATA") in ("NO_DATA", "ERROR"):
+            try:
+                health = float(record.get("store_health_score", 0.0))
+            except (TypeError, ValueError):
+                health = 0.0
+            if health == 0.0:
+                return "With no action, this store's trajectory is unknown — no forecast signal, awaiting data."
     recovery = record.get("recovery_pct")
     days = record.get("days_remaining")
     if recovery is None or days is None:
