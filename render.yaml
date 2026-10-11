@@ -21,7 +21,7 @@ services:
       - key: CORS_ALLOW_ORIGINS
         sync: false
       - key: DATABASE_URL
-        sync: false
+        sync: false # Supabase session-pooler URL must end with ?sslmode=require (Render is IPv4-only; pooler enforces TLS)
     disk:
       name: agent-logs
       mountPath: /srv/app/logs
