@@ -81,6 +81,7 @@ flowchart LR
 The optional LLM layer sits off-path and may only rephrase grounded, cited explanations — the decision path is pure code with no model calls.
 
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
+*Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
 Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
