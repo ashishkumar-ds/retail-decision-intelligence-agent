@@ -47,8 +47,8 @@ BUCKET_ORDER = (BUCKET_INTERVENE, BUCKET_WORKING, BUCKET_RECOVERING, BUCKET_WATC
 # stakeholder story, not the gate.
 BUCKET_LABELS = {
     BUCKET_INTERVENE: "Needs intervention",
-    BUCKET_WORKING: "Working well",
-    BUCKET_RECOVERING: "Recovering",
+    BUCKET_WORKING: "On track",
+    BUCKET_RECOVERING: "Building momentum",
     BUCKET_WATCH: "Watch",
     BUCKET_NO_DATA: "Needs review (no data)",
 }
