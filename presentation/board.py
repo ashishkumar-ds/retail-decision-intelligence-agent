@@ -83,7 +83,7 @@ def _no_signal(rec: Mapping[str, Any]) -> bool:
         return False
     if _num(rec, "store_health_score") != 0.0:
         return False
-    # ponytail: pending-store / legacy records may omit the flag or carry only
+    # note: pending-store / legacy records may omit the flag or carry only
     # forecast_status=NO_DATA|ERROR — treat anything but an explicit True as
     # no-signal so NO_DATA rows can't fall through to needs_intervention.
     if rec.get("forecast_signal_available") is True:
@@ -254,7 +254,7 @@ def build_board(records: Sequence[Mapping[str, Any]],
 
     _sort_buckets(buckets)
     counts = {name: len(entries) for name, entries in buckets.items()}
-    # ponytail: the gated workload spans buckets (NEEDS_REVIEW is approval-gated
+    # note: the gated workload spans buckets (NEEDS_REVIEW is approval-gated
     # but classified as no-data) — one hero count so the gate never reads 0.
     needs_decision = sum(1 for entries in buckets.values() for e in entries if e.get("decision_status") == "awaiting_decision" or "default_action" in e)
     return {
@@ -293,7 +293,7 @@ def render_board_html(board: Mapping[str, Any],
     for name in BUCKET_ORDER:
         entries = board.get("buckets", {}).get(name, [])
         if not entries:
-            continue  # ponytail: zero-count buckets carry no decision value
+            continue  # note: zero-count buckets carry no decision value
         rows = []
         for e in entries:
             why = e.get("why_not_working") or e.get("reason") or "-"

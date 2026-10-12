@@ -116,7 +116,7 @@ USE_LOCAL_AUDIT=1
 if _is_remote "$HAS_AUDIT_URL"; then USE_LOCAL_AUDIT=0; fi
 USE_LOCAL_FORECAST=1
 if _is_remote "$HAS_FORECAST_URL"; then USE_LOCAL_FORECAST=0; fi
-# ponytail: the "no external services" banner stays conditional in the demo
+# note: the "no external services" banner stays conditional in the demo
 # entry point (the script owns its claim); no decision-path code changes for
 # a demo.
 if [ "$USE_LOCAL_AUDIT" = 1 ] && [ "$USE_LOCAL_FORECAST" = 1 ]; then
