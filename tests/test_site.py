@@ -224,10 +224,15 @@ def test_dashboard_empty_trend_renders_honest_empty_state():
 
 
 def test_activity_trend_buckets_by_day_and_skips_malformed():
+    from datetime import datetime, timedelta, timezone
+
     from app.main import _activity_trend
+    # Relative to now, not a hardcoded date: fixed dates age out of the
+    # trailing window and the test fails forever after.
+    stamp = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     trend = _activity_trend(
-        [{"generated_at": "2026-10-06T10:00:00+00:00"}, {"generated_at": "bad"}, {}],
-        [{"decided_at": "2026-10-06T12:00:00+00:00"}, {"decided_at": None}],
+        [{"generated_at": stamp}, {"generated_at": "bad"}, {}],
+        [{"decided_at": stamp}, {"decided_at": None}],
         days=3)
     assert sum(trend["logged"]) == 1
     assert sum(trend["decided"]) == 1
