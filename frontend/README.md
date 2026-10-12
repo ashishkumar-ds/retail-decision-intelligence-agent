@@ -1,17 +1,17 @@
 # Frontend (stakeholder board)
 
-The read-only stakeholder board is a **separate Next.js app** deployed on Vercel:
+The read-only stakeholder board is the Next.js app in [`app/`](../app/), deployed on Vercel:
 
 - **Live:** https://retail-decision-intelligence-agent.vercel.app/
 - **Backend it reads:** https://retail-decision-intelligence-agent.onrender.com
   (`GET /board`, `/recommendations`, `/why/{store_id}`, `/pending-approvals`)
 
-This directory intentionally holds no app code — it documents the contract so the
-two repos can't drift:
+This directory holds no app code — the board lives in `app/` next to the
+FastAPI backend so the two can't drift. The shared contract is:
 
 - API spec + polling/retry rules: [`docs/FRONTEND_CONTRACT.md`](../docs/FRONTEND_CONTRACT.md)
-- Same-origin bypass (avoids CORS entirely): add a `vercel.json` rewrite in the
-  frontend repo mapping `/api/:path*` → `<render-url>/:path*`, then fetch
+- Same-origin bypass (avoids CORS entirely): the Vercel project rewrites
+  `/api/:path*` → `<render-url>/:path*`, then the board fetches
   same-origin (`/api/board`, …).
 
 ## Why no `backend/` split
@@ -25,5 +25,5 @@ all imports, CI, and deploys for zero runtime benefit.
 
 - Backend (this repo root): FastAPI agent — deterministic decision engine,
   DiD-causal priors, human-gated writes, RAG explanations, evals.
-- Frontend (Vercel repo): read-only Next.js board — renders what the API says,
+- Frontend (`app/` in this repo, on Vercel): read-only Next.js board — renders what the API says,
   computes nothing.
