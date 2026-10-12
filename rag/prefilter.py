@@ -1,6 +1,6 @@
 """Pre-filter retrieved methodology chunks before the LLM context (rag/prefilter.py).
 
-The skill recipe (classifier.dev "filter search results before reading them"):
+The pattern (classifier.dev "filter search results before reading them"):
 the BM25 retriever hands back top-k methodology chunks; not all of them help
 answer the reviewer's question. Sending all of them to the LLM is the context
 cost we were trying to avoid, so this module classifies the chunks in ONE
