@@ -7,13 +7,17 @@ authenticated identity layer that is recorded alongside the claim.
 
 Two auth modes, both fail-closed:
 
-- **Token map** (``APPROVAL_TOKENS`` env): ``token:user:role`` entries,
-  comma-separated, e.g. ``tok1:alice:approver,tok2:bob:viewer``. Roles:
-  ``approver`` may decide; ``viewer`` is read-only (403 on decisions).
-  A malformed entry raises at parse time - a half-valid token map must never
-  silently become a weaker one.
+- **Token map** (``APPROVAL_TOKENS`` env): ``token:user:role`` entries with an
+  optional ``:YYYY-MM-DD`` expiry, comma-separated, e.g.
+  ``tok1:alice:approver,tok2:bob:viewer:2027-01-01``. Roles: ``approver``
+  may decide; ``viewer`` is read-only (403 on decisions). An expired token
+  is rejected (403); rotation = issue the replacement alongside the old
+  token, switch callers over, then delete the old entry. A malformed entry
+  raises at parse time - a half-valid token map must never silently become
+  a weaker one.
 - **Shared token** (legacy ``APPROVAL_AUTH_TOKEN``, unchanged contract):
   treated as an unnamed ``approver`` principal labelled ``shared-token``.
+  No expiry (another reason to prefer the token map).
 
 The resolved principal is stamped into the record and the audit ledger as
 ``decided_by``; the caller-claimed ``actor`` is preserved as-is so the
@@ -24,6 +28,7 @@ from __future__ import annotations
 import os
 import secrets
 from dataclasses import dataclass
+from datetime import date
 
 TOKENS_ENV = "APPROVAL_TOKENS"
 SHARED_TOKEN_ENV = "APPROVAL_AUTH_TOKEN"
@@ -46,26 +51,49 @@ class Principal:
         return f"user:{self.user}" if self.user else "shared-token"
 
 
-def parse_token_map(raw: str) -> dict[str, tuple[str, str]]:
-    """Parse ``tok:user:role,tok:user:role`` → ``{tok: (user, role)}``.
+@dataclass(frozen=True)
+class TokenEntry:
+    """One parsed ``APPROVAL_TOKENS`` entry: user, role, optional expiry day."""
 
-    Raises ``ValueError`` on any malformed entry or unknown role (fail closed:
-    refuse the whole map, never accept a subset).
+    user: str
+    role: str
+    expires: date | None = None
+
+    def expired(self, today: date | None = None) -> bool:
+        return self.expires is not None and (today or date.today()) > self.expires
+
+
+def _parse_expiry(raw: str, entry: str) -> date:
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        raise ValueError(
+            f"malformed expiry {raw!r} in {TOKENS_ENV} entry {entry!r}; "
+            "expected token:user:role[:YYYY-MM-DD]") from None
+
+
+def parse_token_map(raw: str) -> dict[str, TokenEntry]:
+    """Parse ``tok:user:role[:YYYY-MM-DD],...`` → ``{tok: TokenEntry}``.
+
+    Raises ``ValueError`` on any malformed entry, unknown role or malformed
+    expiry (fail closed: refuse the whole map, never accept a subset).
     """
-    token_map: dict[str, tuple[str, str]] = {}
+    token_map: dict[str, TokenEntry] = {}
     for entry in raw.split(","):
         entry = entry.strip()
         if not entry:
             continue
         parts = entry.split(":")
-        if len(parts) != 3 or not all(parts):
+        if len(parts) not in (3, 4) or not all(parts):
             raise ValueError(
-                f"malformed {TOKENS_ENV} entry {entry!r}; expected token:user:role")
-        token, user, role = parts
+                f"malformed {TOKENS_ENV} entry {entry!r}; "
+                "expected token:user:role[:YYYY-MM-DD]")
+        token, user, role = parts[0], parts[1], parts[2]
         if role not in ROLES:
             raise ValueError(
                 f"unknown role {role!r} in {TOKENS_ENV}; expected one of {sorted(ROLES)}")
-        token_map[token] = (user, role)
+        expires = _parse_expiry(parts[3], entry) if len(parts) == 4 else None
+        token_map[token] = TokenEntry(user=user, role=role, expires=expires)
     return token_map
 
 
@@ -80,9 +108,11 @@ def resolve_principal(bearer_token: str | None) -> Principal:
     if token_map_raw:
         token_map = parse_token_map(token_map_raw)
         if bearer_token:
-            for token, (user, role) in token_map.items():
+            for token, entry in token_map.items():
                 if secrets.compare_digest(bearer_token, token):
-                    return Principal(user=user, role=role, source="token-map")
+                    if entry.expired():
+                        raise PermissionError("approval token expired")
+                    return Principal(user=entry.user, role=entry.role, source="token-map")
         raise PermissionError("unknown approval token")
     configured = os.getenv(SHARED_TOKEN_ENV)
     if not configured:

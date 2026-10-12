@@ -8,6 +8,7 @@ import pytest
 from approvals.identity import (
     IdentityNotConfigured,
     Principal,
+    TokenEntry,
     parse_token_map,
     require_decision_role,
     resolve_principal,
@@ -17,8 +18,16 @@ from approvals.identity import (
 
 def test_parse_token_map_valid():
     assert parse_token_map("tok1:alice:approver, tok2:bob:viewer") == {
-        "tok1": ("alice", "approver"),
-        "tok2": ("bob", "viewer"),
+        "tok1": TokenEntry(user="alice", role="approver", expires=None),
+        "tok2": TokenEntry(user="bob", role="viewer", expires=None),
+    }
+
+
+def test_parse_token_map_accepts_expiry():
+    from datetime import date
+
+    assert parse_token_map("tok1:alice:approver:2027-01-01") == {
+        "tok1": TokenEntry(user="alice", role="approver", expires=date(2027, 1, 1)),
     }
 
 
@@ -27,6 +36,8 @@ def test_parse_token_map_rejects_malformed_entry():
         parse_token_map("tok1:alice:approver,bad-entry")
     with pytest.raises(ValueError):
         parse_token_map("tok1:alice")
+    with pytest.raises(ValueError):
+        parse_token_map("tok1:alice:approver:next-friday")
 
 
 def test_parse_token_map_rejects_unknown_role():
@@ -63,6 +74,30 @@ def test_token_map_mode_resolves_named_principals(monkeypatch):
     assert bob.role == "viewer"
     with pytest.raises(PermissionError):
         resolve_principal("legacy-token")  # shared token not valid in map mode
+
+
+def test_token_expiry_rejects_expired_accepts_valid(monkeypatch):
+    monkeypatch.setenv(
+        "APPROVAL_TOKENS",
+        "tok-old:alice:approver:2000-01-01,tok-new:alice:approver:2099-01-01")
+    with pytest.raises(PermissionError):
+        resolve_principal("tok-old")  # expired: 403, fail closed
+    principal = resolve_principal("tok-new")
+    assert principal == Principal(user="alice", role="approver", source="token-map")
+
+
+def test_token_rotation_overlap(monkeypatch):
+    # Rotation: old + replacement valid together; revoke the old entry after
+    # callers move over. Both resolve to the same principal while overlapped.
+    monkeypatch.setenv(
+        "APPROVAL_TOKENS",
+        "tok-old:alice:approver:2099-01-01,tok-new:alice:approver:2099-06-01")
+    assert resolve_principal("tok-old").label() == "user:alice"
+    assert resolve_principal("tok-new").label() == "user:alice"
+    monkeypatch.setenv("APPROVAL_TOKENS", "tok-new:alice:approver:2099-06-01")
+    with pytest.raises(PermissionError):
+        resolve_principal("tok-old")  # revoked
+    assert resolve_principal("tok-new").label() == "user:alice"
 
 
 # --- role enforcement ----------------------------------------------------------
