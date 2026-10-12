@@ -1,4 +1,4 @@
-# Phase 2 Specification — Governed Intervention Memory and Outcome Evaluation
+# Intervention Lifecycle (Phase 2) Specification — Governed Intervention Memory and Outcome Evaluation
 
 ## Status and scope
 

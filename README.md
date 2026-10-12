@@ -107,7 +107,7 @@ Core decision endpoints:
 | `/approve/{store_id}`, `/reject/{store_id}`, `/execute/{store_id}` | POST | Human decision + gated execution (auth) |
 | `/pending-approvals`, `/attention-queue` | GET | Approval queue and triage digest |
 
-Phase 2 / analytics / ops:
+Intervention lifecycle (Phase 2) / analytics / ops:
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
