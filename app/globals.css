@@ -25,3 +25,18 @@ button.bucket-head{display:flex;width:100%;align-items:center;gap:12px;backgroun
 .compact-reason{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .decision{margin-top:12px;border-left:3px solid var(--teal);padding:10px 14px;background:#f6faf9;border-radius:0 10px 10px 0}
 @media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}.metric-row{grid-template-columns:repeat(2,1fr)}.store-row{grid-template-columns:1fr}}
+
+/* ui-ux-pro-max pass (local, unpushed): contrast, action accent, row type, focus + reduced motion. Overrides only. */
+.hero p,.navlinks,.hero-meta,.brand-product{color:#3d4b54}
+.compact-reason{font-size:13.5px;color:#3d4b54}
+.directional-note{font-size:12.5px;color:#3d4b54}
+.metric{font-size:13.5px}
+.metric-row.secondary .metric{opacity:1}
+.metric-row.secondary .metric span{color:#3d4b54}
+.bucket.critical{border-color:#cf348d}
+.bucket.critical .bucket-marker{background:#cf348d}
+.summary-card.critical strong{color:#9c2458}
+.decision{border-left-color:#cf348d}
+.decision-kicker{color:#9c2458}
+button.bucket-head:focus-visible,.show-toggle:focus-visible,.detail-link:focus-visible,.store-id:focus-visible{outline:2px solid #1e40af;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.bucket-toggle{transition:none}.bucket-toggle.open{transform:none}}
