@@ -104,7 +104,7 @@ Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a named `APPROVAL_TOKENS` entry). Unset token → 503, fail closed.
 
-> **Auth is demo-grade:** static tokens with no OIDC — right for a portfolio demo, not for production. Named tokens support roles, per-token expiry (`token:user:role:YYYY-MM-DD`), and overlap rotation, but a real deployment still needs proper identity with short-lived credentials and per-policy-version approval audit (see `docs/SAFETY.md`).
+> **Auth:** named tokens with roles, per-token expiry, and short-lived HMAC-signed tokens (`scripts/issue_token.py`, rotation via overlap secret). No OIDC federation — the remaining step for enterprise SSO.
 
 ## Configuration
 
@@ -133,8 +133,8 @@ Further depth lives in [`docs/`](docs/) unlinked (architecture decision records 
 
 ## Limitations
 
-- **Auth is demo-grade** (see above): static bearer tokens without OIDC; expiry and overlap rotation are supported per token.
-- **Execution defaults to dry-run**: `execution/webhook_connector.py` shows the real-adapter path (POST intent, POST cancellation, remote handle journaled); a production POS/CRM adapter implements the same two methods.
+- **No OIDC federation**: short-lived HMAC tokens cover service-to-operator auth; enterprise SSO still needs an identity provider.
+- **Execution adapter is operator-selected** (`EXECUTION_CONNECTOR=webhook` + URL for real writes, dry-run when unset): `execution/webhook_connector.py` proves the path with remote handles journaled; a production POS/CRM adapter implements the same two methods.
 - **Retrieval is lightweight**: hand-rolled BM25 over a curated corpus — context for explanations, never authority for decisions.
 - **Causal evidence is opt-in**: without matched-control coverage the guardrail is `UNAVAILABLE` and scale-up stays blocked; own-baseline lift is operational signal, not proof.
 - **Single-retailer scope**: JSONL audit log + optional Postgres suit one portfolio; multi-tenant use needs warehouse separation and forecast-call cost controls.

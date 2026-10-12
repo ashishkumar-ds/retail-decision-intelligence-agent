@@ -56,10 +56,12 @@ from decision_engine.simulator import compare_candidate_actions, simulate_interv
 from decision_engine.verifier import verify_batch
 from execution.connector import (
     ExecutionAlreadyReversed,
+    ExecutionMisconfigured,
     ExecutionNotFound,
     ExecutionRefused,
     execute_recommendation,
     execution_state,
+    resolve_connector,
     reverse_execution,
 )
 from memory.history import append_log, read_log
@@ -490,7 +492,7 @@ def health():
         "status": "ok",
         "core_invariant": "LLM never decides, never changes numbers, never bypasses the human gate",
         "auth": {
-            "mode": "static bearer token (demo-grade: no OIDC; per-token expiry supported)",
+            "mode": "named roles + short-lived HMAC tokens (demo-grade: no OIDC)",
             "writes": "token-required, fail-closed without one",
         },
         "scheduler": _sweep_scheduler.status(),
@@ -1043,8 +1045,12 @@ def execute_store_recommendation(store_id: int, payload: dict = Body(default={})
             status_code=404,
             detail=f"No approved recommendation for store {store_id}; nothing to execute.")
     try:
+        connector = resolve_connector()
+    except ExecutionMisconfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    try:
         execution, created = execute_recommendation(
-            record, actor=_decision_principal(_auth).label())
+            record, connector=connector, actor=_decision_principal(_auth).label())
     except ExecutionRefused as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return {
@@ -1060,7 +1066,12 @@ def reverse_store_execution(execution_id: str, payload: dict = Body(default={}),
                             _auth: str = Depends(_require_approval_auth)):
     """Undo an execution (append-only reversal event in the journal)."""
     try:
-        execution = reverse_execution(execution_id, actor=_decision_principal(_auth).label())
+        connector = resolve_connector()
+    except ExecutionMisconfigured as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    try:
+        execution = reverse_execution(execution_id, connector=connector,
+                                      actor=_decision_principal(_auth).label())
     except ExecutionNotFound as error:
         raise HTTPException(status_code=404, detail=f"No execution {execution_id}.") from error
     except ExecutionAlreadyReversed as error:
