@@ -33,7 +33,7 @@ Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for 
 
 ## What it is
 
-A decision-intelligence agent that closes the loop **plan → execute → measure → re-decide** for underperforming retail stores. The decision path is pure code — no LLM — and every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
+A deterministic retail decision agent for underperforming stores. The brain is pure code, every recommendation is recomputable and citable, causal DiD evidence gates scale-up, and a human must approve any budget-moving action. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
 
 **Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited explanations.
 
