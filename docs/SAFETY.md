@@ -24,8 +24,7 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
 - **Where:** `approvals/ledger.py::decision_gate`, wired into
   `POST /approve/{store_id}` and `POST /reject/{store_id}`.
 - **Rule:** guardrail policy AND the deterministic verifier are re-run *at
-  decision time*, not only at recommendation time (merchant-agent stage/apply
-  discipline). Every decision is appended to the locked, append-only ledger
+  decision time*, not only at recommendation time. Every decision is appended to the locked, append-only ledger
   (`logs/approval_ledger.jsonl`, `APPROVAL_LEDGER_PATH`) with the operator and
   the gate result.
 - **Failure mode:** gate failure → HTTP 409, the decision is refused, the

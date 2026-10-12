@@ -150,6 +150,76 @@ def _realised_margin(
     return float(uplift) / 100.0 * float(baseline) * recent_window_days * float(margin_rate)
 
 
+def _acceptance_stats(latest: Mapping[int, Mapping[str, Any]],
+                      decisions: Sequence[Mapping[str, Any]]) -> tuple[float | None, int, int]:
+    decided = {str(d.get("recommendation_id")): d for d in decisions
+               if d.get("recommendation_id") is not None}
+    gated_stores = {sid for sid, rec in latest.items() if _is_gated(rec)}
+    decided_gated = [sid for sid in gated_stores
+                     if str(latest[sid].get("recommendation_id")) in decided]
+    approvals = [sid for sid in decided_gated
+                 if decided[str(latest[sid].get("recommendation_id"))].get("decision") == "approve"]
+    acceptance_rate = (len(approvals) / len(decided_gated)) if decided_gated else None
+    return acceptance_rate, len(decided_gated), len(approvals)
+
+
+def _outcome_stats(recommendations: Sequence[Mapping[str, Any]]) -> tuple[
+        float | None, int, float | None, int, int]:
+    sufficient = [r.get("outcome_evidence") for r in recommendations
+                  if isinstance(r.get("outcome_evidence"), Mapping)
+                  and _is_measured(r["outcome_evidence"])]
+    negatives = sum(1 for o in sufficient if o.get("target_assessment") == "NEGATIVE")
+    false_intervention_rate = (negatives / len(sufficient)) if sufficient else None
+    causal_states = [o["causal_evidence"]["assessment_state"]
+                     for o in sufficient
+                     if isinstance(o.get("causal_evidence"), Mapping)
+                     and o["causal_evidence"].get("assessment_state") in _RESOLVED_CAUSAL]
+    confirmed = sum(1 for s in causal_states if s == "CONFIRMED")
+    causal_confirmation_rate = (confirmed / len(causal_states)) if causal_states else None
+    return (false_intervention_rate, len(sufficient), causal_confirmation_rate,
+            len(causal_states), confirmed)
+
+
+def _execution_stats(executions: Sequence[Mapping[str, Any]]) -> tuple[float | None, int, int]:
+    execution_events = [e for e in executions if e.get("event") == "execution"]
+    reversed_count = sum(1 for e in execution_events if e.get("reversed_at"))
+    reversal_rate = (reversed_count / len(execution_events)) if execution_events else None
+    return reversal_rate, len(execution_events), reversed_count
+
+
+def _margin_lists(recommendations: Sequence[Mapping[str, Any]],
+                  store_margins: Mapping[int, float],
+                  margin_rate: float,
+                  recent_window_days: int) -> tuple[list[float], dict[int, float]]:
+    margins: list[float] = []
+    regrets: dict[int, float] = {}
+    for record in recommendations:
+        outcome = record.get("outcome_evidence")
+        if not isinstance(outcome, Mapping):
+            continue
+        sid = record.get("store_id")
+        rate = store_margins.get(sid, margin_rate) if isinstance(sid, int) else margin_rate
+        realised = _realised_margin(outcome, rate, recent_window_days)
+        if realised is None:
+            continue
+        margins.append(realised)
+        if isinstance(sid, int) and realised < 0:
+            regrets[sid] = round(-realised, 2)
+    return margins, regrets
+
+
+def _methodology_note(recent_window_days: int) -> dict[str, str]:
+    return {
+        "acceptance": "ledger approvals / decided gated recommendations (latest per store)",
+        "causal_confirmation": "CONFIRMED / causally-resolved (CONFIRMED+REVIEW_ZONE+REFUTED) outcomes",
+        "false_intervention": "NEGATIVE target_assessment / SUFFICIENT outcomes",
+        "reversal": "journal executions with reversed_at / all executions",
+        "margin": (f"actual_uplift_pct/100 * baseline_value * {recent_window_days}d "
+                    "* store margin_rate (override or default)"),
+        "regret": "per store max(0, 0 - realised_margin); cross-action regret lives in policy_v2 eval",
+    }
+
+
 def compute_decision_quality(
     recommendations: Sequence[Mapping[str, Any]],
     decisions: Sequence[Mapping[str, Any]],
@@ -166,57 +236,23 @@ def compute_decision_quality(
     store_margins = store_margins or {}
 
     latest = _latest_per_store(recommendations)
-    gated_stores = {sid for sid, rec in latest.items() if _is_gated(rec)}
-    decided = {str(d.get("recommendation_id")): d for d in decisions
-               if d.get("recommendation_id") is not None}
-    decided_gated = [sid for sid in gated_stores
-                     if str(latest[sid].get("recommendation_id")) in decided]
-    approvals = [sid for sid in decided_gated
-                 if decided[str(latest[sid].get("recommendation_id"))].get("decision") == "approve"]
-    acceptance_rate = (len(approvals) / len(decided_gated)) if decided_gated else None
-
-    sufficient = [r.get("outcome_evidence") for r in recommendations
-                  if isinstance(r.get("outcome_evidence"), Mapping)
-                  and _is_measured(r["outcome_evidence"])]
-    negatives = sum(1 for o in sufficient if o.get("target_assessment") == "NEGATIVE")
-    false_intervention_rate = (negatives / len(sufficient)) if sufficient else None
-
-    causal_states = [o["causal_evidence"]["assessment_state"]
-                     for o in sufficient
-                     if isinstance(o.get("causal_evidence"), Mapping)
-                     and o["causal_evidence"].get("assessment_state") in _RESOLVED_CAUSAL]
-    confirmed = sum(1 for s in causal_states if s == "CONFIRMED")
-    causal_confirmation_rate = (confirmed / len(causal_states)) if causal_states else None
-
-    execution_events = [e for e in executions if e.get("event") == "execution"]
-    reversed_count = sum(1 for e in execution_events if e.get("reversed_at"))
-    reversal_rate = (reversed_count / len(execution_events)) if execution_events else None
-
-    margins: list[float] = []
-    regrets: dict[int, float] = {}
-    for record in recommendations:
-        outcome = record.get("outcome_evidence")
-        if not isinstance(outcome, Mapping):
-            continue
-        sid = record.get("store_id")
-        rate = store_margins.get(sid, margin_rate) if isinstance(sid, int) else margin_rate
-        realised = _realised_margin(outcome, rate, recent_window_days)
-        if realised is None:
-            continue
-        margins.append(realised)
-        if isinstance(sid, int) and realised < 0:
-            regrets[sid] = round(-realised, 2)
+    acceptance_rate, decided_gated_count, approval_count = _acceptance_stats(latest, decisions)
+    (false_intervention_rate, sufficient_count, causal_confirmation_rate,
+     resolved_count, _confirmed) = _outcome_stats(recommendations)
+    reversal_rate, execution_count, reversed_count = _execution_stats(executions)
+    margins, regrets = _margin_lists(recommendations, store_margins,
+                                     margin_rate, recent_window_days)
 
     return {
         "recommendation_acceptance_rate": acceptance_rate,
-        "decided_gated_count": len(decided_gated),
-        "approval_count": len(approvals),
+        "decided_gated_count": decided_gated_count,
+        "approval_count": approval_count,
         "causal_confirmation_rate": causal_confirmation_rate,
-        "causally_resolved_count": len(causal_states),
+        "causally_resolved_count": resolved_count,
         "false_intervention_rate": false_intervention_rate,
-        "sufficient_outcome_count": len(sufficient),
+        "sufficient_outcome_count": sufficient_count,
         "reversal_rate": reversal_rate,
-        "execution_count": len(execution_events),
+        "execution_count": execution_count,
         "reversed_count": reversed_count,
         "incremental_margin_per_intervention": (
             round(sum(margins) / len(margins), 2) if margins else None
@@ -228,13 +264,5 @@ def compute_decision_quality(
         ),
         "total_regret_vs_do_nothing": round(sum(regrets.values()), 2),
         "stores_with_regret": sorted(regrets),
-        "methodology": {
-            "acceptance": "ledger approvals / decided gated recommendations (latest per store)",
-            "causal_confirmation": "CONFIRMED / causally-resolved (CONFIRMED+REVIEW_ZONE+REFUTED) outcomes",
-            "false_intervention": "NEGATIVE target_assessment / SUFFICIENT outcomes",
-            "reversal": "journal executions with reversed_at / all executions",
-            "margin": (f"actual_uplift_pct/100 * baseline_value * {recent_window_days}d "
-                        "* store margin_rate (override or default)"),
-            "regret": "per store max(0, 0 - realised_margin); cross-action regret lives in policy_v2 eval",
-        },
+        "methodology": _methodology_note(recent_window_days),
     }
