@@ -149,7 +149,7 @@ check("verifier: guardrail approval set is a subset of valid recommendations",
       APPROVAL_REQUIRED_RECOMMENDATIONS <= VALID_RECOMMENDATIONS,
       f"orphaned={sorted(APPROVAL_REQUIRED_RECOMMENDATIONS - VALID_RECOMMENDATIONS)}")
 
-# 7. Flow specs cover every emittable route (merchant-agent skills pattern) ---
+# 7. Flow specs cover every emittable route (declarative-spec pattern) ---
 _FLOWS_DIR = ROOT / "decision_engine" / "flows"
 # README.md documents the folder contract; only per-route specs are checked.
 _flow_files = {p.stem for p in _FLOWS_DIR.glob("*.md")} - {"README"} if _FLOWS_DIR.exists() else set()
