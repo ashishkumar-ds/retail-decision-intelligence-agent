@@ -490,7 +490,7 @@ def health():
         "status": "ok",
         "core_invariant": "LLM never decides, never changes numbers, never bypasses the human gate",
         "auth": {
-            "mode": "static bearer token (demo-grade: no rotation or expiry)",
+            "mode": "static bearer token (demo-grade: no OIDC; per-token expiry supported)",
             "writes": "token-required, fail-closed without one",
         },
         "scheduler": _sweep_scheduler.status(),
