@@ -144,6 +144,72 @@ GUARDRAIL_CONFIDENCE = {
 _RISK_RANK = {"reversible": 0, "cautious": 1, "irreversible": 2}
 
 
+def _validate_comparison_inputs(store_id: int, started_day: int,
+                                 observations: Sequence[Mapping[str, Any]],
+                                 pre_window_days: int, evaluation_window_days: int,
+                                 margin_rate: float,
+                                 campaign_costs: Mapping[str, float] | None,
+                                 prior: Mapping[str, Any]) -> tuple[dict[str, float], float, list[float], str]:
+    _require_int("store_id", store_id)
+    _require_int("started_day", started_day)
+    _require_int("pre_window_days", pre_window_days)
+    _require_int("evaluation_window_days", evaluation_window_days)
+    if pre_window_days < 2 or evaluation_window_days < 1:
+        raise ValueError("pre_window_days must be >= 2 and evaluation_window_days >= 1")
+    if started_day <= pre_window_days:
+        raise ValueError("started_day must exceed pre_window_days (baseline must start at day >= 1)")
+    if not isinstance(observations, Sequence) or isinstance(observations, (str, bytes)):
+        raise TypeError("observations must be a sequence of observation mappings")
+    if isinstance(margin_rate, bool) or not isinstance(margin_rate, (int, float)):
+        raise TypeError("margin_rate must be a number")
+    if not 0 < margin_rate <= 1:
+        raise ValueError("margin_rate must be in (0, 1]")
+    costs = dict(campaign_costs or {})
+    for action, cost in costs.items():
+        if isinstance(cost, bool) or not isinstance(cost, (int, float)) or cost < 0:
+            raise ValueError(f"campaign cost for {action!r} must be non-negative")
+    try:
+        prior_point = float(prior["estimate_pct"])
+        prior_ci95 = [float(bound) for bound in prior["ci95_pct"]]
+        prior_source = prior.get("source", "unspecified")
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"prior must provide estimate_pct and ci95_pct: {error}") from error
+    return costs, prior_point, prior_ci95, prior_source
+
+
+def _score_action(action: str, base_total: float, margin_rate: float,
+                  lifts: Mapping[str, float], costs: Mapping[str, float],
+                  prior_point: float, prior_source: str) -> dict[str, Any]:
+    if action in lifts:
+        lift = float(lifts[action])
+    elif action in _DO_NOTHING_ACTIONS:
+        lift = 0.0
+    else:
+        lift = prior_point
+    cost = 0.0 if action in _DO_NOTHING_ACTIONS else float(costs.get(action, 0.0))
+    guardrail = assess_causal_evidence(
+        {"evidence_state": "SUFFICIENT", "did_uplift_pct": lift}
+    )
+    state = guardrail["assessment_state"]
+    margin = base_total * lift / 100.0 * float(margin_rate) - cost
+    return {
+        "action": action,
+        "expected_lift_pct": lift,
+        "causal_state": state,
+        "scale_up_eligible": guardrail["scale_up_eligible"],
+        "confidence": GUARDRAIL_CONFIDENCE.get(state, 0.3),
+        "risk": risk_of(action),
+        "budget_impact": round(cost, 2),
+        "expected_incremental_margin": round(margin, 2),
+        "incremental_sales_value": round(base_total * lift / 100.0, 2),
+        "lift_source": (
+            "caller-supplied" if action in lifts
+            else ("do-nothing (lift 0 by construction)" if action in _DO_NOTHING_ACTIONS
+                  else f"calibrated prior ({prior_source})")
+        ),
+    }
+
+
 def compare_candidate_actions(
     store_id: int,
     observations: Sequence[Mapping[str, Any]],
@@ -168,31 +234,10 @@ def compare_candidate_actions(
     Fail-closed like :func:`simulate_intervention`: insufficient baseline
     coverage is ``INSUFFICIENT`` with the reason, never a ranking.
     """
-    _require_int("store_id", store_id)
-    _require_int("started_day", started_day)
-    _require_int("pre_window_days", pre_window_days)
-    _require_int("evaluation_window_days", evaluation_window_days)
-    if pre_window_days < 2 or evaluation_window_days < 1:
-        raise ValueError("pre_window_days must be >= 2 and evaluation_window_days >= 1")
-    if started_day <= pre_window_days:
-        raise ValueError("started_day must exceed pre_window_days (baseline must start at day >= 1)")
-    if not isinstance(observations, Sequence) or isinstance(observations, (str, bytes)):
-        raise TypeError("observations must be a sequence of observation mappings")
-    if isinstance(margin_rate, bool) or not isinstance(margin_rate, (int, float)):
-        raise TypeError("margin_rate must be a number")
-    if not 0 < margin_rate <= 1:
-        raise ValueError("margin_rate must be in (0, 1]")
-    costs = dict(campaign_costs or {})
+    costs, prior_point, prior_ci95, prior_source = _validate_comparison_inputs(
+        store_id, started_day, observations, pre_window_days,
+        evaluation_window_days, margin_rate, campaign_costs, prior)
     lifts = dict(expected_lifts or {})
-    for action, cost in costs.items():
-        if isinstance(cost, bool) or not isinstance(cost, (int, float)) or cost < 0:
-            raise ValueError(f"campaign cost for {action!r} must be non-negative")
-    try:
-        prior_point = float(prior["estimate_pct"])
-        prior_ci95 = [float(bound) for bound in prior["ci95_pct"]]
-        prior_source = prior.get("source", "unspecified")
-    except (KeyError, TypeError, ValueError) as error:
-        raise ValueError(f"prior must provide estimate_pct and ci95_pct: {error}") from error
 
     baseline, reason = _baseline_stats(observations, started_day, pre_window_days)
     if baseline is None:
@@ -205,38 +250,13 @@ def compare_candidate_actions(
     baseline_mean = baseline["mean_daily_sales"]
     base_total = baseline_mean * evaluation_window_days
 
-    ranked: list[dict[str, Any]] = []
-    for action in COMPARABLE_ACTIONS:
-        if action in lifts:
-            lift = float(lifts[action])
-        elif action in _DO_NOTHING_ACTIONS:
-            lift = 0.0
-        else:
-            lift = prior_point
-        cost = 0.0 if action in _DO_NOTHING_ACTIONS else float(costs.get(action, 0.0))
-        guardrail = assess_causal_evidence(
-            {"evidence_state": "SUFFICIENT", "did_uplift_pct": lift}
-        )
-        state = guardrail["assessment_state"]
-        margin = base_total * lift / 100.0 * float(margin_rate) - cost
-        ranked.append({
-            "action": action,
-            "expected_lift_pct": lift,
-            "causal_state": state,
-            "scale_up_eligible": guardrail["scale_up_eligible"],
-            "confidence": GUARDRAIL_CONFIDENCE.get(state, 0.3),
-            "risk": risk_of(action),
-            "budget_impact": round(cost, 2),
-            "expected_incremental_margin": round(margin, 2),
-            "incremental_sales_value": round(base_total * lift / 100.0, 2),
-            "lift_source": (
-                "caller-supplied" if action in lifts
-                else ("do-nothing (lift 0 by construction)" if action in _DO_NOTHING_ACTIONS
-                      else f"calibrated prior ({prior_source})")
-            ),
-        })
+    ranked: list[dict[str, Any]] = [
+        _score_action(action, base_total, float(margin_rate), lifts,
+                      costs, prior_point, prior_source)
+        for action in COMPARABLE_ACTIONS
+    ]
     ranked.sort(key=lambda row: (-row["expected_incremental_margin"],
-                                   _RISK_RANK.get(row["risk"], 9), row["action"]))
+                                 _RISK_RANK.get(row["risk"], 9), row["action"]))
     recommended = ranked[0]["action"]
     return {
         "store_id": store_id,

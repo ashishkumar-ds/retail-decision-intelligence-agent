@@ -225,16 +225,92 @@ def _trend_svg(labels: Sequence[str], logged: Sequence[int], decided: Sequence[i
     )
 
 
-def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
-                     attention: Sequence[Mapping],
-                     quality: Mapping[str, Any] | None = None,
-                     sweep_status: Mapping[str, Any] | None = None,
-                     decisions: Sequence[Mapping] | None = None,
-                     trend: Mapping[str, Any] | None = None,
-                     total_stores: int | None = None) -> str:
-    quality = quality if isinstance(quality, Mapping) else {}
-    sweep_status = sweep_status if isinstance(sweep_status, Mapping) else {}
-    trend = trend if isinstance(trend, Mapping) else {}
+def _dashboard_hero(pending_count: int, stores: int, measured: int) -> str:
+    return (
+        f"<p class='hero-q'>Are we turning stores around?</p>"
+        f"<p class='muted'>{pending_count} of {stores} stores awaiting a human decision"
+        f"{f' · {measured} measured outcomes' if measured else ''}.</p>"
+    )
+
+
+def _dashboard_kpis(pending_count: int, realised: str, realised_sub: str,
+                    projected: str, projected_sub: str, regret: str,
+                    oldest: str, swept_label: str) -> str:
+    return (
+        f'<div class="kpis">'
+        f'<span><b>{pending_count}</b> pending approvals</span>'
+        f'<span><b>{esc(realised)}</b> realised margin<br><small>{esc(realised_sub)}</small></span>'
+        f'<span><b>{esc(projected)}</b> projected margin<br><small>{esc(projected_sub)}</small></span>'
+        f'<span><b>{esc(regret)}</b> regret vs do-nothing</span>'
+        f'<span><b>{esc(oldest)}</b> oldest wait</span>'
+        f'<span><b>{esc(swept_label)}</b> last sweep</span></div>'
+    )
+
+
+def _dashboard_activity(trend: Mapping[str, Any]) -> str:
+    labels = list(trend.get("labels", []))
+    logged = [int(v) for v in trend.get("logged", [])]
+    decided = [int(v) for v in trend.get("decided", [])]
+    svg = _trend_svg(labels, logged, decided) if labels else ""
+    if not svg:
+        return ("<h2>Activity</h2>"
+                "<p class='muted'>No recommendations or decisions recorded yet.</p>")
+    return (
+        f"<h2>Activity — last {len(labels)} days</h2>"
+        f"<div class='trend'>{svg}"
+        f"<p class='legend'><span class='swatch' style='background:{TEAL}'></span>"
+        f"recommendations logged ({sum(logged)})"
+        f"<span class='swatch' style='background:{INDIGO}'></span>"
+        f"human decisions ({sum(decided)})</p></div>"
+    )
+
+
+def _dashboard_queue(attention: Sequence[Mapping]) -> str:
+    if not attention:
+        return '<p class="muted">Attention queue is empty.</p>'
+    queue_rows = "".join(
+        f"<tr><td>{esc(r.get('store_id'))}</td>"
+        f"<td>{esc(r.get('recommendation'))}</td>"
+        f"<td>{esc(r.get('store_health_score'))}</td>"
+        f"<td>{esc(_recovery_label(r.get('recovery_pct')))}</td>"
+        f"<td>{esc(_days_left_label(r.get('days_remaining')))}</td>"
+        f"<td>{esc(_priority_label(r))}</td>"
+        f"<td>{esc(_margin_cell(r))}</td>"
+        f"<td>{esc(r.get('confidence'))}</td>"
+        f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
+        f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"
+        for r in attention[:20]
+    )
+    return (f'<h2>Store recovery watchlist ({len(attention)})</h2>'
+            f'<p class="muted">The stores that explain whether the strategy is working. '
+            f'<a href="/ui/approvals">Decide on all pending</a>.</p>'
+            f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
+            f'<th>Recovery %</th><th>Days left</th><th>Priority</th><th>Margin</th>'
+            f'<th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>')
+
+
+def _dashboard_log(log_entries: Sequence[Mapping]) -> str:
+    if not log_entries:
+        return '<p class="muted">Decision log is empty.</p>'
+    log_rows = "".join(
+        f"<tr><td>{esc(e.get('store_id'))}</td><td>{esc(e.get('recommendation'))}</td>"
+        f"<td>{esc(e.get('forecast_status'))}</td><td>{esc(e.get('decided_at') or e.get('run_timestamp'))}</td></tr>"
+        for e in list(log_entries)[-10:][::-1]
+    )
+    return (f'<h2>Recent decision log</h2>'
+            f'<table><tr><th>Store</th><th>Recommendation</th><th>Forecast</th><th>At</th></tr>'
+            f'{log_rows}</table>')
+
+
+def _dashboard_fresh(swept_label: str) -> str:
+    return (f"<p class='fresh'>Data refreshed {esc(swept_label)}"
+            f"{' (live sweep)' if swept_label != 'never' else ' (run a sweep to refresh)'}.</p>"
+            f"<p class='fresh'>Free-tier upstreams sleep when idle: this page serves cached decisions "
+            f"instantly and wakes the forecast + campaign APIs behind it — "
+            f"refresh again in ~1 min if numbers look stale.</p>")
+
+
+def _dashboard_money(quality: Mapping[str, Any]) -> tuple[str, str, str, str, str]:
     measured = quality.get("measured_intervention_count") or 0
     if measured:
         realised = _money_label(quality.get("total_incremental_margin"))
@@ -253,6 +329,10 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
                          f"— projection, NOT measured")
     else:
         projected, projected_sub = "—", "no projectable baseline"
+    return realised, realised_sub, regret, projected, projected_sub
+
+
+def _dashboard_waits(pending: Sequence[Mapping], sweep_status: Mapping[str, Any]) -> tuple[str, str]:
     waits = [r.get("generated_at") for r in pending if isinstance(r, Mapping)]
     oldest = "—"
     if waits:
@@ -262,71 +342,31 @@ def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
             oldest = "—"
     swept = _age_label(sweep_status.get("last_sweep_at"))
     swept_label = f"{swept} ago" if swept != "—" else "never"
+    return oldest, swept_label
+
+
+def render_dashboard(pending: Sequence[Mapping], log_entries: Sequence[Mapping],
+                     attention: Sequence[Mapping],
+                     quality: Mapping[str, Any] | None = None,
+                     sweep_status: Mapping[str, Any] | None = None,
+                     decisions: Sequence[Mapping] | None = None,
+                     trend: Mapping[str, Any] | None = None,
+                     total_stores: int | None = None) -> str:
+    quality = quality if isinstance(quality, Mapping) else {}
+    sweep_status = sweep_status if isinstance(sweep_status, Mapping) else {}
+    trend = trend if isinstance(trend, Mapping) else {}
+    measured = quality.get("measured_intervention_count") or 0
+    realised, realised_sub, regret, projected, projected_sub = _dashboard_money(quality)
+    oldest, swept_label = _dashboard_waits(pending, sweep_status)
     stores = total_stores if isinstance(total_stores, int) else len(
         {r.get("store_id") for r in log_entries if isinstance(r, Mapping)})
-    hero = (
-        f"<p class='hero-q'>Are we turning stores around?</p>"
-        f"<p class='muted'>{len(pending)} of {stores} stores awaiting a human decision"
-        f"{f' · {measured} measured outcomes' if measured else ''}.</p>"
-    )
-    kpis = (
-        f'<div class="kpis">'
-        f'<span><b>{len(pending)}</b> pending approvals</span>'
-        f'<span><b>{esc(realised)}</b> realised margin<br><small>{esc(realised_sub)}</small></span>'
-        f'<span><b>{esc(projected)}</b> projected margin<br><small>{esc(projected_sub)}</small></span>'
-        f'<span><b>{esc(regret)}</b> regret vs do-nothing</span>'
-        f'<span><b>{esc(oldest)}</b> oldest wait</span>'
-        f'<span><b>{esc(swept_label)}</b> last sweep</span></div>'
-    )
-    labels = list(trend.get("labels", []))
-    logged = [int(v) for v in trend.get("logged", [])]
-    decided = [int(v) for v in trend.get("decided", [])]
-    svg = _trend_svg(labels, logged, decided) if labels else ""
-    if svg:
-        activity = (
-            f"<h2>Activity — last {len(labels)} days</h2>"
-            f"<div class='trend'>{svg}"
-            f"<p class='legend'><span class='swatch' style='background:{TEAL}'></span>"
-            f"recommendations logged ({sum(logged)})"
-            f"<span class='swatch' style='background:{INDIGO}'></span>"
-            f"human decisions ({sum(decided)})</p></div>"
-        )
-    else:
-        activity = ("<h2>Activity</h2>"
-                    "<p class='muted'>No recommendations or decisions recorded yet.</p>")
-    queue_rows = "".join(
-        f"<tr><td>{esc(r.get('store_id'))}</td>"
-        f"<td>{esc(r.get('recommendation'))}</td>"
-        f"<td>{esc(r.get('store_health_score'))}</td>"
-        f"<td>{esc(_recovery_label(r.get('recovery_pct')))}</td>"
-        f"<td>{esc(_days_left_label(r.get('days_remaining')))}</td>"
-        f"<td>{esc(_priority_label(r))}</td>"
-        f"<td>{esc(_margin_cell(r))}</td>"
-        f"<td>{esc(r.get('confidence'))}</td>"
-        f"<td>{esc(working_label(r.get('campaign_working')))}</td>"
-        f"<td><a href='/ui/why/{esc(r.get('store_id'))}'>why?</a></td></tr>"
-        for r in attention[:20]
-    )
-    queue = (f'<h2>Store recovery watchlist ({len(attention)})</h2>'
-             f'<p class="muted">The stores that explain whether the strategy is working. '
-             f'<a href="/ui/approvals">Decide on all pending</a>.</p>'
-             f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
-             f'<th>Recovery %</th><th>Days left</th><th>Priority</th><th>Margin</th>'
-             f'<th>Confidence</th><th>Campaign working?</th><th></th></tr>{queue_rows}</table>'
-             if attention else '<p class="muted">Attention queue is empty.</p>')
-    log_rows = "".join(
-        f"<tr><td>{esc(e.get('store_id'))}</td><td>{esc(e.get('recommendation'))}</td>"
-        f"<td>{esc(e.get('forecast_status'))}</td><td>{esc(e.get('decided_at') or e.get('run_timestamp'))}</td></tr>"
-        for e in list(log_entries)[-10:][::-1]
-    )
-    log = (f'<h2>Recent decision log</h2>'
-           f'<table><tr><th>Store</th><th>Recommendation</th><th>Forecast</th><th>At</th></tr>'
-           f'{log_rows}</table>' if log_entries else '<p class="muted">Decision log is empty.</p>')
-    fresh = (f"<p class='fresh'>Data refreshed {esc(swept_label)}"
-             f"{' (live sweep)' if swept != 'never' else ' (run a sweep to refresh)'}.</p>"
-             f"<p class='fresh'>Free-tier upstreams sleep when idle: this page serves cached decisions "
-             f"instantly and wakes the forecast + campaign APIs behind it — "
-             f"refresh again in ~1 min if numbers look stale.</p>")
+    hero = _dashboard_hero(len(pending), stores, measured)
+    kpis = _dashboard_kpis(len(pending), realised, realised_sub, projected,
+                           projected_sub, regret, oldest, swept_label)
+    activity = _dashboard_activity(trend)
+    queue = _dashboard_queue(attention)
+    log = _dashboard_log(log_entries)
+    fresh = _dashboard_fresh(swept_label)
     return f'{hero}{kpis}{activity}{queue}{log}{fresh}'
 
 
