@@ -33,10 +33,10 @@ button.bucket-head{display:flex;width:100%;align-items:center;gap:12px;backgroun
 .metric{font-size:13.5px}
 .metric-row.secondary .metric{opacity:1}
 .metric-row.secondary .metric span{color:#3d4b54}
-.bucket.critical{border-color:#d97706}
-.bucket.critical .bucket-marker{background:#d97706}
-.summary-card.critical strong{color:#92400e}
-.decision{border-left-color:#d97706}
-.decision-kicker{color:#92400e}
+.bucket.critical{border-color:#cf348d}
+.bucket.critical .bucket-marker{background:#cf348d}
+.summary-card.critical strong{color:#9c2458}
+.decision{border-left-color:#cf348d}
+.decision-kicker{color:#9c2458}
 button.bucket-head:focus-visible,.show-toggle:focus-visible,.detail-link:focus-visible,.store-id:focus-visible{outline:2px solid #1e40af;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.bucket-toggle{transition:none}.bucket-toggle.open{transform:none}}
