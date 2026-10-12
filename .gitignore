@@ -5,6 +5,10 @@ logs/
 *.egg-info/
 .env.local
 .venv/
+# Next.js board (app/) build output and local deps — regenerable via npm install.
+.next/
+node_modules/
+next-env.d.ts
 # Local-only (Termux) tooling — never pushed to GitHub:
 # agent skills used while building (classifier.dev, ask-matt, tdd, ...),
 # all agent-copy dirs from `skills add`, and the skills lock file.
