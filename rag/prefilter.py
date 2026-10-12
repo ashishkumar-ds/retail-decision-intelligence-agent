@@ -71,7 +71,7 @@ def _classify_relevance(question: str, texts: Sequence[str]) -> list[dict[str, A
         data=body,
         headers={"content-type": "application/json", "user-agent": _USER_AGENT},
     )
-    # ponytail: sync urllib call with no retry/backoff - fine for the off-path
+    # note: sync urllib call with no retry/backoff - fine for the off-path
     # advisory layer's handful of chunks; upgrade path is the CLI's batched
     # streaming client if this ever moves to >1k chunks per request.
     return json.load(urllib.request.urlopen(req, timeout=10))["results"]

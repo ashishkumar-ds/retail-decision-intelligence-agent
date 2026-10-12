@@ -24,7 +24,7 @@ what *would* have happened, so the whole loop — gate, idempotency, reversal,
 measurement — is exercisable and testable without a vendor account. A real
 adapter implements the same two methods:
 
-    ponytail: ceiling = the default connector writes nothing outside the
+    note: ceiling = the default connector writes nothing outside the
     journal. Upgrade path = implement ``apply``/``reverse`` against a real
     system (POS/CRM/email) and inject it at the endpoint; nothing else in the
     loop changes, because gating, idempotency, reversal and audit live here

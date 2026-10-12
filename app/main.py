@@ -1621,7 +1621,7 @@ def _board_records() -> list[dict[str, Any]]:
         pending_records = list(_pending_approvals.values())
     except Exception:  # storage/backend.py fail-closed 503 stays untouched
         pending_records = []
-    # ponytail: one union, no new store — pending records already carry
+    # note: one union, no new store — pending records already carry
     # the full recommendation shape (verified by
     # test_board_falls_back_to_pending_store).
     return log_records + [dict(rec) for rec in pending_records
