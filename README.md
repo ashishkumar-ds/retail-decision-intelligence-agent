@@ -37,7 +37,14 @@ A deterministic retail decision agent for underperforming stores. The brain is p
 
 **Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited explanations.
 
-**Why this matters for data-science / AI-ML roles:** the system is built around measurement, not vibes — a calibrated Difference-in-Differences causal prior (estimate + confidence interval) separates intervention effect from market drift, every claim carries a confidence and a citation, LLM output is treated as untrusted input behind numeric-grounding vetoes, and model-style evals (golden scenarios, grounding-failure injection, provider swaps) gate every change.
+**For data-science / AI-ML roles:** measurement over vibes — every claim carries a confidence and a citation, and model-style evals gate every change.
+
+## What this demonstrates
+
+- Deterministic decision systems under uncertainty — pure-code engine, no model calls on the decision path
+- Causal measurement in production-style loops — DiD with treated-vs-control assessment gating scale-up
+- Human-in-the-loop safety for budget actions — double-gated approvals, fail-closed everywhere
+- Evaluation as a first-class citizen — 22 pinned golden scenarios + grounding-failure and provider-swap evals in CI
 
 ## Quickstart
 
@@ -83,11 +90,13 @@ flowchart LR
 The optional LLM layer sits off-path and may only rephrase grounded, cited explanations — the decision path is pure code with no model calls.
 
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
-*Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
+*Pure-code decision path → human gate → append-only log; the LLM sits off-path (rephrase only). Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
 Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 ## API surface
+
+Core decision endpoints:
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
@@ -97,6 +106,11 @@ Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 | `/recommendations/run` | POST | Recompute and persist (auth) |
 | `/approve/{store_id}`, `/reject/{store_id}`, `/execute/{store_id}` | POST | Human decision + gated execution (auth) |
 | `/pending-approvals`, `/attention-queue` | GET | Approval queue and triage digest |
+
+Phase 2 / analytics / ops:
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
 | `/phase2/interventions/*`, `/phase2/portfolio/evaluate` | GET/POST | Intervention lifecycle + portfolio evaluation (auth on writes) |
 | `/analytics/decision-quality` | GET | Acceptance, causal confirmation, margin per intervention (auth) |
 | `/metrics` | GET | Prometheus metrics (auth; see ops/prometheus/) |
@@ -120,8 +134,6 @@ All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a
 
 Full list with comments: [`.env.example`](.env.example) (a test fails if code reads an undocumented variable).
 
-Off-path classifiers ([classifier.dev](https://classifier.dev), Jev): keep-biased RAG pre-filter + root-cause tags. Keyless, no flag to set. Numbers redacted before egress; failures degrade safe — see [ADR-0005](docs/adr/0005-redact-numbers-before-egress.md).
-
 ## Documentation
 
 - [Whitepaper](docs/WHITEPAPER.md) — the P1 → P2 → P3 series and this agent's place in it
@@ -130,8 +142,11 @@ Off-path classifiers ([classifier.dev](https://classifier.dev), Jev): keep-biase
 - [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
 - [Deployment](docs/DEPLOYMENT.md) — Render + Supabase setup, durable-storage trade-offs
 - [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec for the Vercel board
+- Off-path classifiers ([classifier.dev](https://classifier.dev), Jev) — keep-biased RAG pre-filter + root-cause tags, keyless; numbers redacted before egress, failures degrade safe ([ADR-0005](docs/adr/0005-redact-numbers-before-egress.md))
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
+
+Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, optional LLM layer, Prometheus, Next.js board on Vercel.
 
 ## Limitations
 
