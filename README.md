@@ -35,6 +35,8 @@ Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for 
 
 A decision-intelligence agent that closes the loop **plan → execute → measure → re-decide** for underperforming retail stores. The decision path is pure code — no LLM — and every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
 
+**Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited explanations.
+
 **Why this matters for data-science / AI-ML roles:** the system is built around measurement, not vibes — a calibrated Difference-in-Differences causal prior (estimate + confidence interval) separates intervention effect from market drift, every claim carries a confidence and a citation, LLM output is treated as untrusted input behind numeric-grounding vetoes, and model-style evals (golden scenarios, grounding-failure injection, provider swaps) gate every change.
 
 ## Quickstart
@@ -102,6 +104,8 @@ Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a named `APPROVAL_TOKENS` entry). Unset token → 503, fail closed.
 
+> **Auth is demo-grade:** static tokens with no rotation, expiry, or OIDC — right for a portfolio demo, not for production. A real deployment needs proper identity, short-lived credentials, and per-policy-version approval audit (see `docs/SAFETY.md`).
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -126,6 +130,14 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 - [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec for the Vercel board
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
+
+## Limitations
+
+- **Auth is demo-grade** (see above): static bearer tokens, no rotation/expiry/OIDC.
+- **Execution defaults to dry-run**: a real POS/CRM adapter must implement `apply`/`reverse` (`execution/connector.py`); reversibility is only as real as the adapter.
+- **Retrieval is lightweight**: hand-rolled BM25 over a curated corpus — context for explanations, never authority for decisions.
+- **Causal evidence is opt-in**: without matched-control coverage the guardrail is `UNAVAILABLE` and scale-up stays blocked; own-baseline lift is operational signal, not proof.
+- **Single-retailer scope**: JSONL audit log + optional Postgres suit one portfolio; multi-tenant use needs warehouse separation and forecast-call cost controls.
 
 ## Contributing
 

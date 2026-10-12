@@ -488,6 +488,11 @@ def health():
 
     return {
         "status": "ok",
+        "core_invariant": "LLM never decides, never changes numbers, never bypasses the human gate",
+        "auth": {
+            "mode": "static bearer token (demo-grade: no rotation or expiry)",
+            "writes": "token-required, fail-closed without one",
+        },
         "scheduler": _sweep_scheduler.status(),
         "execution_connector": resolve_connector_name(),
         "features": {
