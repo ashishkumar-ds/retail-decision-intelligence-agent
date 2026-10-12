@@ -169,7 +169,7 @@ lines are skipped with warnings when read. This is intentionally a simple
 JSONL persistence mechanism, not a database, queue, event bus, or distributed
 concurrency system.
 
-## 7. Phase 2 intervention → outcome → evidence loop — IMPLEMENTED
+## 7. Intervention lifecycle (Phase 2): intervention → outcome → evidence loop — IMPLEMENTED
 
 Phase 2 defines the smallest traceable loop around the frozen Phase 1
 recommendation (see `docs/PHASE_2_SPEC.md` for the locked contract):
@@ -264,7 +264,7 @@ Known intentional limitations are:
 These limitations should be treated as explicit boundaries, not hidden
 assumptions or completed features.
 
-## 11. Phase 2 handoff
+## 11. Intervention lifecycle (Phase 2) handoff
 
 Future Codex or LLM contributors should begin by reading this blueprint.
 Before changing code, they should agree on the
