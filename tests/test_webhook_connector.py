@@ -97,3 +97,85 @@ def test_webhook_failure_journals_nothing(monkeypatch):
     with pytest.raises(Exception):
         execute_recommendation(APPROVED, connector=connector)
     assert journal.read_events() == []
+
+
+# --- operator selection ------------------------------------------------------
+
+def test_resolve_connector_defaults_to_dry_run(monkeypatch):
+    from execution.connector import DryRunConnector, resolve_connector
+
+    monkeypatch.delenv("EXECUTION_CONNECTOR", raising=False)
+    assert isinstance(resolve_connector(), DryRunConnector)
+
+
+def test_resolve_connector_webhook_needs_url(monkeypatch):
+    from execution.connector import (
+        ExecutionMisconfigured,
+        resolve_connector,
+    )
+    from execution.webhook_connector import WebhookConnector
+
+    monkeypatch.setenv("EXECUTION_CONNECTOR", "webhook")
+    monkeypatch.delenv("EXECUTION_WEBHOOK_URL", raising=False)
+    with pytest.raises(ExecutionMisconfigured):
+        resolve_connector()  # asked for real writes: 503, never silent dry-run
+    monkeypatch.setenv("EXECUTION_WEBHOOK_URL", "https://pos.example/hooks")
+    connector = resolve_connector()
+    assert isinstance(connector, WebhookConnector)
+    assert connector.url == "https://pos.example/hooks"
+    monkeypatch.setenv("EXECUTION_CONNECTOR", "bogus")
+    with pytest.raises(ExecutionMisconfigured):
+        resolve_connector()
+
+
+def test_execute_endpoint_uses_configured_connector(monkeypatch, tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import app.main as app_main
+
+    monkeypatch.setenv("EXECUTION_CONNECTOR", "webhook")
+    monkeypatch.setenv("EXECUTION_WEBHOOK_URL", "https://pos.example/hooks")
+    monkeypatch.setenv("EXECUTION_JOURNAL_PATH", str(tmp_path / "exec.jsonl"))
+    monkeypatch.setenv("APPROVAL_AUTH_TOKEN", "tok")
+    posts: list[dict] = []
+
+    import json as _json
+
+    class _FakeResponse:
+        def read(self):
+            return _json.dumps({"id": "remote-9"}).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def _fake_urlopen(request, timeout=None):
+        posts.append(_json.loads(request.data.decode("utf-8")))
+        return _FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", _fake_urlopen)
+    monkeypatch.setattr(app_main, "_approved_record_for", lambda store_id: dict(APPROVED))
+    client = TestClient(app_main.app)
+    response = client.post("/execute/7", headers={"Authorization": "Bearer tok"}, json={})
+    assert response.status_code == 200
+    assert response.json()["execution"]["connector_handle"] == "webhook:remote-9"
+    assert posts[0]["type"] == "apply"
+
+
+def test_execute_endpoint_misconfigured_connector_is_503(monkeypatch, tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import app.main as app_main
+
+    monkeypatch.setenv("EXECUTION_CONNECTOR", "webhook")
+    monkeypatch.delenv("EXECUTION_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("EXECUTION_JOURNAL_PATH", str(tmp_path / "exec.jsonl"))
+    monkeypatch.setenv("APPROVAL_AUTH_TOKEN", "tok")
+    monkeypatch.setattr(app_main, "_approved_record_for", lambda store_id: dict(APPROVED))
+    client = TestClient(app_main.app)
+    response = client.post("/execute/7", headers={"Authorization": "Bearer tok"}, json={})
+    assert response.status_code == 503
