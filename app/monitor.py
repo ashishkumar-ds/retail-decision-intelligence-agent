@@ -126,9 +126,9 @@ def is_campaign_working(rec: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def ranked_attention_queue(pending: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """One deep seam for the repeated recipe across serving endpoints.
+    """One shared helper for the repeated recipe across serving endpoints.
 
-    codebase-design: ranks pending approvals AND stamps the per-store working
+    Design note: ranks pending approvals AND stamps the per-store working
     verdict in one traversal. The interface is the whole recipe (rank +
     enrich + campaign verdict), so callers learn one name instead of three
     and the composition lives in one tested place. Pure function over record
