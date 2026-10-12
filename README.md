@@ -120,6 +120,8 @@ All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a
 
 Full list with comments: [`.env.example`](.env.example) (a test fails if code reads an undocumented variable).
 
+Off-path classifiers ([classifier.dev](https://classifier.dev), Jev): keep-biased RAG pre-filter + root-cause tags. Keyless, no flag to set. Numbers redacted before egress; failures degrade safe — see [ADR-0005](docs/adr/0005-redact-numbers-before-egress.md).
+
 ## Documentation
 
 - [Whitepaper](docs/WHITEPAPER.md) — the P1 → P2 → P3 series and this agent's place in it
