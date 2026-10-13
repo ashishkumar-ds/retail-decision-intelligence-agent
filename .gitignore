@@ -27,3 +27,5 @@ SESSION_HANDOFF.md
 # .clinerules above: GitHub carries production agent code, never dev tooling.
 AGENTS.md
 docs/agents/
+# Verification skills (generated harnesses that drive the app like a user).
+.cursor/
