@@ -27,6 +27,8 @@ No keys, no services — one command runs the whole loop on recorded data:
 bash scripts/seed_demo.sh
 ```
 
+![Board walkthrough — coverage tiles, needs-decision queue with grounded EXTEND_INTERVENTION cards (17s, live board)](docs/demo-walkthrough.gif)
+
 ![Retail Decision Board — live stakeholder view: 85 stores, 1 needs decision, 37 responding, 47 awaiting data](docs/images/dashboard-board.png)
 
 Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full walkthrough: [DEMO.md](DEMO.md).
