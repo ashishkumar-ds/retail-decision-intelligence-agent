@@ -353,13 +353,15 @@ def get_control_comparison(
     post_end: int,
     *,
     k: int = 10,
+    pool: str = "all",
     retries: int = 3,
     backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
     """Fetch a matched-control (DiD) comparison for a store from the forecast service.
 
-    Returns the service envelope: ``{"store_id", "windows", "matched_controls",
+    Returns the service envelope: ``{"store_id", "windows", "pool",
+    "matched_controls",
     "causal": {"did_uplift_pct", ...}, "methodology"}``. The causal field's
     ``did_uplift_pct`` - treated vs matched-control change - is the scale-up
     decision input; raw own-baseline lift is NOT causal (market drift, model bias).
@@ -376,12 +378,15 @@ def get_control_comparison(
             raise TypeError(f"{name} must be an integer")
     if not (pre_start < pre_end < post_start <= post_end):
         raise ValueError("windows must satisfy pre_start < pre_end < post_start <= post_end")
+    if pool not in ("all", "underperforming"):
+        raise ValueError("pool must be 'all' or 'underperforming'")
 
     url = f"{_base_url()}/controls/{store_id}"
     response = _request_with_retry(
         "GET", url,
         params={"pre_start": pre_start, "pre_end": pre_end,
-                "post_start": post_start, "post_end": post_end, "k": k},
+                "post_start": post_start, "post_end": post_end, "k": k,
+                "pool": pool},
         retries=retries, backoffs=backoffs, sleep_fn=sleep_fn,
     )
     payload = _response_json(response)

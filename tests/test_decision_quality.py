@@ -116,3 +116,38 @@ def test_decision_quality_endpoint_requires_auth(tmp_path, monkeypatch):
     monkeypatch.delenv(main.APPROVAL_AUTH_TOKEN_ENV, raising=False)
     client = TestClient(main.app)
     assert client.get("/analytics/decision-quality").status_code == 503
+
+
+def _confirmed_with_ci(store_id, did, half_width):
+    return _rec(store_id, outcome={
+        "evidence_state": "SUFFICIENT", "actual_uplift_pct": did,
+        "target_assessment": "MEETS_TARGET", "baseline_value": 100.0,
+        "causal_evidence": {
+            "assessment_state": "CONFIRMED",
+            "did_uplift_pct": did,
+            "did_ci95": [did - half_width, did + half_width],
+        },
+    })
+
+
+def test_bh_survivors_filter_weak_confirmed_claims():
+    # Strong claim (tight CI far from 0) survives; marginal claim (CI
+    # straddling near-zero effect) does not; store without a CI is skipped,
+    # never penalised — raw CONFIRMED states are untouched.
+    recs = [
+        _confirmed_with_ci(1, 8.0, 1.0),
+        _confirmed_with_ci(2, 8.0, 1.0),
+        _confirmed_with_ci(3, 8.0, 1.0),
+        _confirmed_with_ci(4, 0.5, 4.0),
+        _rec(5, outcome=_sufficient(5.0, "MEETS_TARGET", "CONFIRMED")),
+    ]
+    quality = compute_decision_quality(recs, [], [])
+    assert quality["causal_confirmation_rate"] == 1.0  # raw states unchanged
+    assert quality["causal_bh_significant_stores"] == [1, 2, 3]
+    assert quality["causal_bh_fdr_q"] == 0.05
+
+
+def test_bh_empty_without_cis():
+    recs = [_rec(1, outcome=_sufficient(5.0, "MEETS_TARGET", "CONFIRMED"))]
+    quality = compute_decision_quality(recs, [], [])
+    assert quality["causal_bh_significant_stores"] == []

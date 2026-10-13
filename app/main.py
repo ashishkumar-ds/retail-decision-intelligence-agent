@@ -1364,6 +1364,11 @@ def _causal_evidence_for_intervention(store_id: int, started_day: int) -> dict:
     return {
         "evidence_state": "SUFFICIENT" if causal.get("did_uplift_pct") is not None else "INSUFFICIENT",
         "did_uplift_pct": causal.get("did_uplift_pct"),
+        "did_ci95": causal.get("did_ci95"),
+        "mde_pct": causal.get("mde_pct"),
+        "placebo_did_pct": causal.get("placebo_did_pct"),
+        "pre_trend_divergence": causal.get("pre_trend_divergence"),
+        "control_pool": envelope.get("pool", "all"),
         "control_store_ids": [c.get("store_id") for c in envelope.get("matched_controls", [])],
         "treated_change_pct": causal.get("treated_change_pct"),
         "control_change_pct": causal.get("control_change_pct"),

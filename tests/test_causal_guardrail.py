@@ -160,3 +160,44 @@ def test_causal_evidence_helper_fails_open_to_insufficient(monkeypatch):
     assert out["evidence_state"] == "SUFFICIENT"
     assert out["control_store_ids"] == [313]
 
+
+
+def test_get_control_comparison_sends_pool_and_validates_it(monkeypatch):
+    seen = {}
+
+    class _Capture(_FakeResponse):
+        pass
+
+    def _capture(method, url, **kwargs):
+        seen.update(kwargs.get("params", {}))
+        return _FakeResponse(_good_envelope())
+
+    import tools.forecast_tool as forecast_tool
+
+    monkeypatch.setattr(forecast_tool, "_request_with_retry",
+                        lambda method, url, **kwargs: _capture(method, url, **kwargs))
+    get_control_comparison(317, 594, 649, 650, 710)
+    assert seen.get("pool") == "all"  # default preserves prior behavior
+    get_control_comparison(317, 594, 649, 650, 710, pool="underperforming")
+    assert seen.get("pool") == "underperforming"
+    with pytest.raises(ValueError):
+        get_control_comparison(317, 594, 649, 650, 710, pool="everything")
+
+
+def test_causal_evidence_helper_carries_diagnostics(monkeypatch):
+    import app.main as app_main
+
+    envelope = _good_envelope()
+    envelope["pool"] = "underperforming"
+    envelope["causal"].update({
+        "did_ci95": [-32.0, -29.0], "mde_pct": 1.5,
+        "placebo_did_pct": 0.3, "pre_trend_divergence": 0.8,
+    })
+    monkeypatch.setattr(app_main, "get_control_comparison", lambda *a, **k: envelope)
+    out = app_main._causal_evidence_for_intervention(317, 650)
+    assert out["evidence_state"] == "SUFFICIENT"
+    assert out["did_ci95"] == [-32.0, -29.0]
+    assert out["mde_pct"] == 1.5
+    assert out["placebo_did_pct"] == 0.3
+    assert out["pre_trend_divergence"] == 0.8
+    assert out["control_pool"] == "underperforming"

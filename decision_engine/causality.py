@@ -13,6 +13,12 @@ Policy (fail-closed):
 - REVIEW_ZONE 0 <= did_uplift_pct < target -> scale-up blocked, evidence mixed
 - REFUTED     did_uplift_pct < 0 -> scale-up blocked, control group did better
 - UNAVAILABLE no usable causal evidence -> scale-up blocked (never assumed)
+
+The controls response also carries report-only diagnostics (did_ci95,
+mde_pct, placebo_did_pct, pre_trend_divergence, control pool) which are
+surfaced on evidence payloads for calibration. They never move the
+assessment above: scale-up keys on did_uplift_pct alone until the
+diagnostics are calibrated.
 """
 
 from __future__ import annotations

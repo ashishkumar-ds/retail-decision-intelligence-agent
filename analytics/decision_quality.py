@@ -22,12 +22,14 @@ the caller supplies them; otherwise the flat default applies.
 """
 from __future__ import annotations
 
+import math
 from typing import Any, Mapping, Sequence
 
 DEFAULT_MARGIN_RATE = 0.25
 RECENT_WINDOW_DAYS = 14
 PRIOR_LIFT_PCT = 2.84
 EVALUATION_WINDOW_DAYS = 60  # same window as phase2/evaluator + budget_allocator
+BH_FDR_Q = 0.05
 
 
 def projected_portfolio_margin(
@@ -208,6 +210,62 @@ def _margin_lists(recommendations: Sequence[Mapping[str, Any]],
     return margins, regrets
 
 
+def _bh_significant_stores(
+    recommendations: Sequence[Mapping[str, Any]],
+    q: float = BH_FDR_Q,
+) -> tuple[list[int], float]:
+    """Benjamini-Hochberg survivors among causally-CONFIRMED stores (report-only).
+
+    With one estimate per store, face-value CONFIRMED claims overstate at
+    portfolio scale (~85 tests). For outcomes carrying a ``did_ci95`` pair,
+    derive a normal-approx two-sided p from the CI-implied standard error
+    and apply BH at level ``q``. Stores without a CI are never penalised —
+    they simply don't enter the adjustment. Returns (sorted store ids, q).
+    Pure function; never raises (malformed entries are skipped).
+    """
+    p_values: list[tuple[float, int]] = []
+    for record in recommendations:
+        if not isinstance(record, Mapping):
+            continue
+        sid = record.get("store_id")
+        outcome = record.get("outcome_evidence")
+        if not isinstance(sid, int) or isinstance(sid, bool):
+            continue
+        if not isinstance(outcome, Mapping):
+            continue
+        causal = outcome.get("causal_evidence")
+        if not isinstance(causal, Mapping):
+            continue
+        if causal.get("assessment_state") != "CONFIRMED":
+            continue
+        did = causal.get("did_uplift_pct")
+        ci = causal.get("did_ci95")
+        try:
+            if isinstance(did, bool) or not isinstance(did, (int, float)):
+                continue
+            if not isinstance(ci, (list, tuple)) or len(ci) != 2:
+                continue
+            lo, hi = float(ci[0]), float(ci[1])
+            if not hi > lo:
+                continue
+            se = (hi - lo) / (2.0 * 1.96)
+            if se <= 0:
+                continue
+            z = abs(float(did)) / se
+            p = 2.0 * (1.0 - 0.5 * (1.0 + math.erf(z / math.sqrt(2.0))))
+            p_values.append((max(min(p, 1.0), 0.0), sid))
+        except (TypeError, ValueError):
+            continue
+    p_values.sort()
+    n = len(p_values)
+    cutoff = 0
+    for rank, (p, _sid) in enumerate(p_values, start=1):
+        if p <= rank / n * q:
+            cutoff = rank
+    survivors = sorted(sid for _p, sid in p_values[:cutoff])
+    return survivors, q
+
+
 def _methodology_note(recent_window_days: int) -> dict[str, str]:
     return {
         "acceptance": "ledger approvals / decided gated recommendations (latest per store)",
@@ -217,6 +275,8 @@ def _methodology_note(recent_window_days: int) -> dict[str, str]:
         "margin": (f"actual_uplift_pct/100 * baseline_value * {recent_window_days}d "
                     "* store margin_rate (override or default)"),
         "regret": "per store max(0, 0 - realised_margin); cross-action regret lives in policy_v2 eval",
+        "bh": "Benjamini-Hochberg survivors among CONFIRMED stores at q=0.05 "
+              "(p from CI-implied SE, normal approx); report-only, raw states unchanged",
     }
 
 
@@ -242,6 +302,7 @@ def compute_decision_quality(
     reversal_rate, execution_count, reversed_count = _execution_stats(executions)
     margins, regrets = _margin_lists(recommendations, store_margins,
                                      margin_rate, recent_window_days)
+    bh_survivors, bh_q = _bh_significant_stores(recommendations)
 
     return {
         "recommendation_acceptance_rate": acceptance_rate,
@@ -264,5 +325,7 @@ def compute_decision_quality(
         ),
         "total_regret_vs_do_nothing": round(sum(regrets.values()), 2),
         "stores_with_regret": sorted(regrets),
+        "causal_bh_significant_stores": bh_survivors,
+        "causal_bh_fdr_q": bh_q,
         "methodology": _methodology_note(recent_window_days),
     }
