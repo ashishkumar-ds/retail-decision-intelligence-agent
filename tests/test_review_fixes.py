@@ -131,7 +131,9 @@ def test_upstream_ping_helpers_never_raise_and_warmup_throttled(monkeypatch):
     calls: list[str] = []
     monkeypatch.setattr(main, "ping_forecast_upstream", lambda *a, **k: calls.append("f") or True)
     monkeypatch.setattr(main, "ping_campaign_upstream", lambda *a, **k: calls.append("c") or True)
-    main._last_warmup_kick = 0.0
+    # Far past, not 0.0: monotonic() is seconds since boot, so on a fresh CI
+    # container 0.0 still falls inside the cooldown and the kick no-ops.
+    main._last_warmup_kick = -1000.0
     main._kick_upstream_warmup()
     import time as _time
 
@@ -144,7 +146,7 @@ def test_upstream_ping_helpers_never_raise_and_warmup_throttled(monkeypatch):
     # dashboard hits never block on upstreams
     monkeypatch.setattr(main, "ping_forecast_upstream", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
     monkeypatch.setattr(main, "ping_campaign_upstream", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
-    main._last_warmup_kick = 0.0
+    main._last_warmup_kick = -1000.0
     main._kick_upstream_warmup()  # must not raise
     _time.sleep(0.3)
 

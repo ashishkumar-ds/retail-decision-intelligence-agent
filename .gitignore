@@ -5,9 +5,12 @@ logs/
 *.egg-info/
 .env.local
 .venv/
-# Local-only (Termux) tooling — never pushed to GitHub:
-# agent skills used while building (classifier.dev, ask-matt, tdd, ...),
-# all agent-copy dirs from `skills add`, and the skills lock file.
+# Next.js board (app/) build output and local deps — regenerable via npm install.
+.next/
+node_modules/
+next-env.d.ts
+# Local-only agent tooling — never pushed to GitHub:
+# helper dirs copied in while building, and the tooling lock file.
 .claude/
 .agents/
 agent/
@@ -20,7 +23,7 @@ skills-lock.json
 *.db-shm
 .clinerules
 SESSION_HANDOFF.md
-# Engineering-skills config (setup-matt-pocock-skills). Local-only, same rule as
+# Engineering workspace config. Local-only, same rule as
 # .clinerules above: GitHub carries production agent code, never dev tooling.
 AGENTS.md
 docs/agents/
