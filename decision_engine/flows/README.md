@@ -1,7 +1,7 @@
 # Declarative flow specs — documentation contract, not loaded code
 
-These specs describe each decision flow the router can emit, in SKILL.md
-style. They are **drift-checked, not executed**: `decision_engine/planner.py`
+These specs describe each decision flow the router can emit, as small
+declarative Markdown specs. They are **drift-checked, not executed**: `decision_engine/planner.py`
 remains the executable source of truth (its `PLANS` dict is deliberately code,
 not prose), and `scripts/check.py` fails the build if these specs drift from
 the emittable routes (missing spec for a route, or a spec for a route the

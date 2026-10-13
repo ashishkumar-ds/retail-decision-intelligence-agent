@@ -44,7 +44,7 @@ def main() -> int:
         print("FAIL: DATABASE_URL is missing ?sslmode=require (Supabase enforces SSL).")
         print("  Fix: append ?sslmode=require (or &sslmode=require) to DATABASE_URL.")
         return 1
-    # ponytail: one direct connection per check; no pool (Render opens one per op).
+    # note: one direct connection per check; no pool (Render opens one per op).
     try:
         from storage.database import connect, run_migrations
     except Exception as error:  # pragma: no cover - import surface

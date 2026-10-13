@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Generate docs/diagrams/architecture-dunnhumby.json - the architecture
 diagram restyled to replicate the theme of dunnhumby's official
-"The Complete Journey" user guide (rag/sources/pdfs/tcj_user_guide.pdf).
+"The Complete Journey" user guide (source PDF removed from the repo;
+theme values below were extracted from it and are inlined).
 
 Theme extracted from the PDF itself (vector fills + text spans):
     teal   #38B2AB  accent: labels, chips, rules, arrows

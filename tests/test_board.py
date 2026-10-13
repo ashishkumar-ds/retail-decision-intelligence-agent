@@ -88,7 +88,7 @@ def test_no_data_lands_in_insufficient_data_not_intervention():
 
 
 def test_no_data_variants_without_explicit_flag_land_in_insufficient_data():
-    # ponytail: live pending-store / legacy records omit forecast_signal_available
+    # note: live pending-store / legacy records omit forecast_signal_available
     # or carry only forecast_status — they must not fall through to intervention.
     missing_flag = _rec(recommendation="NEEDS_REVIEW", store_health_score=0.0,
                         recovery_pct=0.0, requires_human_approval=True)

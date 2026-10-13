@@ -33,9 +33,18 @@ Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for 
 
 ## What it is
 
-A decision-intelligence agent that closes the loop **plan → execute → measure → re-decide** for underperforming retail stores. The decision path is pure code — no LLM — and every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
+A deterministic retail decision agent for underperforming stores. The brain is pure code, every recommendation is recomputable and citable, causal DiD evidence gates scale-up, and a human must approve any budget-moving action. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
 
-**Why this matters for data-science / AI-ML roles:** the system is built around measurement, not vibes — a calibrated Difference-in-Differences causal prior (estimate + confidence interval) separates intervention effect from market drift, every claim carries a confidence and a citation, LLM output is treated as untrusted input behind numeric-grounding vetoes, and model-style evals (golden scenarios, grounding-failure injection, provider swaps) gate every change.
+**Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited explanations.
+
+**For data-science / AI-ML roles:** measurement over vibes — every claim carries a confidence and a citation, and model-style evals gate every change.
+
+## What this demonstrates
+
+- Deterministic decision systems under uncertainty — pure-code engine, no model calls on the decision path
+- Causal measurement in production-style loops — DiD with treated-vs-control assessment gating scale-up
+- Human-in-the-loop safety for budget actions — double-gated approvals, fail-closed everywhere
+- Evaluation as a first-class citizen — 22 pinned golden scenarios + grounding-failure and provider-swap evals in CI
 
 ## Quickstart
 
@@ -81,11 +90,13 @@ flowchart LR
 The optional LLM layer sits off-path and may only rephrase grounded, cited explanations — the decision path is pure code with no model calls.
 
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
-*Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
+*Pure-code decision path → human gate → append-only log; the LLM sits off-path (rephrase only). Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
 Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 ## API surface
+
+Core decision endpoints:
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
@@ -95,12 +106,19 @@ Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 | `/recommendations/run` | POST | Recompute and persist (auth) |
 | `/approve/{store_id}`, `/reject/{store_id}`, `/execute/{store_id}` | POST | Human decision + gated execution (auth) |
 | `/pending-approvals`, `/attention-queue` | GET | Approval queue and triage digest |
+
+Intervention lifecycle (Phase 2) / analytics / ops:
+
+| Endpoint | Method | Purpose |
+| --- | --- | --- |
 | `/phase2/interventions/*`, `/phase2/portfolio/evaluate` | GET/POST | Intervention lifecycle + portfolio evaluation (auth on writes) |
 | `/analytics/decision-quality` | GET | Acceptance, causal confirmation, margin per intervention (auth) |
 | `/metrics` | GET | Prometheus metrics (auth; see ops/prometheus/) |
 | `/log` | GET | Append-only recommendation log |
 
 All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a named `APPROVAL_TOKENS` entry). Unset token → 503, fail closed.
+
+> **Auth:** named tokens with roles, per-token expiry, and short-lived HMAC-signed tokens (`scripts/issue_token.py`, rotation via overlap secret). No OIDC federation — the remaining step for enterprise SSO.
 
 ## Configuration
 
@@ -124,8 +142,19 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 - [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
 - [Deployment](docs/DEPLOYMENT.md) — Render + Supabase setup, durable-storage trade-offs
 - [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec for the Vercel board
+- Off-path classifiers ([classifier.dev](https://classifier.dev), Jev) — keep-biased RAG pre-filter + root-cause tags, keyless; numbers redacted before egress, failures degrade safe ([ADR-0005](docs/adr/0005-redact-numbers-before-egress.md))
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
+
+Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, optional LLM layer, Prometheus, Next.js board on Vercel.
+
+## Limitations
+
+- **No OIDC federation**: short-lived HMAC tokens cover service-to-operator auth; enterprise SSO still needs an identity provider.
+- **Execution adapter is operator-selected** (`EXECUTION_CONNECTOR=webhook` + URL for real writes, dry-run when unset): `execution/webhook_connector.py` proves the path with remote handles journaled; a production POS/CRM adapter implements the same two methods.
+- **Retrieval is lightweight**: hand-rolled BM25 over a curated corpus — context for explanations, never authority for decisions.
+- **Causal evidence is opt-in**: without matched-control coverage the guardrail is `UNAVAILABLE` and scale-up stays blocked; own-baseline lift is operational signal, not proof.
+- **Single-retailer scope**: JSONL audit log + optional Postgres suit one portfolio; multi-tenant use needs warehouse separation and forecast-call cost controls.
 
 ## Contributing
 

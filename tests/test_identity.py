@@ -8,6 +8,8 @@ import pytest
 from approvals.identity import (
     IdentityNotConfigured,
     Principal,
+    TokenEntry,
+    issue_timed_token,
     parse_token_map,
     require_decision_role,
     resolve_principal,
@@ -17,8 +19,16 @@ from approvals.identity import (
 
 def test_parse_token_map_valid():
     assert parse_token_map("tok1:alice:approver, tok2:bob:viewer") == {
-        "tok1": ("alice", "approver"),
-        "tok2": ("bob", "viewer"),
+        "tok1": TokenEntry(user="alice", role="approver", expires=None),
+        "tok2": TokenEntry(user="bob", role="viewer", expires=None),
+    }
+
+
+def test_parse_token_map_accepts_expiry():
+    from datetime import date
+
+    assert parse_token_map("tok1:alice:approver:2027-01-01") == {
+        "tok1": TokenEntry(user="alice", role="approver", expires=date(2027, 1, 1)),
     }
 
 
@@ -27,6 +37,8 @@ def test_parse_token_map_rejects_malformed_entry():
         parse_token_map("tok1:alice:approver,bad-entry")
     with pytest.raises(ValueError):
         parse_token_map("tok1:alice")
+    with pytest.raises(ValueError):
+        parse_token_map("tok1:alice:approver:next-friday")
 
 
 def test_parse_token_map_rejects_unknown_role():
@@ -63,6 +75,86 @@ def test_token_map_mode_resolves_named_principals(monkeypatch):
     assert bob.role == "viewer"
     with pytest.raises(PermissionError):
         resolve_principal("legacy-token")  # shared token not valid in map mode
+
+
+def test_token_expiry_rejects_expired_accepts_valid(monkeypatch):
+    monkeypatch.setenv(
+        "APPROVAL_TOKENS",
+        "tok-old:alice:approver:2000-01-01,tok-new:alice:approver:2099-01-01")
+    with pytest.raises(PermissionError):
+        resolve_principal("tok-old")  # expired: 403, fail closed
+    principal = resolve_principal("tok-new")
+    assert principal == Principal(user="alice", role="approver", source="token-map")
+
+
+def test_token_rotation_overlap(monkeypatch):
+    # Rotation: old + replacement valid together; revoke the old entry after
+    # callers move over. Both resolve to the same principal while overlapped.
+    monkeypatch.setenv(
+        "APPROVAL_TOKENS",
+        "tok-old:alice:approver:2099-01-01,tok-new:alice:approver:2099-06-01")
+    assert resolve_principal("tok-old").label() == "user:alice"
+    assert resolve_principal("tok-new").label() == "user:alice"
+    monkeypatch.setenv("APPROVAL_TOKENS", "tok-new:alice:approver:2099-06-01")
+    with pytest.raises(PermissionError):
+        resolve_principal("tok-old")  # revoked
+    assert resolve_principal("tok-new").label() == "user:alice"
+
+
+# --- short-lived HMAC tokens ---------------------------------------------------
+
+def test_timed_token_round_trip(monkeypatch):
+    monkeypatch.setenv("APPROVAL_TOKEN_SECRET", "s3cret")
+    monkeypatch.delenv("APPROVAL_TOKENS", raising=False)
+    monkeypatch.delenv("APPROVAL_AUTH_TOKEN", raising=False)
+    token = issue_timed_token("alice", "approver", 3600, "s3cret")
+    principal = resolve_principal(token)
+    assert principal == Principal(user="alice", role="approver", source="timed-token")
+    assert principal.label() == "user:alice"
+
+
+def test_timed_token_rejects_tampering_and_expiry(monkeypatch):
+    import time
+
+    monkeypatch.setenv("APPROVAL_TOKEN_SECRET", "s3cret")
+    monkeypatch.delenv("APPROVAL_TOKENS", raising=False)
+    monkeypatch.delenv("APPROVAL_AUTH_TOKEN", raising=False)
+    token = issue_timed_token("alice", "approver", 3600, "s3cret")
+    body, _, sig = token.rpartition(".")
+    tampered = body[:-1] + ("0" if body[-1] != "0" else "1") + "." + sig
+    with pytest.raises(PermissionError):
+        resolve_principal(tampered)
+    stale = issue_timed_token("alice", "approver", 3600, "s3cret",
+                              now=time.time() - 7200)
+    with pytest.raises(PermissionError):
+        resolve_principal(stale)
+    with pytest.raises(ValueError):
+        issue_timed_token("alice", "admin", 3600, "s3cret")
+    with pytest.raises(ValueError):
+        issue_timed_token("al.ice", "approver", 3600, "s3cret")
+
+
+def test_timed_token_secret_rotation_overlap(monkeypatch):
+    monkeypatch.delenv("APPROVAL_TOKENS", raising=False)
+    monkeypatch.delenv("APPROVAL_AUTH_TOKEN", raising=False)
+    monkeypatch.setenv("APPROVAL_TOKEN_SECRET", "new-secret")
+    monkeypatch.setenv("APPROVAL_TOKEN_SECRET_PREV", "old-secret")
+    assert resolve_principal(
+        issue_timed_token("alice", "approver", 3600, "old-secret")).label() == "user:alice"
+    assert resolve_principal(
+        issue_timed_token("alice", "approver", 3600, "new-secret")).label() == "user:alice"
+    monkeypatch.delenv("APPROVAL_TOKEN_SECRET_PREV", raising=False)
+    with pytest.raises(PermissionError):
+        resolve_principal(issue_timed_token("alice", "approver", 3600, "old-secret"))
+
+
+def test_timed_token_viewer_cannot_decide(monkeypatch):
+    monkeypatch.setenv("APPROVAL_TOKEN_SECRET", "s3cret")
+    monkeypatch.delenv("APPROVAL_TOKENS", raising=False)
+    monkeypatch.delenv("APPROVAL_AUTH_TOKEN", raising=False)
+    viewer = resolve_principal(issue_timed_token("bob", "viewer", 3600, "s3cret"))
+    with pytest.raises(PermissionError):
+        require_decision_role(viewer)
 
 
 # --- role enforcement ----------------------------------------------------------

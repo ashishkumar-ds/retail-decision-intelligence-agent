@@ -24,15 +24,17 @@ what *would* have happened, so the whole loop — gate, idempotency, reversal,
 measurement — is exercisable and testable without a vendor account. A real
 adapter implements the same two methods:
 
-    ponytail: ceiling = the default connector writes nothing outside the
-    journal. Upgrade path = implement ``apply``/``reverse`` against a real
-    system (POS/CRM/email) and inject it at the endpoint; nothing else in the
+    note: ceiling = the default connector writes nothing outside the
+    journal. Upgrade path = set ``EXECUTION_CONNECTOR=webhook`` plus
+    ``EXECUTION_WEBHOOK_URL`` (or implement ``apply``/``reverse`` against a
+    real system and select it the same way); nothing else in the
     loop changes, because gating, idempotency, reversal and audit live here
     rather than in the adapter.
 """
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 import uuid
 from contextlib import contextmanager
@@ -115,20 +117,47 @@ class DryRunConnector:
         return None
 
 
+class ExecutionMisconfigured(RuntimeError):
+    """The selected connector cannot run (e.g. webhook chosen with no URL)."""
+
+
 EXECUTION_CONNECTOR_ENV = "EXECUTION_CONNECTOR"
+WEBHOOK_URL_ENV = "EXECUTION_WEBHOOK_URL"
+WEBHOOK_TOKEN_ENV = "EXECUTION_WEBHOOK_TOKEN"
 
 
 def resolve_connector_name() -> str:
     """Name of the active execution connector (surfaced in /health).
 
-    The default — and currently only shipped — connector is dry-run: intent is
-    journaled, no external system is touched. A real POS/CRM adapter sets this
-    name and is injected at ``POST /execute/{store_id}``; gating, idempotency,
+    Operator-selected via ``EXECUTION_CONNECTOR``: ``dry-run`` (default,
+    intent journaled, nothing external touched) or ``webhook`` (the example
+    real adapter in ``execution/webhook_connector.py``). Gating, idempotency,
     reversal and audit live here, never in the adapter.
     """
-    import os
-
     return os.getenv(EXECUTION_CONNECTOR_ENV, "dry-run").strip().lower() or "dry-run"
+
+
+def resolve_connector() -> ExecutionConnector:
+    """Build the active connector from the environment (fail closed).
+
+    ``webhook`` without ``EXECUTION_WEBHOOK_URL`` raises instead of
+    silently degrading to dry-run: an operator who asked for real writes
+    must get them or an explicit error, never a quiet no-op.
+    """
+    name = resolve_connector_name()
+    if name == "webhook":
+        from .webhook_connector import WebhookConnector
+
+        url = os.getenv(WEBHOOK_URL_ENV, "").strip()
+        if not url:
+            raise ExecutionMisconfigured(
+                f"{EXECUTION_CONNECTOR_ENV}=webhook needs {WEBHOOK_URL_ENV} set")
+        return WebhookConnector(url=url,
+                                token=os.getenv(WEBHOOK_TOKEN_ENV, "").strip() or None)
+    if name != "dry-run":
+        raise ExecutionMisconfigured(
+            f"unknown {EXECUTION_CONNECTOR_ENV}={name!r}; expected 'dry-run' or 'webhook'")
+    return DryRunConnector()
 
 
 def idempotency_key(record: Mapping[str, Any]) -> str:

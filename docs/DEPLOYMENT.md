@@ -117,7 +117,7 @@ log wins when present). This section is the click-through
    same string → Save (triggers redeploy). First boot re-runs migrations
    (idempotent) and the store flips to `postgres` (`PendingApprovalStore._dialect`).
    Keep the `agent-logs` disk mounted: the JSONL audit trail still lives there.
-5. **Security notes (Supabase skill checklist):**
+5. **Security notes (Supabase setup checklist):**
    - The app connects with the `postgres` service role over a direct Postgres
      wire — it does **not** go through the Data API, so no `GRANT anon/` RLS
      policy is needed or honoured for this path. Keep the tables out of the

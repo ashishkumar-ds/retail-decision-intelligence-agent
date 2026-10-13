@@ -43,11 +43,11 @@
 5. **Byte-stable prompt + tools, fenced breakpoint for per-request data.**
    The static prompt and `tools[]` are identical bytes every turn (prompt-cache
    friendly, predictable); per-request data goes in a fenced block after a
-   breakpoint. A change to prompt/tool/skill text must re-derive any derived
+   breakpoint. A change to prompt/tool text must re-derive any derived
    artifact (their `scripts/check.py` enforces this).
 
 6. **One home per rule.**
-   A rule goes in a tool description, the prompt, or a flow/skill doc *by how
+   A rule goes in a tool description, the prompt, or a flow doc *by how
    often it applies* — never duplicated across homes.
 
 7. **Typed backend interface, not raw tools.**
@@ -56,7 +56,7 @@
    reads only results, never raw HTTP. Fixed-order flows enforce order in the
    backend method, not the prompt.
 
-8. **Declarative flow specs (`SKILL.md` style).**
+8. **Declarative flow specs.**
    Describe each decision flow (`standard`, `near_deadline`,
    `feedback_loop_redecision`, ...) in small Markdown specs the planner reads,
    instead of hardcoded `PLANS` dicts. Enables "start small": implement two
