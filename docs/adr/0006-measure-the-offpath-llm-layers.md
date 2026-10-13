@@ -3,7 +3,7 @@
 Every off-path LLM attempt appends one telemetry line
 (`rag/llm_telemetry.py` → `logs/offpath_llm.jsonl`), and `/metrics` exposes
 guard-rejection counts per layer and per gate. Two alert rules consume it
-(`ops/prometheus/alerts.yml`): a rejection surge (the layer has become useless
+(`ops/observability/alerts.yml`): a rejection surge (the layer has become useless
 while the service still looks healthy) and any provider unavailability (the
 layer has silently degraded to deterministic output).
 

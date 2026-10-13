@@ -941,11 +941,43 @@ def _ledger_metric_lines(decisions: list[dict]) -> list[str]:
         by_actor[label] = by_actor.get(label, 0) + 1
     for label, count in sorted(by_actor.items()):
         lines.append(f'retail_decisions_by_principal{{principal="{label}"}} {count}')
+    latencies = _approval_latencies_seconds(decisions)
+    if latencies:
+        lines += [
+            "# HELP retail_approval_latency_seconds Time from recommendation to human decision.",
+            "# TYPE retail_approval_latency_seconds_avg gauge",
+            f"retail_approval_latency_seconds_avg {sum(latencies) / len(latencies):.0f}",
+            "# TYPE retail_approval_latency_seconds_max gauge",
+            f"retail_approval_latency_seconds_max {max(latencies):.0f}",
+        ]
     return lines
 
 
+def _approval_latencies_seconds(decisions: Sequence[Mapping[str, Any]]) -> list[float]:
+    """Seconds from recommendation (log's generated_at) to human decision.
+
+    Joined on recommendation_id; records missing either timestamp are
+    skipped, never invented. Empty when nothing is decided yet — an absent
+    series is the honest representation.
+    """
+    generated = {str(r.get("recommendation_id")): r.get("generated_at")
+                 for r in read_log() if isinstance(r, Mapping)}
+    latencies: list[float] = []
+    for entry in decisions:
+        if not isinstance(entry, Mapping):
+            continue
+        decided = _parse_moment(entry.get("decided_at"))
+        made = _parse_moment(generated.get(str(entry.get("recommendation_id"))))
+        if decided is None or made is None:
+            continue
+        delta = (decided - made).total_seconds()
+        if delta >= 0:
+            latencies.append(delta)
+    return latencies
+
+
 def _sweep_metric_lines() -> list[str]:
-    """Heartbeat + backlog signals for the alert rules in ops/prometheus/alerts.yml.
+    """Heartbeat + backlog signals for the alert rules in ops/observability/alerts.yml.
 
     A silently dead scheduler and a growing approval backlog are the two failure
     modes that matter operationally (``RetailSweepStale``).
@@ -967,6 +999,13 @@ def _sweep_metric_lines() -> list[str]:
         "# TYPE retail_last_sweep_timestamp_seconds gauge",
         f"retail_last_sweep_timestamp_seconds {epoch:.0f}",
     ]
+    duration = status.get("last_sweep_duration_seconds")
+    if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+        lines += [
+            "# HELP retail_last_sweep_duration_seconds Wall-clock seconds the last sweep tick took.",
+            "# TYPE retail_last_sweep_duration_seconds gauge",
+            f"retail_last_sweep_duration_seconds {float(duration):.3f}",
+        ]
     return lines
 
 

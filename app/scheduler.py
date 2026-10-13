@@ -77,6 +77,7 @@ class SweepScheduler:
             "sweeps_completed": 0,
             "sweeps_failed": 0,
             "last_sweep_at": None,
+            "last_sweep_duration_seconds": None,
             "last_error": None,
             "next_sweep_at": None,
         }
@@ -122,6 +123,9 @@ class SweepScheduler:
 
     def _tick(self) -> bool:
         """Run one sweep; returns True when it failed (fail-safe: never kills the loop)."""
+        import time as _time
+
+        started = _time.perf_counter()
         try:
             self._sweep_fn()
         except Exception as error:
@@ -131,6 +135,7 @@ class SweepScheduler:
                 self._status["sweeps_failed"] += 1
                 self._status["last_error"] = f"{type(error).__name__}: {error}"
                 self._status["last_sweep_at"] = _utcnow_iso()
+                self._status["last_sweep_duration_seconds"] = round(_time.perf_counter() - started, 3)
             logger.error("[SWEEP SCHEDULER] sweep failed: %s: %s", type(error).__name__, error)
             return True
         with self._lock:
@@ -138,5 +143,6 @@ class SweepScheduler:
             self._status["consecutive_failures"] = 0
             self._status["sweeps_completed"] += 1
             self._status["last_sweep_at"] = _utcnow_iso()
+            self._status["last_sweep_duration_seconds"] = round(_time.perf_counter() - started, 3)
             self._status["next_sweep_at"] = _utcnow_iso()
         return False

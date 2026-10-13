@@ -230,7 +230,7 @@ No vector database, autonomous agent, or orchestration framework is
 part of the system (deliberate: determinism over dependency; see
 `docs/adr/0001-decision-path-is-pure-code.md`). Every off-path LLM attempt is
 measured (`rag/llm_telemetry.py` → `logs/offpath_llm.jsonl`, `/metrics`
-`retail_offpath_llm_*`, `ops/prometheus/alerts.yml`, `evaluation/llm_evals.py`
+`retail_offpath_llm_*`, `ops/observability/alerts.yml`, `evaluation/llm_evals.py`
 veto + provider-swap gate).
 
 ## 10. Limitations and security posture

@@ -113,7 +113,7 @@ Intervention lifecycle (Phase 2) / analytics / ops:
 | --- | --- | --- |
 | `/phase2/interventions/*`, `/phase2/portfolio/evaluate` | GET/POST | Intervention lifecycle + portfolio evaluation (auth on writes) |
 | `/analytics/decision-quality` | GET | Acceptance, causal confirmation, margin per intervention (auth) |
-| `/metrics` | GET | Prometheus metrics (auth; see ops/prometheus/) |
+| `/metrics` | GET | Prometheus metrics (auth; see ops/observability/) |
 | `/log` | GET | Append-only recommendation log |
 
 All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a named `APPROVAL_TOKENS` entry). Unset token → 503, fail closed.

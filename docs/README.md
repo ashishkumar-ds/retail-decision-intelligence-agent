@@ -12,3 +12,5 @@
 | [market_benchmark_retail_di.md](market_benchmark_retail_di.md) | Market benchmark for retail decision intelligence |
 | [PHASE_2_SPEC.md](PHASE_2_SPEC.md) | Intervention lifecycle (Phase 2) contract spec |
 | [FRONTEND_CONTRACT.md](FRONTEND_CONTRACT.md) | Read-only API contract for an external (v0/Vercel) stakeholder board + paste-ready v0 prompt |
+| [../ops/observability/RUNBOOKS.md](../ops/observability/RUNBOOKS.md) | Per-alert diagnosis and remediation for every Prometheus rule |
+| [../ops/observability/TELEMETRY.md](../ops/observability/TELEMETRY.md) | Metrics catalog and telemetry reading guide |

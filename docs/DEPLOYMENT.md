@@ -171,7 +171,7 @@ DATABASE_URL=postgresql://... python -m pytest tests/test_live_postgres.py -q
   fails the build if the Dockerfile grows an `ENV *TOKEN*`-style line, if a
   runtime package is missing from the image, or if `.dockerignore` stops
   excluding `.env*` and `logs/`.
-- **Alerts**: `ops/prometheus/alerts.yml` ships the four rules worth having
+- **Alerts**: `ops/observability/alerts.yml` ships the rules worth having
   (decision concentration, sweep failures, sweep staleness, approval backlog);
   `/metrics` is token-gated, so scrape with `authorization: Bearer`.
 - **Egress**: `/metrics`, `/analytics/root-causes` and the board's root-cause

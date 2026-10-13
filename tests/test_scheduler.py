@@ -226,3 +226,12 @@ def test_pending_approvals_survive_log_replay():
     assert pending[1]["recommendation_id"] == "r1"
     with mock.patch.object(main, "read_log", return_value=[]):
         assert main._rebuild_pending_approvals() == {}
+
+def test_tick_records_duration_seconds():
+    from app.scheduler import SweepScheduler
+
+    scheduler = SweepScheduler(lambda: {"ok": True}, 86400)
+    assert scheduler.status()["last_sweep_duration_seconds"] is None
+    assert scheduler._tick() is False
+    duration = scheduler.status()["last_sweep_duration_seconds"]
+    assert isinstance(duration, float) and duration >= 0.0
