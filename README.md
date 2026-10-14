@@ -33,7 +33,7 @@ Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for 
 
 ## What it is
 
-A deterministic retail decision agent for underperforming stores. The brain is pure code, every recommendation is recomputable and citable, causal DiD evidence gates scale-up, and a human must approve any budget-moving action. Explanations ground every number in cited evidence, and 22 pinned golden scenarios gate any behavior change in CI.
+A deterministic retail decision agent for underperforming stores. The brain is pure code, every recommendation is recomputable and citable, causal DiD evidence gates scale-up **and any spend move** (own-baseline lift alone never starts or moves spend — it is operational signal, not proof), and a human must approve any budget-moving action. Explanations ground every number in cited evidence, and 23 pinned golden scenarios gate any behavior change in CI.
 
 **Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited explanations.
 
@@ -42,9 +42,9 @@ A deterministic retail decision agent for underperforming stores. The brain is p
 ## What this demonstrates
 
 - Deterministic decision systems under uncertainty — pure-code engine, no model calls on the decision path
-- Causal measurement in production-style loops — DiD with treated-vs-control assessment gating scale-up
+- Causal measurement in production-style loops — DiD with treated-vs-control assessment gating scale-up and spend moves (CI lower bound / MDE can downgrade CONFIRMED to review zone)
 - Human-in-the-loop safety for budget actions — double-gated approvals, fail-closed everywhere
-- Evaluation as a first-class citizen — 22 pinned golden scenarios + grounding-failure and provider-swap evals in CI
+- Evaluation as a first-class citizen — 23 pinned golden scenarios + grounding-failure and provider-swap evals in CI
 
 ## Quickstart
 
@@ -66,7 +66,7 @@ Same gates CI runs:
 ```bash
 ruff check .
 python scripts/check.py
-python evaluation/run_evals.py  # 22 golden business scenarios
+python evaluation/run_evals.py  # 23 golden business scenarios
 ```
 
 Deploy with Docker: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (always-on host + persistent disk; unset variables keep silent defaults, sweep stays off unless enabled).
@@ -153,7 +153,7 @@ Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, optional LLM laye
 - **No OIDC federation**: short-lived HMAC tokens cover service-to-operator auth; enterprise SSO still needs an identity provider.
 - **Execution adapter is operator-selected** (`EXECUTION_CONNECTOR=webhook` + URL for real writes, dry-run when unset): `execution/webhook_connector.py` proves the path with remote handles journaled; a production POS/CRM adapter implements the same two methods.
 - **Retrieval is lightweight**: hand-rolled BM25 over a curated corpus — context for explanations, never authority for decisions.
-- **Causal evidence is opt-in**: without matched-control coverage the guardrail is `UNAVAILABLE` and scale-up stays blocked; own-baseline lift is operational signal, not proof.
+- **Causal evidence is opt-in**: without matched-control coverage the guardrail is `UNAVAILABLE` and scale-up **plus all spend moves** (retarget / timing-shift / reallocate) stay blocked; own-baseline lift is operational signal, not proof. A target-clearing point whose CI-95 admits zero (or sits below MDE) lands review zone, not confirmed.
 - **Single-retailer scope**: JSONL audit log + optional Postgres suit one portfolio; multi-tenant use needs warehouse separation and forecast-call cost controls.
 
 ## Contributing

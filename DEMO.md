@@ -71,9 +71,9 @@ curl -X POST localhost:8001/approve/317 \
 
 ### 8. The system grades itself
 ```bash
-python evaluation/run_evals.py   # 22 golden business scenarios + simulator evals
+python evaluation/run_evals.py   # 23 golden business scenarios + simulator evals
 ```
-> "22 golden business scenarios + 4 simulator evals run in CI against a
+> "23 golden business scenarios + 4 simulator evals run in CI against a
 > pinned calibration. A decision-behavior change that doesn't update the
 > golden cases in the same commit fails the build."
 

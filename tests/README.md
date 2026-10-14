@@ -20,7 +20,7 @@ tests run instead of skipping:
 ```bash
 /usr/bin/python3 -m pytest tests/ -q --ignore=tests/test_live_api.py   # 413 passed
 /usr/bin/python3 scripts/check.py                                      # consistency gate
-/usr/bin/python3 evaluation/run_evals.py                               # 22 golden + 4 simulator
+/usr/bin/python3 evaluation/run_evals.py                               # 23 golden + 4 simulator
 /usr/local/bin/ruff check .
 ```
 

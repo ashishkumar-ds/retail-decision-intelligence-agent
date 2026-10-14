@@ -138,6 +138,6 @@ silently serves the deterministic output looks identical to a healthy one.
 _Avoid_: side feature, auxiliary
 
 **Golden Cases**:
-The 22 pinned scenarios that gate the decision behavior in CI; behavior
+The 23 pinned scenarios that gate the decision behavior in CI; behavior
 changes require recalibrating them in the same commit.
 _Avoid_: test fixtures, snapshots

@@ -66,7 +66,7 @@ COLUMNS = [
             ("sweep-scheduler", "Sweep Scheduler (daily sweep)", "green", "clock"),
         ]),
         ("node", "memory", "Memory - append-only JSONL (fsynced, never rewritten)", "blue", "archive"),
-        ("node", "evaluation", "Evaluation - 22 golden scenarios, CI-gated", "purple", "target"),
+        ("node", "evaluation", "Evaluation - 23 golden scenarios, CI-gated", "purple", "target"),
     ],
     [
         ("group", "decision-engine", "Decision Engine - pure code, no LLM", "purple", [
