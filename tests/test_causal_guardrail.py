@@ -43,6 +43,39 @@ def test_confirmed_when_did_meets_target():
     assert out["assessment_state"] == CONFIRMED and out["scale_up_eligible"] is True
 
 
+def test_confirmed_downgraded_when_ci_admits_no_effect():
+    """P2: point +4% clears the bar, but CI [-0.5, 6.2] admits no effect.
+
+    The Part 1 calibration estimate itself (+2.84%, CI [-0.5, 6.2]) lands
+    REVIEW_ZONE under this rule - directionally positive, not proven.
+    """
+    out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0,
+                                  "did_ci95": [-0.5, 6.2]})
+    assert out["assessment_state"] == REVIEW_ZONE and out["scale_up_eligible"] is False
+    assert "downgrade_reason" in out
+
+
+def test_confirmed_stands_when_ci_clears_zero():
+    out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0,
+                                  "did_ci95": [0.5, 7.5]})
+    assert out["assessment_state"] == CONFIRMED and out["scale_up_eligible"] is True
+
+
+def test_confirmed_downgraded_when_below_mde():
+    out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0,
+                                  "mde_pct": 5.0})
+    assert out["assessment_state"] == REVIEW_ZONE and out["scale_up_eligible"] is False
+
+
+def test_malformed_diagnostics_do_not_move_the_point_rule():
+    """Missing/malformed CI or MDE never promote or demote on their own."""
+    for causal in ({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0, "did_ci95": None},
+                   {"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0, "did_ci95": ["x", "y"]},
+                   {"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0, "mde_pct": True}):
+        out = assess_causal_evidence(causal)
+        assert out["assessment_state"] == CONFIRMED and out["scale_up_eligible"] is True
+
+
 def test_review_zone_when_did_positive_but_below_target():
     out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 1.2})
     assert out["assessment_state"] == REVIEW_ZONE and out["scale_up_eligible"] is False

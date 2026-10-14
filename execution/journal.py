@@ -15,7 +15,10 @@ order (:func:`execution_state`), so the journal stays a pure event log.
 """
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows has no POSIX locks; locked appends degrade
+    fcntl = None  # to plain (single-process-safe) appends, same file format
 import json
 import logging
 import os
@@ -28,6 +31,16 @@ DEFAULT_JOURNAL_PATH = Path("logs/execution_journal.jsonl")
 _JOURNAL_PATH_ENV = "EXECUTION_JOURNAL_PATH"
 
 
+def _lock(journal) -> None:
+    if fcntl is not None:
+        fcntl.flock(journal.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock(journal) -> None:
+    if fcntl is not None:
+        fcntl.flock(journal.fileno(), fcntl.LOCK_UN)
+
+
 def journal_path() -> Path:
     """Resolve the journal path at call time (tests and deployments relocate it)."""
     return Path(os.getenv(_JOURNAL_PATH_ENV, str(DEFAULT_JOURNAL_PATH)))
@@ -38,13 +51,13 @@ def append_event(entry: dict[str, Any]) -> dict[str, Any]:
     path = journal_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as journal:
-        fcntl.flock(journal.fileno(), fcntl.LOCK_EX)
+        _lock(journal)
         try:
             journal.write(json.dumps(entry, default=str) + "\n")
             journal.flush()
             os.fsync(journal.fileno())
         finally:
-            fcntl.flock(journal.fileno(), fcntl.LOCK_UN)
+            _unlock(journal)
     return entry
 
 

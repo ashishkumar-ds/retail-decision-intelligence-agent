@@ -68,9 +68,23 @@ def test_ranked_attention_queue_is_one_call_for_rank_plus_enrich():
     assert pending[0].get("campaign_working") is None  # inputs are not mutated
 
 
-def test_working_well_on_health_and_on_outcome():
+def test_working_well_on_health_and_on_causal_outcome():
     assert classify_store(_rec()) == BUCKET_WORKING
     assert classify_store(_rec(store_health_score=55.0, recovery_pct=1.0, **_outcome())) == BUCKET_WORKING
+
+
+def test_raw_meets_target_without_confirmed_did_is_not_working_well():
+    """Board mirrors the monitor: MEETS_TARGET alone is working but not causal.
+
+    Without CONFIRMED DiD (or on-track health), the store is recovering/watch,
+    never working_well on raw own-baseline lift alone.
+    """
+    rec = _rec(store_health_score=55.0, recovery_pct=1.0,
+               **_outcome(assessment="MEETS_TARGET", state="UNAVAILABLE", did=None))
+    assert classify_store(rec) == BUCKET_RECOVERING
+    rec = _rec(store_health_score=55.0, recovery_pct=1.0,
+               **_outcome(assessment="MEETS_TARGET", uplift=4.2, did=1.0, state="REVIEW_ZONE"))
+    assert classify_store(rec) == BUCKET_RECOVERING
 
 
 def test_recovering_positive_momentum_mid_band():

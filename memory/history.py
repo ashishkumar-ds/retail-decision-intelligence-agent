@@ -7,7 +7,10 @@ warning and are never overwritten or removed.
 Appends take an exclusive file lock so concurrent workers (multiple uvicorn
 threads/processes) cannot interleave partial JSON lines.
 """
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows has no POSIX locks; locked appends degrade
+    fcntl = None  # to plain (single-process-safe) appends, same file format
 import json
 import logging
 import os
@@ -16,6 +19,16 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 DEFAULT_LOG_PATH = Path("logs/recommendation_log.jsonl")
+
+
+def _lock(log_file) -> None:
+    if fcntl is not None:
+        fcntl.flock(log_file.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock(log_file) -> None:
+    if fcntl is not None:
+        fcntl.flock(log_file.fileno(), fcntl.LOCK_UN)
 
 
 def _log_path() -> Path:
@@ -28,13 +41,13 @@ def append_log(record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(record, default=str) + "\n"
     with path.open("a", encoding="utf-8") as log_file:
-        fcntl.flock(log_file.fileno(), fcntl.LOCK_EX)
+        _lock(log_file)
         try:
             log_file.write(line)
             log_file.flush()
             os.fsync(log_file.fileno())
         finally:
-            fcntl.flock(log_file.fileno(), fcntl.LOCK_UN)
+            _unlock(log_file)
 
 
 def read_log() -> list[dict[str, Any]]:

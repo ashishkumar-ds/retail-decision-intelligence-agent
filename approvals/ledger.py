@@ -20,7 +20,10 @@ should be treated as an audit incident.
 """
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows has no POSIX locks; locked appends degrade
+    fcntl = None  # to plain (single-process-safe) appends, same file format
 import json
 import logging
 import os
@@ -34,6 +37,16 @@ from guardrails import requires_human_approval
 
 logger = logging.getLogger(__name__)
 DEFAULT_LEDGER_PATH = Path("logs/approval_ledger.jsonl")
+
+
+def _lock(ledger_file) -> None:
+    if fcntl is not None:
+        fcntl.flock(ledger_file.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock(ledger_file) -> None:
+    if fcntl is not None:
+        fcntl.flock(ledger_file.fileno(), fcntl.LOCK_UN)
 
 
 def _ledger_path() -> Path:
@@ -90,13 +103,13 @@ def append_decision(record: dict[str, Any], decision: str, actor: str | None,
     path = _ledger_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as ledger_file:
-        fcntl.flock(ledger_file.fileno(), fcntl.LOCK_EX)
+        _lock(ledger_file)
         try:
             ledger_file.write(json.dumps(entry, default=str) + "\n")
             ledger_file.flush()
             os.fsync(ledger_file.fileno())
         finally:
-            fcntl.flock(ledger_file.fileno(), fcntl.LOCK_UN)
+            _unlock(ledger_file)
     return entry
 
 

@@ -20,7 +20,9 @@ the same pipeline ``app/main.py`` has always run: route → plan → score →
 verify → approval gate, with a ``DecisionTrajectory`` recording each stage
 into the recommendation record itself.
 
-The engine is PURE: no I/O, no clock, no file writes. ``app/main.py`` keeps
+The engine is PURE apart from the record timestamp: no I/O, no file writes,
+and the clock is injected (``evaluate(..., now=...)``) so the same inputs +
+the same ``now`` give a byte-identical record. ``app/main.py`` keeps
 the I/O (forecast/audit adapters, the flat timestamped run log, persistence)
 around this pure core.
 """
@@ -57,11 +59,16 @@ class DecisionEngine:
     def evaluate(self, signal: StoreSignal,
                  outcome_evidence: dict[str, Any] | None = None,
                  store_context: dict[str, Any] | None = None,
-                 retail_context: dict[str, Any] | None = None) -> dict[str, Any]:
+                 retail_context: dict[str, Any] | None = None,
+                 now: Any | None = None) -> dict[str, Any]:
         """Run the full pipeline for one store signal; returns the record.
 
         The pipeline order is fixed (route → plan → score → verify → gate) —
         a fixed-order flow enforces order in the backend, not in a prompt.
+
+        ``now`` is the injected clock threaded to the scorer's ``generated_at``;
+        ``None`` means wall clock (serving). Same inputs + same ``now`` ->
+        byte-identical decision fields.
         """
         trajectory = DecisionTrajectory.start(signal.store_id)
 
@@ -73,18 +80,18 @@ class DecisionEngine:
 
         # The plan drives execution, not just describes it.
         if "flag_for_review" in plan:
-            rec = no_data_recommendation(signal)
+            rec = no_data_recommendation(signal, now=now)
             trajectory.add("score", "skipped", "no_data route - scoring skipped per plan")
         elif "score_and_recommend" in plan:
             causal_evidence = (outcome_evidence or {}).get("causal_evidence")
             rec = self._scorer(signal, outcome_evidence=outcome_evidence,
                                store_context=store_context,
                                causal_evidence=causal_evidence,
-                               retail_context=retail_context)
+                               retail_context=retail_context, now=now)
             trajectory.add("score", "done", rec["recommendation"])
         else:
             # Defensive fallback - should be unreachable, but never a silent no-op.
-            rec = no_data_recommendation(signal)
+            rec = no_data_recommendation(signal, now=now)
             trajectory.add("score", "warning", f"unrecognized plan {plan} - defaulted to review")
 
         verification = self._verifier(rec)

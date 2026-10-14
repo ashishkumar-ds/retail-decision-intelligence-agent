@@ -160,8 +160,10 @@ rollout fields for humans and n8n. P3 is read-only.
    boosts confidence only on `CONFIRMED`; evidence never flips a
    decision, only modulates it.
 
-**Diversified policy** — only on `SUFFICIENT + MEETS_TARGET` plus explicit
-context: `RETARGET` (≥50% non-Best households), `TIMING` (≥40% peak
+**Diversified policy** — only on `SUFFICIENT + MEETS_TARGET` **plus CONFIRMED
+matched-control DiD** plus explicit context (same causal bar as scale-up:
+own-baseline lift alone is market drift, never a spend trigger):
+`RETARGET` (≥50% non-Best households), `TIMING` (≥40% peak
 concentration), `REALLOCATE` (budget-constrained + confidence ≥0.7) →
 `phase2/budget_allocator.py` `score = lift*conf`, 25% cap water-filling,
 $100 dust floor.

@@ -77,7 +77,7 @@ def _recovery_direction(recovery_pct: float) -> str:
     return "flat"
 
 
-def no_data_recommendation(signal: StoreSignal) -> dict:
+def no_data_recommendation(signal: StoreSignal, now: datetime | None = None) -> dict:
     # Terminal case for the "no_data" route - skips recovery/velocity/
     # health computation entirely since there's no data to compute it from.
     return _build_output(
@@ -85,6 +85,7 @@ def no_data_recommendation(signal: StoreSignal) -> dict:
         recommendation="NEEDS_REVIEW", confidence=1.0,
         reason=f"No forecast signal available for store {signal.store_id} - cannot evaluate without data.",
         requires_approval=requires_human_approval("NEEDS_REVIEW"),
+        decision_basis="no_signal", now=now,
     )
 
 
@@ -120,10 +121,11 @@ def _health_recommendation(
 def score_and_recommend(signal: StoreSignal, outcome_evidence: dict | None = None,
                         store_context: dict | None = None,
                         causal_evidence: dict | None = None,
-                        retail_context: dict | None = None) -> dict:
+                        retail_context: dict | None = None,
+                        now: datetime | None = None) -> dict:
     # Decision rules applied in order; first match wins.
     if not signal.forecast_signal_available:
-        return no_data_recommendation(signal)
+        return no_data_recommendation(signal, now=now)
 
     recovery_pct = compute_recovery_pct(signal)
     velocity = compute_recovery_velocity(recovery_pct, signal.days_elapsed)
@@ -133,28 +135,35 @@ def score_and_recommend(signal: StoreSignal, outcome_evidence: dict | None = Non
     confidence = _boundary_confidence(health)
 
     # Outcome feedback loop: a previously evaluated intervention for this store
-    # is causal evidence about whether the strategy is working. Measured lift
+    # is measured evidence about whether the strategy is working. Measured lift
     # (actual observed sales vs the 56-day pre-intervention baseline) adjusts
     # the recommendation - closing the plan -> execute -> measure -> re-decide
-    # cycle.
+    # cycle. Measured lift is operational signal, not causal proof: moving or
+    # starting spend additionally requires CONFIRMED matched-control DiD
+    # (the causal guardrail), never own-baseline lift alone.
+    decision_basis = "forecast_health"
     outcome_context = None
     if isinstance(outcome_evidence, dict) and outcome_evidence.get("evidence_state") == "SUFFICIENT":
+        decision_basis = "outcome_evidence"
         rec, reason, confidence, outcome_context = _apply_outcome_feedback(
             signal, health, rec, reason, confidence, outcome_evidence, causal_evidence,
         )
     elif isinstance(outcome_evidence, dict) and outcome_evidence.get("evidence_state"):
+        decision_basis = "outcome_evidence"
         outcome_context = {
             "intervention_id": outcome_evidence.get("intervention_id"),
             "evidence_state": outcome_evidence.get("evidence_state"),
         }
 
-    # Diversified policy (Priority 2): when the prior intervention MEASURED a
-    # lift that meets the causal target, the current play is proven - so it is
-    # the right moment to diversify into a complementary action rather than
-    # only extending more of the same. Requires explicit store context; with
-    # no context the decision is unchanged (backward compatible).
+    # Diversified policy (Priority 2): when the prior intervention is causally
+    # CONFIRMED (matched-control DiD >= target), the current play is proven -
+    # so it is the right moment to diversify into a complementary action rather
+    # than only extending more of the same. Own-baseline MEETS_TARGET alone is
+    # market drift until DiD confirms it, so it never unlocks spend moves.
+    # Requires explicit store context; with no context the decision is
+    # unchanged (backward compatible).
     diversification = None
-    if _diversification_due(outcome_evidence, store_context):
+    if _diversification_due(outcome_evidence, store_context, causal_evidence):
         diversified = _diversified_action(signal, health, recovery_pct, velocity, store_context)
         if diversified is not None:
             rec, reason, confidence, diversification = diversified
@@ -177,6 +186,7 @@ def score_and_recommend(signal: StoreSignal, outcome_evidence: dict | None = Non
         diversification=diversification,
         retail_context=retail_block,
         recovery_velocity=velocity,
+        decision_basis=decision_basis, now=now,
         scale_up_eligible=(outcome_context.get("causal_evidence", {}).get("scale_up_eligible")
                            if isinstance(outcome_context, dict) and "causal_evidence" in outcome_context
                            else None),
@@ -194,8 +204,11 @@ def _apply_outcome_feedback(
 ) -> tuple[str, str, float, dict]:
     """Modulate the health decision with measured outcome evidence.
 
-    Evidence only ever modulates; it never fabricates a decision the health
-    rules wouldn't make, and inconclusive evidence changes nothing.
+    Evidence modulates the health-chain decision (pause on NEGATIVE measured
+    lift, temper on REVIEW_ZONE). The one exception: MEETS_TARGET measured
+    lift may additionally trigger a spend-moving action, but only behind the
+    causal guardrail (CONFIRMED matched-control DiD) via _diversification_due.
+    Inconclusive evidence changes nothing.
     """
     lift = outcome_evidence.get("actual_uplift_pct")
     assessment = outcome_evidence.get("target_assessment")
@@ -251,6 +264,11 @@ def _apply_causal_guardrail(
         "did_uplift_pct": causal["did_uplift_pct"],
         "scale_up_eligible": causal["scale_up_eligible"],
     }
+    # Carry the report-only diagnostics (CI / MDE / placebo / pre-trend) so the
+    # record cites what the guardrail saw; they only ever downgrade (P2).
+    for key in ("did_ci95", "mde_pct", "placebo_did_pct", "pre_trend_divergence", "downgrade_reason"):
+        if causal.get(key) is not None:
+            causal_context[key] = causal[key]
     outcome_context["causal_evidence"] = causal_context
     if causal_state == CONFIRMED:
         confidence = min(round(confidence + 0.2, 2), 1.0)
@@ -259,9 +277,14 @@ def _apply_causal_guardrail(
                    f"{causal['did_uplift_pct']:+.1f}% treated-vs-control lift - evidence-backed; "
                    f"scale-up eligible.")
     elif causal_state == REVIEW_ZONE:
-        reason += (f" Prior intervention measured {lift:+.1f}% raw lift, but matched-control "
-                   f"DiD shows only {causal['did_uplift_pct']:+.1f}% - below the "
-                   f"{TARGET_UPLIFT_PCT}% target, so scale-up is blocked (review zone).")
+        if causal.get("downgrade_reason"):
+            reason += (f" Prior intervention measured {lift:+.1f}% raw lift with DiD "
+                       f"{causal['did_uplift_pct']:+.1f}% clearing the {TARGET_UPLIFT_PCT}% target, "
+                       f"but {causal['downgrade_reason']} - scale-up blocked (review zone).")
+        else:
+            reason += (f" Prior intervention measured {lift:+.1f}% raw lift, but matched-control "
+                       f"DiD shows only {causal['did_uplift_pct']:+.1f}% - below the "
+                       f"{TARGET_UPLIFT_PCT}% target, so scale-up is blocked (review zone).")
     elif causal_state == REFUTED:
         confidence = round(confidence * 0.8, 2)
         reason += (f" Prior intervention measured {lift:+.1f}% raw lift, but matched-control "
@@ -324,20 +347,25 @@ def _apply_retail_context(
     return rec, reason, confidence, block
 
 
-def _diversification_due(outcome_evidence: dict | None, store_context: dict | None) -> bool:
-    """Diversify only when the proven (MEETS_TARGET) play is confirmed and
-    explicit store context exists; with no context the decision is unchanged
-    (backward compatible)."""
-    return (
-        isinstance(outcome_evidence, dict)
-        and outcome_evidence.get("evidence_state") == "SUFFICIENT"
-        and outcome_evidence.get("target_assessment") == "MEETS_TARGET"
-        and isinstance(store_context, dict)
-    )
+def _diversification_due(outcome_evidence: dict | None, store_context: dict | None,
+                         causal_evidence: dict | None = None) -> bool:
+    """Diversify only when the play is causally CONFIRMED and explicit store context exists.
+
+    Same bar as scale-up: own-baseline MEETS_TARGET is operational signal, not
+    proof (it silently credits market drift — see decision_engine.causality).
+    Spend only moves on CONFIRMED matched-control DiD. With no context the
+    decision is unchanged (backward compatible).
+    """
+    if not (isinstance(outcome_evidence, dict)
+            and outcome_evidence.get("evidence_state") == "SUFFICIENT"
+            and outcome_evidence.get("target_assessment") == "MEETS_TARGET"
+            and isinstance(store_context, dict)):
+        return False
+    return assess_causal_evidence(causal_evidence)["assessment_state"] == CONFIRMED
 
 
 # --- Diversified action rules (Priority 2) ---------------------------------
-# Each rule fires ONLY on top of proven (MEETS_TARGET) evidence and explicit
+# Each rule fires ONLY on top of causally CONFIRMED (DiD) evidence and explicit
 # store context. First match wins, mirroring the main decision chain.
 RETARGET_SEGMENT_MIN_SHARE = 0.50   # >=50% of a store's households are not yet
                                     # in the "Best Customer" RFM segment
@@ -355,8 +383,8 @@ def _diversified_action(signal: StoreSignal, health: float, recovery_pct: float,
         return (
             "RETARGET_SEGMENT",
             (f"Store {signal.store_id} health score {health}, but {share:.0%} of its households "
-             f"are outside the Best Customer segment while the current play measured a lift "
-             f"meeting the {TARGET_UPLIFT_PCT}% target - retarget the remaining segment "
+             f"are outside the Best Customer segment while the current play is DiD-confirmed "
+             f"(matched-control lift meeting the {TARGET_UPLIFT_PCT}% target) - retarget the remaining segment "
              f"(P1: {ctx.get('candidate_segment', 'non-Best-Customer households')}) rather than extend again."),
             max(_boundary_confidence(health), 0.7),
             {"action": "RETARGET_SEGMENT", "non_best_customer_household_share": round(float(share), 2)},
@@ -368,8 +396,9 @@ def _diversified_action(signal: StoreSignal, health: float, recovery_pct: float,
         return (
             "TIMING_SHIFT",
             (f"Store {signal.store_id} health score {health}, but {concentration:.0%} of its daily sales "
-             f"concentrate in the {peak_window} window while the current play already meets the "
-             f"{TARGET_UPLIFT_PCT}% target - shift the campaign send time into the measured peak "
+             f"concentrate in the {peak_window} window while the current play is DiD-confirmed "
+             f"(matched-control lift already meets the "
+             f"{TARGET_UPLIFT_PCT}% target) - shift the campaign send time into the measured peak "
              f"instead of spending more."),
             max(_boundary_confidence(health), 0.7),
             {"action": "TIMING_SHIFT", "peak_hour_window": peak_window,
@@ -382,8 +411,9 @@ def _diversified_action(signal: StoreSignal, health: float, recovery_pct: float,
         if _boundary_confidence(health) >= REALLOCATE_BUDGET_MIN_CONFIDENCE:
             return (
                 "REALLOCATE_BUDGET",
-                (f"Store {signal.store_id} health score {health} and its play already meets the "
-                 f"{TARGET_UPLIFT_PCT}% target with confidence >= {REALLOCATE_BUDGET_MIN_CONFIDENCE} - under a "
+                (f"Store {signal.store_id} health score {health} and its play is DiD-confirmed "
+                 f"(matched-control lift meets the "
+                 f"{TARGET_UPLIFT_PCT}% target) with confidence >= {REALLOCATE_BUDGET_MIN_CONFIDENCE} - under a "
                  f"constrained budget, reallocate up to {candidate_share:.0%} of its allocation to "
                  f"higher-lift candidates instead of extending."),
                 max(_boundary_confidence(health), 0.7),
@@ -399,7 +429,9 @@ def _build_output(signal: StoreSignal, health_score: float, recovery_pct: float,
                    diversification: dict | None = None,
                    scale_up_eligible: bool | None = None,
                    recovery_velocity: float | None = None,
-                   retail_context: dict | None = None) -> dict:
+                   retail_context: dict | None = None,
+                   decision_basis: str = "forecast_health",
+                   now: datetime | None = None) -> dict:
     output = {
         "store_id": signal.store_id,
         "recommendation": recommendation,
@@ -414,6 +446,11 @@ def _build_output(signal: StoreSignal, health_score: float, recovery_pct: float,
         "recovery_velocity": round(recovery_velocity, 4) if recovery_velocity is not None else None,
         "days_remaining": signal.days_remaining,
         "requires_human_approval": requires_approval,
+        # WATCH vs ACT, additive (P1-2): forecast_health = the Phase 1 watch
+        # signal (predicted-vs-predicted, operational); outcome_evidence = the
+        # Phase 2 act signal (measured actuals); no_signal = unscored.
+        # Consumers must not treat forecast health as measured performance.
+        "decision_basis": decision_basis,
         # Directional evidence passthrough (forecast-derived, not measured):
         # baseline/current predicted sales + day-in-window let the stakeholder
         # surface show "where the store is heading" without claiming uplift.
@@ -422,7 +459,9 @@ def _build_output(signal: StoreSignal, health_score: float, recovery_pct: float,
         "days_elapsed": signal.days_elapsed,
         "forecast_signal_available": signal.forecast_signal_available,
         "causal_baseline": dict(CAUSAL_BASELINE),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        # Injected clock: same decision inputs + same `now` -> byte-identical
+        # record. The engine stays pure; serving passes `now=None` (wall clock).
+        "generated_at": (now if now is not None else datetime.now(timezone.utc)).isoformat(),
     }
     if outcome_context is not None:
         output["outcome_evidence"] = outcome_context

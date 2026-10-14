@@ -6,12 +6,16 @@ every step (logs/run_log.jsonl) in addition to final recommendations
 (logs/recommendation_log.jsonl). This file wires pieces together; it does
 not contain decision logic itself.
 """
-import fcntl
 import hashlib
 import json
 import logging
 import os
 import uuid
+
+try:
+    import fcntl
+except ImportError:  # Windows has no POSIX locks; the run log degrades
+    fcntl = None  # to plain (single-process-safe) appends, same file format
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -304,11 +308,13 @@ def log_run_step(store_id: int, step: str, status: str, detail: str = "") -> Non
     with RUN_LOG_PATH.open("a") as f:
         # Exclusive lock so concurrent evaluation workers cannot interleave
         # partial JSON lines (same rationale as memory/history.append_log).
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        if fcntl is not None:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         try:
             f.write(line)
         finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            if fcntl is not None:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def _recommendation_id(rec: dict) -> str:

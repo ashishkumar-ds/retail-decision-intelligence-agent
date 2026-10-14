@@ -15,8 +15,10 @@ its ``recommendation_id``; ``why_not_working`` is derived ONLY from recorded
 outcome-evidence fields — it never invents an explanation.
 
 Buckets (mutually exclusive, exactly one per store):
-  - ``working_well``       campaign succeeding: outcome MEETS_TARGET / causal
-                           CONFIRMED, or health >= on-track threshold
+  - ``working_well``       campaign causally succeeding: outcome MEETS_TARGET
+                           AND causal CONFIRMED, or health >= on-track
+                           threshold. Raw MEETS_TARGET alone is working but
+                           not proven causal — see _outcome_working.
   - ``recovering``         positive momentum, not yet at target (MONITOR band
                            with recovery > 0, or REVIEW_ZONE)
   - ``needs_intervention`` approval-gated recommendations awaiting a human
@@ -91,6 +93,23 @@ def _no_signal(rec: Mapping[str, Any]) -> bool:
     return rec.get("forecast_status", "NO_DATA") in ("NO_DATA", "ERROR")
 
 
+def _outcome_working(outcome: Mapping[str, Any]) -> str | None:
+    """Causal working verdict from outcome evidence, else None.
+
+    Mirrors app/monitor.is_campaign_working: MEETS_TARGET + CONFIRMED DiD is
+    working (causal); MEETS_TARGET without CONFIRMED is working but not
+    causal — a positive operational signal, never the causal claim. Callers
+    decide which verdict their surface needs; the board only buckets
+    ``working_well`` on the causal one.
+    """
+    if outcome.get("target_assessment") != "MEETS_TARGET":
+        return None
+    causal = _mapping(outcome.get("causal_evidence"))
+    if causal.get("assessment_state") == "CONFIRMED":
+        return "causal"
+    return "raw"
+
+
 def classify_store(rec: Mapping[str, Any]) -> str:
     """Exactly one bucket per record; first match wins (deterministic)."""
     if _no_signal(rec):
@@ -98,8 +117,7 @@ def classify_store(rec: Mapping[str, Any]) -> str:
     if rec.get("requires_human_approval") is True:
         return BUCKET_INTERVENE
     outcome = _mapping(rec.get("outcome_evidence"))
-    causal = _mapping(outcome.get("causal_evidence"))
-    if outcome.get("target_assessment") == "MEETS_TARGET" or causal.get("assessment_state") == "CONFIRMED":
+    if _outcome_working(outcome) == "causal":
         return BUCKET_WORKING
     if _num(rec, "store_health_score") >= HEALTH_ON_TRACK:
         return BUCKET_WORKING
