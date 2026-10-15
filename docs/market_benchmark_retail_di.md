@@ -103,6 +103,17 @@ none publish the measurement design. That is a strength to keep.
    data — keep the depth-over-breadth stance, but the intervention taxonomy
    (RETARGET_SEGMENT, TIMING_SHIFT, REALLOCATE_BUDGET) is the extension seam.
 
+> **Since closed (2026-10-15).** Items 2, 3 and 4 above are no longer gaps.
+> The allocator ranks on expected incremental margin × confidence, net of
+> campaign cost (`phase2/budget_allocator.py`; flat 25% gross margin — the
+> category-level version is still open, so it is margin on incremental sales,
+> not full P&L). `GET /simulate/{store_id}` (plus `/compare` and
+> `/ui/simulate`) ships the pre-approval backtest, pinned by the simulator
+> evals. The daily scheduler re-evaluates every store and refreshes the
+> attention queue (`POST /monitor/sweep`, `SWEEP_ENABLED`). Item 3 is
+> half-open: the sweep re-decides, but nothing yet closes outcome windows on
+> a schedule.
+
 ## 4. Positioning statement (for the README/report)
 
 > Unlike dashboard-era BI and black-box agentic platforms, this series is a

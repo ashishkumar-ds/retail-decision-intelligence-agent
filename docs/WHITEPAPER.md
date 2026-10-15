@@ -250,7 +250,15 @@ repo.
 - **Experiment engine.** Randomize the 85 stores (epsilon-greedy or
   Thompson sampling) powered for `~3%` effects — turning the DiD
   observational caveat into experimental proof.
-- **Profit objective.** `score = (lift * basket * coverage - cost) * conf`
-  in `phase2/budget_allocator.py`.
-- **Continuous monitoring.** `POST /phase2/portfolio/evaluate` on a
-  schedule + `GET /actuals` polling.
+- **Category-level margin.** The allocator already ranks on expected
+  incremental margin, net of cost — `baseline_daily_sales × window_days ×
+  lift/100 × margin_rate − campaign_cost`, times confidence
+  (`phase2/budget_allocator.py`) — but on a flat 25% gross margin. Replace
+  `MARGIN_RATE` with a category-level figure (a per-store override is
+  already honoured) before the allocation is read as a profit number.
+- **Outcome-evaluation sweep.** The daily scheduler already re-evaluates
+  every store and refreshes the attention queue (`POST /monitor/sweep`,
+  `SWEEP_ENABLED`); it does not yet close outcome windows. Add
+  `POST /phase2/portfolio/evaluate` + `GET /actuals` polling on the same
+  interval, so an outcome is evaluated when its 60-day window closes rather
+  than when a caller remembers.
