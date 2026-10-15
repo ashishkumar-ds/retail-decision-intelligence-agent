@@ -28,7 +28,7 @@ GROUP_W = PAD + SHAPE_W + PAD
 HEIGHT_OVERRIDES = {
     "pipeline-orchestrator": 104,
     "sweep-scheduler": 72,
-    "lifecycle-stages": 88,
+    "lifecycle-stages": 112,
     "memory": 88,
     "approval-ledger": 88,
     "evaluation": 72,
@@ -87,7 +87,7 @@ COLUMNS = [
         ("node", "store-manager", "Store Manager", "blue", "user"),
         ("node", "approval-ledger", "Approval Ledger - double-gated, guardrails re-run at decision time", "red", "file-check"),
         ("group", "lifecycle", "Intervention Lifecycle (phase2)", "red", [
-            ("lifecycle-stages", "define → approve → start → complete → evaluate", "red", "layers"),
+            ("lifecycle-stages", "define → approve → start → complete → outcome_pending → evaluate", "red", "layers"),
         ]),
         ("group", "presentation", "Presentation", "blue", [
             ("executive-board", "Executive Board", "blue", "layout-dashboard"),
@@ -104,7 +104,6 @@ EDGES = [
     ("sales-forecasts", "tools", "typed, fail-closed", "solid"),
     ("vetted-knowledge-sources", "rag-layer", "indexed", "solid"),
     ("tools", "pipeline-orchestrator", "", "solid"),
-    ("rag-layer", "decision-engine", "grounded context", "solid"),
     ("pipeline-orchestrator", "router", "", "solid"),
     ("router", "planner", "", "solid"),
     ("planner", "scoring-rules", "", "solid"),
@@ -113,9 +112,7 @@ EDGES = [
     ("verifier", "guardrails", "rule gates", "dashed"),
     ("pipeline-orchestrator", "memory", "", "solid"),
     ("pipeline-orchestrator", "why-endpoint", "", "solid"),
-    ("verifier", "approval-ledger", "budget-affecting actions", "solid"),
     ("store-manager", "approval-ledger", "approve / reject - fail-closed 503", "solid"),
-    ("approval-ledger", "lifecycle", "event-sourced", "solid"),
     ("why-endpoint", "rag-layer", "citations to evidence", "dashed"),
     ("why-endpoint", "optional-llm-layer", "rephrase only, guarded", "solid"),
     ("optional-llm-layer", "store-manager", "cited answer", "solid"),

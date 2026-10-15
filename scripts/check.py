@@ -14,11 +14,15 @@ so a change in one place cannot silently drift from its consumers:
    read-model field sets.
 5. Lifecycle states: active and terminal intervention states are disjoint
    and cover the recommendation-to-evaluation lifecycle constants.
+6. Architecture diagram: the committed diagram JSON matches its generator and
+   its rendered PNG is stamped from that JSON (no stale image).
 
 Run: ``python scripts/check.py`` (exit 0 = consistent, 1 = drift found).
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -195,6 +199,38 @@ check("choice: fallback actions are themselves valid recommendations",
       all(fallback in VALID_RECOMMENDATIONS
           for _, fallback in DEFAULT_FALLBACK.values()),
       f"invalid fallbacks={sorted({f for _, f in DEFAULT_FALLBACK.values() if f not in VALID_RECOMMENDATIONS})}")
+
+# 10. Architecture diagram: the committed JSON is exactly what its generator
+#     produces, and the rendered PNG was stamped from that JSON - so the image
+#     can never go stale (it once read "22 golden scenarios" long after the
+#     count had become 23). Re-run scripts/render_architecture_dunnhumby.py.
+sys.path.insert(0, str(ROOT / "scripts"))
+from generate_architecture_dunnhumby import build_document as _build_arch_diagram  # noqa: E402
+
+_diagrams = ROOT / "docs" / "diagrams"
+_arch_json = _diagrams / "architecture-dunnhumby.json"
+_arch_png = _diagrams / "architecture-dunnhumby.png"
+_arch_stamp = _diagrams / "architecture-dunnhumby.png.sha256"
+
+_rebuilt_json = (json.dumps(_build_arch_diagram(), indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+_committed_json = _arch_json.read_bytes() if _arch_json.exists() else b""
+check("diagram: committed architecture JSON matches its generator (rebuild is byte-identical)",
+      _committed_json == _rebuilt_json,
+      "re-run scripts/render_architecture_dunnhumby.py")
+
+_arch_digest = hashlib.sha256(_committed_json).hexdigest()
+_stamp_digest = ""
+if _arch_stamp.exists():
+    for _line in _arch_stamp.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#"):
+            _stamp_digest = _line.split()[0]
+            break
+check("diagram: rendered PNG is current (stamped from the committed JSON)",
+      _arch_png.exists() and _stamp_digest == _arch_digest,
+      f"png={'ok' if _arch_png.exists() else 'missing'} "
+      f"stamp={_stamp_digest[:12] or 'missing'} json={_arch_digest[:12]} "
+      "- re-run scripts/render_architecture_dunnhumby.py")
 
 print()
 if failures:

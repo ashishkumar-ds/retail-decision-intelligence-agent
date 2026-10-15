@@ -135,7 +135,11 @@ def build_document() -> dict:
     ]
 
     entities = header + [panel_group] + col_labels + nodes + footer
-    unlabeled = {("verifier", "decision-trajectory"), ("verifier", "guardrails")}
+    # Hide only the trajectory edge: the engine records the trajectory, not the
+    # verifier. The verifier -> guardrails rule-gate edge is real (engine.evaluate
+    # applies the guardrail approval gate right after verify) and is kept so the
+    # Guardrails column is not left floating.
+    unlabeled = {("verifier", "decision-trajectory")}
     connections = [{**c, "color": TEAL} for c in build_connections()
                    if (c["from"], c["to"]) not in unlabeled]
     return {"entities": entities, "connections": connections}
