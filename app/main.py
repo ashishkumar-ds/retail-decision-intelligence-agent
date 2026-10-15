@@ -1465,11 +1465,13 @@ def _auto_forecast_reference(
             if store_info is not None:
                 start_day = store_info.get("last_day")
         if start_day is not None and isinstance(start_day, int):
+            # Offsets +46..+59 are the final 14 days of the 60-day evaluation
+            # period - the same days the evaluator observes below.
             forecast_reference_value = get_evaluation_window_forecast(
                 store_id=store_id,
                 start_day=start_day,
-                window_start_offset=47,
-                window_end_offset=60,
+                window_start_offset=46,
+                window_end_offset=59,
             )
             if forecast_status is None:
                 forecast_status = "AVAILABLE"

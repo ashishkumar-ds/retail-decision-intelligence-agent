@@ -183,11 +183,13 @@ def _resolve_forecast(
         )
         if store_info is None:
             return None, "NO_DATA", None
+        # Same 14 days as the recent observation window built below: offsets
+        # +46..+59 (offset +60 is the evaluation due instant, not a day).
         forecast_ref = get_evaluation_window_forecast(
             store_id=sid,
             start_day=campaign_start_day,
-            window_start_offset=47,
-            window_end_offset=60,
+            window_start_offset=46,
+            window_end_offset=59,
         )
         return forecast_ref, "AVAILABLE", None
     except (httpx.HTTPError, TimeoutError) as e:

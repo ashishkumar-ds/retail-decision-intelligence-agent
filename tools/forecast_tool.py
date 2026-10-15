@@ -276,21 +276,29 @@ def get_prediction(
 def get_evaluation_window_forecast(
     store_id: int,
     start_day: int,
-    window_start_offset: int = 47,
-    window_end_offset: int = 60,
+    window_start_offset: int = 46,
+    window_end_offset: int = 59,
     *,
     retries: int = 3,
     backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
     sleep_fn: Callable[[float], None] = time.sleep,
     max_workers: int = DEFAULT_WINDOW_FETCH_MAX_WORKERS,
 ) -> float:
-    """Fetch daily forecasts for Day +47 through Day +60 and return the arithmetic mean.
+    """Fetch the 14 daily forecasts for the evaluation window's final 14 days.
+
+    The counterfactual reference must cover exactly the same days as
+    ``phase2.evaluator``'s recent observation window: the final 14 days of the
+    60-day evaluation period, i.e. offsets +46..+59 from the intervention start
+    (intervention days +47..+60 when days are numbered from 1). Offset +60 is
+    the evaluation due instant and belongs to neither window, so it is excluded -
+    the labels "Day +47 ... Day +60" are 1-based and must not be added to
+    ``start_day`` as if they were 0-based offsets.
 
     Parameters:
         store_id: Store ID to evaluate.
         start_day: Base day index corresponding to intervention start.
-        window_start_offset: Start day offset relative to start_day (default 47 for Day +47).
-        window_end_offset: End day offset relative to start_day (default 60 for Day +60).
+        window_start_offset: First day offset, default +46 (intervention day +47).
+        window_end_offset: Last in-window day offset, default +59 (intervention day +60).
         retries: Number of retries per daily request.
         backoffs: Backoff seconds tuple (default 2s, 4s, 8s).
         sleep_fn: Sleep function (injectable for testing).

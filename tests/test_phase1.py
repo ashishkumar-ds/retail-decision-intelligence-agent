@@ -286,9 +286,9 @@ def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
     # Days are fetched concurrently (see get_evaluation_window_forecast), so
     # call order isn't guaranteed - only that every day in the window was
     # queried exactly once.
-    assert sorted(called_days) == list(range(147, 161)) # 14 days: 147..160
+    assert sorted(called_days) == list(range(146, 160)) # final 14 days (offsets +46..+59): 146..159
     assert len(called_days) == 14
-    expected_mean = sum(range(147, 161)) / 14 # 153.5
+    expected_mean = sum(range(146, 160)) / 14 # 152.5
     assert mean_val == expected_mean
 
     # Parameter validation
@@ -321,6 +321,31 @@ def test_get_evaluation_window_forecast_success_and_errors(monkeypatch):
     with pytest.raises(httpx.HTTPStatusError):
         forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100, sleep_fn=lambda s: None)
 
+
+
+def test_evaluation_window_forecast_matches_the_recent_observation_window(monkeypatch):
+    """Regression: the counterfactual forecast covers the evaluator's window.
+
+    The tool labelled its window "Day +47 ... Day +60" (1-based intervention
+    days) but added those labels to ``start_day`` as 0-based offsets, so it
+    fetched +47..+60 while the evaluator observes +46..+59. The counterfactual
+    then compared a forecast for one set of days against observed sales for
+    another, and day +60 (the evaluation due instant) was forecast but never
+    observed.
+    """
+    from phase2.evaluator import EVALUATION_WINDOW_DAYS, RECENT_OBSERVATION_DAYS
+
+    called_days: list[int] = []
+
+    def fake_post(url, json=None, timeout=None):
+        called_days.append(json["day"])
+        return FakeResponse({"predicted_sales_value": 1.0})
+
+    monkeypatch.setattr(forecast_tool.httpx, "post", fake_post)
+    forecast_tool.get_evaluation_window_forecast(store_id=7, start_day=100)
+
+    recent_offsets = range(EVALUATION_WINDOW_DAYS - RECENT_OBSERVATION_DAYS, EVALUATION_WINDOW_DAYS)
+    assert sorted(called_days) == [100 + offset for offset in recent_offsets] == list(range(146, 160))
 
 
 def test_forecast_tool_retries_and_exponential_backoff(monkeypatch):

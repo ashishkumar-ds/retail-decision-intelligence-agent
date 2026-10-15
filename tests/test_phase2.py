@@ -676,9 +676,11 @@ def test_provenance_join_with_normalized_campaign_and_timing_formats():
 def test_forecast_reference_unit_and_horizon_consistency_with_pilot_stores():
     """Verify that daily counterfactual forecast averages match recent observation daily means in scale ($/day)."""
     started_at = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
-    # 14-day recent daily observations averaging $55/day
+    # 14-day recent daily observations averaging $55/day, on the final 14 days
+    # of the 60-day evaluation period (offsets +46..+59 - the same days the
+    # counterfactual forecast covers; +60 is the due instant).
     recent_obs = [
-        OutcomeObservation(started_at + timedelta(days=47 + i), 55.0)
+        OutcomeObservation(started_at + timedelta(days=46 + i), 55.0)
         for i in range(14)
     ]
     # 56-day baseline daily observations averaging $45/day

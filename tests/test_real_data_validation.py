@@ -19,7 +19,7 @@ def test_real_data_validation_contracts_with_mocked_forecast(monkeypatch):
     )
     
     # Mock evaluation window forecast
-    def fake_eval_forecast(store_id, start_day, window_start_offset=47, window_end_offset=60):
+    def fake_eval_forecast(store_id, start_day, window_start_offset=46, window_end_offset=59):
         if store_id == 31642:
             return 86.55
         if store_id == 317:
@@ -83,7 +83,7 @@ def test_portfolio_recent_window_is_fourteen_days_half_open(monkeypatch):
     )
     monkeypatch.setattr(
         "phase2.portfolio.get_evaluation_window_forecast",
-        lambda store_id, start_day, window_start_offset=47, window_end_offset=60: 86.55,
+        lambda store_id, start_day, window_start_offset=46, window_end_offset=59: 86.55,
     )
 
     transactions = []

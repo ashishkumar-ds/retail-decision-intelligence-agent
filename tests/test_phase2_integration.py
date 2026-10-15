@@ -188,8 +188,9 @@ def test_outcome_api_auto_derives_forecast_reference_and_computes_dual_metrics(i
 
     assert response["evidence_state"] == "SUFFICIENT"
     outcome = response["outcome"]
-    # Check 14-day queried horizon (order not guaranteed - days are fetched concurrently)
-    assert sorted(queried_days) == [(7, d) for d in range(147, 161)]
+    # Check the queried horizon is the evaluator's final 14 days (offsets
+    # +46..+59; order not guaranteed - days are fetched concurrently)
+    assert sorted(queried_days) == [(7, d) for d in range(146, 160)]
     assert outcome["forecast_reference_value"] == 120.0
     assert outcome["forecast_status"] == "AVAILABLE"
     assert outcome["baseline_value"] == 100.0
