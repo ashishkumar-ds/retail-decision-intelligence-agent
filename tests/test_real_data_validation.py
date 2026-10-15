@@ -69,3 +69,40 @@ def test_real_data_validation_contracts_with_mocked_forecast(monkeypatch):
     assert res_99999.forecast_status == "ERROR"
     assert res_99999.forecast_reference_value is None
     assert res_99999.counterfactual_uplift_pct is None
+
+
+def test_portfolio_recent_window_is_fourteen_days_half_open(monkeypatch):
+    """Regression: the portfolio recent window is [start+46, start+60).
+
+    Day 647 (offset +60) is the evaluation due instant and must not be folded
+    into the recent daily mean, which would make the window 15 days wide.
+    """
+    monkeypatch.setattr(
+        "phase2.portfolio.get_all_stores_info",
+        lambda: {31642: {"store_id": 31642, "last_day": 711}},
+    )
+    monkeypatch.setattr(
+        "phase2.portfolio.get_evaluation_window_forecast",
+        lambda store_id, start_day, window_start_offset=47, window_end_offset=60: 86.55,
+    )
+
+    transactions = []
+    for day in range(531, 559):  # 28 baseline days in [531, 587)
+        transactions.append({"STORE_ID": 31642, "DAY": day, "household_key": "H1", "SALES_VALUE": 70.0})
+    for day in range(633, 647):  # all 14 in-window recent days [633, 647)
+        transactions.append({"STORE_ID": 31642, "DAY": day, "household_key": "H1", "SALES_VALUE": 77.0})
+    # Poisoned boundary sample on day 647 (offset +60): must be excluded.
+    transactions.append({"STORE_ID": 31642, "DAY": 647, "household_key": "H1", "SALES_VALUE": 1000.0})
+
+    report = evaluate_store_portfolio(
+        store_ids=[31642],
+        transactions=transactions,
+        campaign_households={"H1"},
+        campaign_start_day=587,
+        campaign_end_day=642,
+        auto_forecast=True,
+    )
+
+    res = next(r for r in report.store_results if r.store_id == 31642)
+    assert res.join_state == "SUFFICIENT"
+    assert res.recent_daily_mean == pytest.approx(77.0)

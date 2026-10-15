@@ -266,11 +266,11 @@ def _evaluate_single_store(
         base_start_time, campaign_start_day, campaign_id, timing_window,
         before_start=True,
     )
-    # Recent 14-day window: [campaign_start_day + 46, campaign_start_day + 60]
-    recent_start_day = campaign_start_day + 46
+    # Recent 14-day window: [campaign_start_day + 46, campaign_start_day + 60)
+    recent_start_day = campaign_start_day + (EVALUATION_WINDOW_DAYS - RECENT_OBSERVATION_DAYS)
     recent_end_day = campaign_start_day + EVALUATION_WINDOW_DAYS
     recent_obs = _window_observations(
-        daily_sales, range(recent_start_day, recent_end_day + 1),
+        daily_sales, range(recent_start_day, recent_end_day),
         base_start_time, campaign_start_day, campaign_id, timing_window,
         before_start=False,
     )

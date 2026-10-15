@@ -295,8 +295,8 @@ def explain_store(store_id: int,
     retrieved: list[tuple[CorpusChunk, float]] = []
     if corpus:
         base_query = str((evidence.get("latest_recommendation") or {}).get("recommendation", ""))
-        query = (question or base_query +
-                 " difference-in-differences matched controls decision intelligence uplift")
+        query = (question or base_query) + (
+            " difference-in-differences matched controls decision intelligence uplift")
         retriever = BM25Retriever(list(corpus))
         retrieved = retriever.retrieve(query, k=3)
 

@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 from approvals.ledger import utcnow_iso as _utcnow_iso
@@ -115,11 +116,23 @@ class SweepScheduler:
             # sustained failure sleeps so a down dependency is not hammered.
             # Success always restores the daily heartbeat.
             if failed and self._consecutive_failures < MAX_CONSECUTIVE_FAILURES:
-                self._stop_event.wait(min(RETRY_INTERVAL_SECONDS, self._interval))
-                continue
-            self._stop_event.wait(self._interval)
-            with self._lock:
-                self._status["next_sweep_at"] = _utcnow_iso()
+                delay = min(RETRY_INTERVAL_SECONDS, self._interval)
+            else:
+                delay = self._interval
+            self._arm_next_sweep(delay)
+            self._stop_event.wait(delay)
+
+    def _arm_next_sweep(self, delay_seconds: float) -> None:
+        """Stamp when the next sweep will run, on every path (retry included).
+
+        Set *before* the wait, so the health status stays honest during the
+        sleep instead of leaving a stale past timestamp (and so the fast-retry
+        branch, which used to skip the update entirely, still reports the next
+        run time).
+        """
+        next_at = datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
+        with self._lock:
+            self._status["next_sweep_at"] = next_at.isoformat()
 
     def _tick(self) -> bool:
         """Run one sweep; returns True when it failed (fail-safe: never kills the loop)."""

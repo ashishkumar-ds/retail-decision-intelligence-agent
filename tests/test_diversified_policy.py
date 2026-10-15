@@ -15,7 +15,9 @@ from guardrails import requires_human_approval
 from phase2.budget_allocator import (
     MAX_STORE_SHARE,
     MIN_ALLOCATION,
+    BudgetAllocation,
     BudgetAllocatorError,
+    _trim_overflow,
     allocate_budget,
 )
 
@@ -205,6 +207,44 @@ def test_allocator_is_deterministic_and_never_overspends():
     assert [(a.store_id, a.allocation) for a in p1.allocations] == \
            [(a.store_id, a.allocation) for a in p2.allocations]
     assert p1.allocated_budget <= 5000.0
+
+
+def test_trim_overflow_shaves_across_allocations_not_just_the_smallest():
+    """Regression: when the smallest allocation sits on MIN_ALLOCATION the old
+    trim gave up and returned an over-budget plan. Overflow must be taken from
+    the next-smallest instead."""
+    from decimal import Decimal
+
+    allocations = [
+        BudgetAllocation(1, 1.0, float(MIN_ALLOCATION), False, 0.5),
+        BudgetAllocation(2, 1.0, float(MIN_ALLOCATION) + 0.02, False, 0.5),
+    ]
+    total = Decimal("200.02")
+    budget = Decimal("200.01")
+    trimmed, trimmed_total = _trim_overflow(allocations, total, budget)
+    assert trimmed_total <= budget
+    assert sum(a.allocation for a in trimmed) == pytest.approx(200.01)
+    # The at-the-floor store is untouched; the larger one absorbs the cent.
+    by_store = {a.store_id: a.allocation for a in trimmed}
+    assert by_store[1] == float(MIN_ALLOCATION)
+    assert by_store[2] == pytest.approx(float(MIN_ALLOCATION) + 0.01)
+
+
+def test_trim_overflow_drops_floor_allocations_when_infeasible():
+    """If every allocation is at the floor and cents still overrun, drop the
+    smallest rather than exceed the budget."""
+    from decimal import Decimal
+
+    allocations = [
+        BudgetAllocation(1, 1.0, float(MIN_ALLOCATION), False, 0.5),
+        BudgetAllocation(2, 1.0, float(MIN_ALLOCATION), False, 0.5),
+    ]
+    total = Decimal("200.00")
+    budget = Decimal("199.99")
+    trimmed, trimmed_total = _trim_overflow(allocations, total, budget)
+    assert trimmed_total <= budget
+    assert [a.store_id for a in trimmed] == [2]
+    assert trimmed_total == Decimal("100.00")
 
 
 def test_allocator_drops_dust_below_min_allocation():

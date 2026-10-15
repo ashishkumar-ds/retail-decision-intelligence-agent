@@ -1637,8 +1637,8 @@ def advisory_triage(store_id: int, question: str = ""):
     retrieved: list = []
     if corpus:
         base_query = str(current_rec)
-        query = (question or base_query +
-                 " difference-in-differences matched controls decision intelligence uplift")
+        query = (question or base_query) + (
+            " difference-in-differences matched controls decision intelligence uplift")
         from rag.retriever import BM25Retriever
         retrieved = BM25Retriever(list(corpus)).retrieve(query, k=3)
 

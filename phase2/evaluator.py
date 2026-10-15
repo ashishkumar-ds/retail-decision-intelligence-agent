@@ -457,13 +457,19 @@ def _bucket_observations(
     recent_window_start: datetime,
     recent_window_end: datetime,
 ) -> dict[str, list[OutcomeObservation]]:
+    """Bucket observations into the two half-open windows ``[start, end)``.
+
+    Both windows are half-open so an observation landing exactly on a boundary
+    belongs to at most one window and the recent window is exactly
+    RECENT_OBSERVATION_DAYS (14) days, not 15.
+    """
     buckets = {"baseline": [], "recent": []}
     for observation in observations:
         _validate_aware_datetime(observation.observed_at, "observed_at")
         timestamp = _utc(observation.observed_at)
         if baseline_window_start <= timestamp < baseline_window_end:
             buckets["baseline"].append(observation)
-        elif recent_window_start <= timestamp <= recent_window_end:
+        elif recent_window_start <= timestamp < recent_window_end:
             buckets["recent"].append(observation)
     return buckets
 

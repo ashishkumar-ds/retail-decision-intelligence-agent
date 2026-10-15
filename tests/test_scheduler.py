@@ -125,6 +125,34 @@ def test_failed_tick_rearms_soon_then_sleeps(monkeypatch):
     assert scheduler.status()["sweeps_completed"] >= 1
 
 
+def test_failed_fast_retry_still_stamps_next_sweep_at(monkeypatch):
+    """Regression: the retry branch used to `continue` without updating
+    next_sweep_at, so /health showed a stale past timestamp while retrying."""
+    from datetime import datetime, timezone
+
+    from app import scheduler as scheduler_module
+
+    scheduler, _ = _make_scheduler([])
+    stop = scheduler._stop_event
+
+    def probe_wait(self, timeout=None):
+        stop.set()  # one loop pass is all this test observes
+        return True
+
+    monkeypatch.setattr(type(stop), "wait", probe_wait)
+    monkeypatch.setattr(scheduler, "_interval", 10 ** 9)
+    scheduler._sweep_fn = lambda: (_ for _ in ()).throw(RuntimeError("transient 429"))
+    scheduler._run_loop()
+
+    status = scheduler.status()
+    assert status["consecutive_failures"] == 1
+    assert status["next_sweep_at"] is not None
+    armed = datetime.fromisoformat(status["next_sweep_at"])
+    # Armed for the near retry interval, not the day-long heartbeat.
+    delta = (armed - datetime.now(timezone.utc)).total_seconds()
+    assert abs(delta - scheduler_module.RETRY_INTERVAL_SECONDS) <= 5
+
+
 def scheduler_modules_interval(scheduler):
     return scheduler._interval
 

@@ -5,7 +5,10 @@ services:
   - type: web
     name: retail-decision-intelligence-agent
     runtime: docker
-    plan: free
+    # Starter (paid): the free tier cannot mount the persistent disk below, so a
+    # free plan with `disk:` fails the blueprint and would lose the audit trail
+    # on every deploy. See docs/DEPLOYMENT.md ("Paid instance + disk").
+    plan: starter
     healthCheckPath: /health
     envVars:
       - key: SWEEP_ENABLED
