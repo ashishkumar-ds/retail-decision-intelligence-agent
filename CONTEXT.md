@@ -29,6 +29,21 @@ the same store's own 56-day baseline, as **Measured Uplift %**. An
 *intervention-effect* measurement.
 _Avoid_: recovery, performance, lift (unqualified)
 
+**Recent Window**:
+The final 14 days of an intervention's 60-day evaluation window — the days a
+completed intervention is judged on. Two whole weeks, so its mean holds two of
+each weekday and carries no day-of-week bias. Both uplift arms are measured
+over these same days, never over adjacent ones.
+_Avoid_: last 14 days, recent period, evaluation window (that is the full 60)
+
+**Counterfactual**:
+The forecast arm of the measurement: recent observed sales vs what the store
+was *forecast* to sell over the same **Recent Window** without the
+intervention, as **Counterfactual Uplift %**. A *predictive* comparison — it
+cannot separate the intervention from market drift, which is why scale-up gates
+on matched-control DiD instead.
+_Avoid_: baseline, control, expected uplift, causal lift
+
 **Health Score**:
 A 0–100 score derived from Recovery % and its velocity. Input to the engine;
 never a measure of campaign effect.
@@ -46,7 +61,8 @@ act on: `SUFFICIENT`, `PARTIAL`, `INSUFFICIENT`, `NOT_DUE`, `CONTRADICTORY`,
 `INVALID`.
 _Avoid_: confidence, quality score
 
-**Measured Uplift %** — see Measured Uplift; **Recovery %** — see Recovery.
+**Measured Uplift %** — see Measured Uplift; **Counterfactual Uplift %** — see
+Counterfactual; **Recovery %** — see Recovery.
 
 ### The loop
 
