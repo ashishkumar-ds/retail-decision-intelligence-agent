@@ -154,6 +154,8 @@ Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, optional LLM laye
 - **Execution adapter is operator-selected** (`EXECUTION_CONNECTOR=webhook` + URL for real writes, dry-run when unset): `execution/webhook_connector.py` proves the path with remote handles journaled; a production POS/CRM adapter implements the same two methods.
 - **Retrieval is lightweight**: hand-rolled BM25 over a curated corpus — context for explanations, never authority for decisions.
 - **Causal evidence is opt-in**: without matched-control coverage the guardrail is `UNAVAILABLE` and scale-up **plus all spend moves** (retarget / timing-shift / reallocate) stay blocked; own-baseline lift is operational signal, not proof. A target-clearing point whose CI-95 admits zero (or sits below MDE) lands review zone, not confirmed.
+- **Confidence and the health score are heuristics, not calibrated probabilities**: `compute_health_score` uses hand-set weights and `_boundary_confidence` a fixed distance from the band edges, so `0.85` is a ranking device, not a frequency. No reliability curve or Brier score is computed yet — read the number as an ordering, not a probability.
+- **The treatment effect is one campaign in one retailer's data (n=1)**: the DiD prior is `+2.84%` with a 95% CI of `[−0.5, +6.2]`, which admits zero, so the guardrail blocks the spend instead of dressing the estimate up. More of the same data will not fix a power problem — randomization (the roadmap's experiment engine) will.
 - **Single-retailer scope**: JSONL audit log + optional Postgres suit one portfolio; multi-tenant use needs warehouse separation and forecast-call cost controls.
 
 ## Contributing

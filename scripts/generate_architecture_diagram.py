@@ -12,7 +12,16 @@ Deterministic layout: four left-to-right columns
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+# Derived, never typed: the label below once hardcoded "22 golden scenarios" and
+# stayed wrong after the count became 23 (scripts/render_architecture_dunnhumby.py
+# holds the story). A count that is read from its source cannot go stale.
+from evaluation.golden_cases import GOLDEN_CASES  # noqa: E402
 
 SHAPE_W, SHAPE_H = 260, 60
 PAD = 20            # group inner padding
@@ -66,7 +75,7 @@ COLUMNS = [
             ("sweep-scheduler", "Sweep Scheduler (daily sweep)", "green", "clock"),
         ]),
         ("node", "memory", "Memory - append-only JSONL (fsynced, never rewritten)", "blue", "archive"),
-        ("node", "evaluation", "Evaluation - 23 golden scenarios, CI-gated", "purple", "target"),
+        ("node", "evaluation", f"Evaluation - {len(GOLDEN_CASES)} golden scenarios, CI-gated", "purple", "target"),
     ],
     [
         ("group", "decision-engine", "Decision Engine - pure code, no LLM", "purple", [

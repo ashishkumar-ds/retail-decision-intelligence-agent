@@ -16,6 +16,9 @@ so a change in one place cannot silently drift from its consumers:
    and cover the recommendation-to-evaluation lifecycle constants.
 6. Architecture diagram: the committed diagram JSON matches its generator and
    its rendered PNG is stamped from that JSON (no stale image).
+7. Docs: load-bearing prose claims (the golden-case count, whether the repo
+   ships a render.yaml, the endpoints the README advertises) match their source
+   of truth, so prose cannot outlive the code it describes.
 
 Run: ``python scripts/check.py`` (exit 0 = consistent, 1 = drift found).
 """
@@ -231,6 +234,65 @@ check("diagram: rendered PNG is current (stamped from the committed JSON)",
       f"png={'ok' if _arch_png.exists() else 'missing'} "
       f"stamp={_stamp_digest[:12] or 'missing'} json={_arch_digest[:12]} "
       "- re-run scripts/render_architecture_dunnhumby.py")
+
+# 11. Documentation claims match the code. Prose is not executable, so no other
+#     gate can see a doc that outlives its subject - and this has bitten twice in
+#     one review: a stale "22 golden" count (in the diagram node *and* the prose)
+#     and a deployment doc that kept denying a committed blueprint file. Each
+#     claim below is compared against its single source of truth, so prose can no
+#     longer drift unnoticed between gate runs.
+import re  # noqa: E402
+
+from app.main import app as _api  # noqa: E402
+from evaluation.golden_cases import GOLDEN_CASES  # noqa: E402
+
+_golden_count = len(GOLDEN_CASES)
+
+# 11a. Every "<n> pinned|golden ..." count in the docs equals the real count.
+_claim_docs = [ROOT / "README.md", ROOT / "CONTEXT.md",
+               ROOT / "docs" / "adr" / "0004-golden-cases-gate-behavior.md"]
+_golden_claims: dict[str, list[int]] = {}
+for _doc in _claim_docs:
+    if not _doc.exists():
+        continue
+    for _line in _doc.read_text(encoding="utf-8").splitlines():
+        for _n in re.findall(r"(\d+)\s+(?:pinned|golden)\b", _line):
+            _golden_claims.setdefault(str(_doc.relative_to(ROOT)), []).append(int(_n))
+_stale_counts = {d: ns for d, ns in _golden_claims.items() if any(n != _golden_count for n in ns)}
+check("docs: every '<n> pinned|golden' count matches GOLDEN_CASES",
+      bool(_golden_claims) and not _stale_counts,
+      f"actual={_golden_count} claims={_golden_claims} stale={_stale_counts}")
+
+# 11b. No file may deny infrastructure that is committed - the deploy doc and the
+#      wizard both claimed this repo had no render.yaml long after one shipped.
+_iac_denials: list[str] = []
+if (ROOT / "render.yaml").exists():
+    _denial = re.compile(r"\bno\s+`?render\.ya?ml`?", re.IGNORECASE)
+    _scan = [ROOT / "README.md", ROOT / "CONTEXT.md",
+             *sorted((ROOT / "docs").rglob("*.md")),
+             *sorted((ROOT / "scripts").glob("*.sh")),
+             *sorted((ROOT / "scripts").glob("*.py"))]
+    for _p in _scan:
+        if _p.exists() and _p.resolve() != Path(__file__).resolve() \
+                and _denial.search(_p.read_text(encoding="utf-8")):
+            _iac_denials.append(str(_p.relative_to(ROOT)))
+check("docs: nothing claims render.yaml is absent while it is committed",
+      not _iac_denials, f"denials={_iac_denials}")
+
+# 11c. Every endpoint the README documents must be a registered route, so the
+#      API table cannot advertise a path the app stopped serving. A documented
+#      token becomes a pattern: {param}, * and a concrete id (e.g. /why/317) all
+#      mean "some route whose path occupies this segment".
+_route_paths = [getattr(_r, "path", "") for _r in _api.routes if getattr(_r, "path", "")]
+_documented = set(re.findall(r"`(/[A-Za-z0-9_{}*/-]+)`",
+                             (ROOT / "README.md").read_text(encoding="utf-8")))
+_unrouted = sorted(
+    tok for tok in _documented
+    if not any(re.fullmatch(re.sub(r"\{[^}]+\}|\*|\d+", "[^/]+", tok), rp)
+               for rp in _route_paths)
+)
+check("docs: every endpoint in the README API tables is a registered route",
+      not _unrouted, f"not-a-route={_unrouted}")
 
 print()
 if failures:

@@ -18,6 +18,14 @@ recommendations are honest, not theatrical. Refresh them by deleting
 live services (the steps are the `curl` commands behind `tools/*`, one endpoint
 each - no new tooling).
 
+**Licence note — MIT covers the code, not these bytes.** Both recordings are
+derived from dunnhumby's *The Complete Journey* dataset, whose terms restrict
+commercial redistribution (attribution and the field list live in
+`rag/sources/data_dictionary/dunnhumby_complete_journey.md`). They hold
+store-day sales aggregates only — no customer-level records — and they ship so
+that a reviewer can run the whole loop offline. Confirm the dataset terms before
+any commercial redistribution.
+
 Real deployments point the two variables at the real services;
 `scripts/seed_demo.sh` only defaults to these recordings when you have set
 nothing.

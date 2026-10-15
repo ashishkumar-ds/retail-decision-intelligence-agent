@@ -11,12 +11,21 @@ curl http://localhost:8001/health
 
 ## Render (the stable stakeholder URL)
 
-**No blueprint.** The service is created by hand in the dashboard: there is no
-`render.yaml` in this repo and no IaC to drift out of sync with reality. The
-consequence is the thing to remember — **whatever you do not set in the
-dashboard keeps its code default, silently.** That is not hypothetical: the
-production service ran with `SWEEP_ENABLED` unset, so the autonomous sweep was
-off while `/health` looked perfectly healthy.
+**Two paths exist, and only one of them takes effect.** [`render.yaml`](../render.yaml)
+in this repo is a Render *blueprint*: a service created with **New → Blueprint**
+is re-applied from that file on every deploy, so the file wins. A service created
+**by hand in the dashboard** (the path `scripts/deploy_render_wizard.sh` walks)
+never reads `render.yaml`, so the dashboard wins. Do not mix them — a
+hand-created service that is later edited by hand drifts silently, because
+nothing reconciles the two. Pick one path and stay on it; every value below is
+also carried in `render.yaml`, so the two stay in step only if you keep them so.
+
+The consequence is the thing to remember — **whatever you do not set keeps its
+code default, silently.** That is not hypothetical: the production service ran
+with `SWEEP_ENABLED` unset, so the autonomous sweep was off while `/health`
+looked perfectly healthy. **Read `/health` after every deploy** — it reports the
+sweep's enabled/running state, its interval, its last error and the next tick,
+which is the field that turns a silent default into a visible fact.
 
 Prefer a guided walkthrough? The wizard opens each dashboard URL, generates the
 approval token, records every value in `.env.local`, waits for the first deploy,
@@ -51,7 +60,7 @@ fails if the code reads a variable that is not documented there.
 | Variable | Production value | What it does — and what breaks without it |
 | --- | --- | --- |
 | `APPROVAL_AUTH_TOKEN` | **required** | Fail-closed gate on every write path. Unset → read-only service (503). Demo-grade bearer token: no rotation/expiry/OIDC — never expose write paths publicly without an additional control layer. |
-| `SWEEP_ENABLED` | **`1`** | Opt-in autonomous sweep. Unset → the daily sweep never runs. This is the one that bit us. |
+| `SWEEP_ENABLED` | `0` in the published demo; `1` once the audit source is owned | Opt-in autonomous sweep. Unset → the daily sweep never runs (the default). It is `0` in the demo on purpose: the store universe comes from Project 2's audit feed, which this repo does not own, so a reset feed makes every tick fail (`/health` shows `sweeps_failed`) and freezes the board instead of refreshing it. Turn it on when `CAMPAIGN_AUDIT_API_URL` points at a source you own. |
 | `SWEEP_INTERVAL_SECONDS` | `86400` | Sweep cadence (daily). |
 | `FORECAST_API_URL` | the forecast service URL | Where actuals/predictions come from; the code default is the deployed Project 1 API. | SLO: single upstream, no ensemble/cache — `ERROR` (feed down) vs `NO_DATA` (business gap) per record on `/board`; outage leaves new stores in `NEEDS_REVIEW`. |
 | `CAMPAIGN_AUDIT_API_URL` | **required for the sweep** | Project 2's read-only audit log, and the source of the store universe. Unset with no `CAMPAIGN_AUDIT_LOG_PATH` file → `POST /recommendations/run` answers 400 "No store_ids found in the audit log" and the daily sweep does nothing. |

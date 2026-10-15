@@ -1,6 +1,12 @@
-# Render blueprint — replaces hand-created service config so deploys are reproducible.
-# Render dashboard: New -> Blueprint -> select this repo. Set secrets (APPROVAL_AUTH_TOKEN,
-# CORS_ALLOW_ORIGINS) in dashboard; never commit them.
+# Render blueprint — reproducible deploys. Render dashboard: New -> Blueprint ->
+# select this repo. Set secrets (APPROVAL_AUTH_TOKEN, CORS_ALLOW_ORIGINS,
+# DATABASE_URL) in the dashboard; never commit them.
+#
+# Two deploy paths exist and only ONE takes effect. A service created from this
+# blueprint is re-applied on every deploy (this file wins); a service created by
+# hand in the dashboard never reads this file (the dashboard wins). Do not mix
+# them — if you took the hand-created path, mirror every change here in the
+# dashboard too, or the two drift silently. See docs/DEPLOYMENT.md.
 services:
   - type: web
     name: retail-decision-intelligence-agent
@@ -11,8 +17,14 @@ services:
     plan: starter
     healthCheckPath: /health
     envVars:
+      # Deliberately OFF in the published demo. The sweep's store universe comes
+      # from Project 2's audit feed, which this repo does not own and which
+      # resets: an emptied audit log raises 400 "No store_ids found", so every
+      # sweep tick fails, /health advertises the failure, and the board freezes
+      # instead of refreshing. Enable it (1) once CAMPAIGN_AUDIT_API_URL points
+      # at a source you own and the store universe is stable.
       - key: SWEEP_ENABLED
-        value: 1
+        value: 0
       - key: SWEEP_INTERVAL_SECONDS
         value: 86400
       - key: FORECAST_API_URL
