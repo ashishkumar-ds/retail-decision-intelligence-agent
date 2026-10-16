@@ -9,6 +9,8 @@ logs/
 .next/
 node_modules/
 next-env.d.ts
+# Emitted by every `tsc` run (tsconfig has "incremental": true).
+tsconfig.tsbuildinfo
 # Local-only agent tooling — never pushed to GitHub:
 # helper dirs copied in while building, and the tooling lock file.
 .claude/

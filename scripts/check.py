@@ -19,7 +19,8 @@ so a change in one place cannot silently drift from its consumers:
 7. Docs: load-bearing prose claims (the golden-case count, whether the repo
    ships a render.yaml, the endpoints the README advertises) match their source
    of truth, so prose cannot outlive the code it describes - and no rendered
-   artifact carries a rights notice that the MIT licence contradicts.
+   artifact carries a rights notice the MIT licence contradicts, or credits the
+   data provider as the rights holder instead of the LICENSE holder.
 
 Run: ``python scripts/check.py`` (exit 0 = consistent, 1 = drift found).
 """
@@ -310,6 +311,25 @@ _ui_html = render_page("check", "/ui", "")
 _ui_footer = _ui_html[_ui_html.find("<footer"):_ui_html.find("</footer>")]
 check("licence: the served UI footer carries no 'all rights reserved' notice",
       _ui_footer and "all rights reserved" not in _ui_footer.lower())
+
+# Attribution: the MIT holder in LICENSE is the author, so every rendered surface
+# credits them and none credits dunnhumby as the rights holder (dunnhumby is the
+# data source). This is the misattribution the board shipped: "© 2026 dunnhumby".
+_licence = (ROOT / "LICENSE").read_text(encoding="utf-8")
+_lic = re.search(r"Copyright \(c\) (\d{4}) (.+)", _licence)
+_attribution = f"© {_lic.group(1)} {_lic.group(2).strip()}" if _lic else ""
+_surfaces = {
+    "diagram": _committed_json.decode("utf-8", "replace"),
+    "ui footer": _ui_footer,
+    "frontend:board": (ROOT / "app" / "page.tsx").read_text(encoding="utf-8"),
+    "frontend:store": (ROOT / "app" / "store" / "[id]" / "page.tsx").read_text(encoding="utf-8"),
+}
+_uncredited = [n for n, t in _surfaces.items() if _attribution and _attribution not in t]
+_miscredited = [n for n, t in _surfaces.items()
+                if re.search(r"©\s*(?:\d{4}\s*)?dunnhumby", t, re.IGNORECASE)]
+check("licence: every surface credits the LICENSE holder, none credits the data provider",
+      bool(_attribution) and not _uncredited and not _miscredited,
+      f"attribution={_attribution!r} uncredited={_uncredited} miscredited={_miscredited}")
 
 print()
 if failures:

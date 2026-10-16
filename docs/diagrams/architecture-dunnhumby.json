@@ -856,14 +856,26 @@
     },
     {
       "tag": "Textbox",
-      "id": "tcj-footer-brand",
-      "x": 1330,
+      "id": "tcj-footer-copy",
+      "x": 40,
       "y": 1372,
-      "width": 260,
+      "width": 700,
       "height": 24,
-      "text": "dunnhumby",
-      "fontSize": 17,
-      "color": "#000000",
+      "text": "© 2026 Ashish Kumar",
+      "fontSize": 11,
+      "color": "#666666",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-footer-data",
+      "x": 1210,
+      "y": 1372,
+      "width": 360,
+      "height": 24,
+      "text": "data: dunnhumby · The Complete Journey",
+      "fontSize": 11,
+      "color": "#666666",
       "hAlign": "right"
     }
   ],
