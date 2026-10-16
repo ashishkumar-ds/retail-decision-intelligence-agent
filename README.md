@@ -27,7 +27,7 @@ No keys, no services — one command runs the whole loop on recorded data:
 bash scripts/seed_demo.sh
 ```
 
-![Retail Decision Board — live stakeholder view: every store triaged into needs-decision, responding and awaiting-data buckets, with the leading decision card expanded](docs/images/board-live.png)
+![Retail Decision Board — live stakeholder view: coverage and the three triage buckets (needs decision, responding, awaiting data), each showing its store count and expandable to the rows underneath](docs/images/board-overview.png)
 
 Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full walkthrough: [DEMO.md](DEMO.md).
 
