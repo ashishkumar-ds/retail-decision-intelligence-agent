@@ -18,7 +18,8 @@ so a change in one place cannot silently drift from its consumers:
    its rendered PNG is stamped from that JSON (no stale image).
 7. Docs: load-bearing prose claims (the golden-case count, whether the repo
    ships a render.yaml, the endpoints the README advertises) match their source
-   of truth, so prose cannot outlive the code it describes.
+   of truth, so prose cannot outlive the code it describes - and no rendered
+   artifact carries a rights notice that the MIT licence contradicts.
 
 Run: ``python scripts/check.py`` (exit 0 = consistent, 1 = drift found).
 """
@@ -293,6 +294,22 @@ _unrouted = sorted(
 )
 check("docs: every endpoint in the README API tables is a registered route",
       not _unrouted, f"not-a-route={_unrouted}")
+
+# 11d. The repo is MIT, so no self-authored artifact may claim "all rights
+#      reserved" - the diagram footer and the served UI footer both did, and the
+#      same line had to be removed twice. Checked against *rendered output*, not
+#      source text: comments that discuss the notice are legitimate.
+from presentation.site import render_page  # noqa: E402
+
+check("licence: the architecture diagram carries no 'all rights reserved' notice",
+      "all rights reserved" not in _committed_json.decode("utf-8", "replace").lower())
+
+# Scoped to the footer element: _CSS is inlined into every page, so a whole-page
+# scan would flag a source comment that merely discusses the notice.
+_ui_html = render_page("check", "/ui", "")
+_ui_footer = _ui_html[_ui_html.find("<footer"):_ui_html.find("</footer>")]
+check("licence: the served UI footer carries no 'all rights reserved' notice",
+      _ui_footer and "all rights reserved" not in _ui_footer.lower())
 
 print()
 if failures:

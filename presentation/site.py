@@ -153,6 +153,7 @@ button {{ background: {TEAL}; color: #fff; border: none; cursor: pointer;
           padding: 7px 16px; font-weight: 600; }}
 footer {{ margin-top: 40px; border-top: 1px solid #ccc; padding: 10px 0 30px;
           color: {GRAY}; font-size: 12px; display: flex; justify-content: space-between; }}
+footer span:last-child {{ margin-left: auto; }}
 .muted {{ color: {GRAY}; font-size: 12px; }}
 .kpis span {{ display: inline-block; background: #fff; border: 1px solid #d9e5e2;
               padding: 12px 22px; margin: 6px 14px 6px 0; }}
@@ -174,6 +175,12 @@ def render_page(title: str, active: str, body: str) -> str:
         f'<a href="{href}" class="{"active" if href == active else ""}">{esc(label)}</a>'
         for href, label in _NAV
     )
+    # The footer keeps only the wordmark: an "all rights reserved" notice
+    # contradicted the MIT licence this repo ships under (see LICENSE), and beside
+    # the dunnhumby wordmark it read as a third party reserving rights. The
+    # `footer span:last-child` rule in _CSS keeps the wordmark pinned right now
+    # that it is the only child. Not a comment in _CSS: that string is inlined
+    # into every page and would ship the note to the browser.
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>{esc(title)} · retail decision agent</title>
 <style>{_CSS}</style></head><body>
@@ -181,8 +188,7 @@ def render_page(title: str, active: str, body: str) -> str:
 <h1>{esc(title)}</h1>
 <nav>{links}</nav>
 {body}
-<footer><span>© 2026 retail decision intelligence agent · all rights reserved</span>
-<span><b>dunnhumby</b></span></footer>
+<footer><span><b>dunnhumby</b></span></footer>
 </div></body></html>"""
 
 
