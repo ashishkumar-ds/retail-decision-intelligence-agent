@@ -17,7 +17,8 @@ Design language replicated:
     - teal section labels per column ("Data tables" / "Lookup tables" style)
     - flat white node boxes with thin indigo borders, black text (print look)
     - Decision Engine on deep indigo with white title (cover-gradient nod)
-    - gray footer rule + copyright line + wordmark (every page's footer)
+    - gray footer rule + dunnhumby wordmark (every page's footer; deliberately no
+      copyright line, since this repo is MIT-licensed, not all-rights-reserved)
 
 Render:
     eraser-diagrams render docs/diagrams/architecture-dunnhumby.json \\
@@ -39,7 +40,6 @@ MINT = "#ebf7f5"
 INDIGO = "#26245c"
 BLACK = "#000000"
 GRAY = "#cccccc"
-FOOTER_GRAY = "#666666"
 WHITE = "#ffffff"
 
 LEFT, TOP = 40, 170
@@ -127,9 +127,9 @@ def build_document() -> dict:
 
     footer = [
         _rect("tcj-footer-rule", LEFT, panel["y"] + panel["h"] + 26, content_right + 20 - LEFT, 2, GRAY),
-        _label("tcj-footer-copy", LEFT, panel["y"] + panel["h"] + 38,
-               "© 2026 retail decision intelligence agent · all rights reserved", FOOTER_GRAY,
-               size=11, bold=False, width=700),
+        # No copyright line here on purpose: this project is MIT (see LICENSE),
+        # and "all rights reserved" on the diagram contradicted the licence the
+        # repo actually ships under. The rule + wordmark keep the page furniture.
         _label("tcj-footer-brand", content_right - 240, panel["y"] + panel["h"] + 34, "dunnhumby", BLACK,
                size=17, width=260, halign="right"),
     ]

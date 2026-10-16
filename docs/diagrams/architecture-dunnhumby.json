@@ -856,18 +856,6 @@
     },
     {
       "tag": "Textbox",
-      "id": "tcj-footer-copy",
-      "x": 40,
-      "y": 1376,
-      "width": 700,
-      "height": 24,
-      "text": "© 2026 retail decision intelligence agent · all rights reserved",
-      "fontSize": 11,
-      "color": "#666666",
-      "hAlign": "left"
-    },
-    {
-      "tag": "Textbox",
       "id": "tcj-footer-brand",
       "x": 1330,
       "y": 1372,
