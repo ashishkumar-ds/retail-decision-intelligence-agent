@@ -12,7 +12,8 @@ Theme extracted from the PDF itself (vector fills + text spans):
     gray   #CCCCCC  footer rule
 
 Design language replicated:
-    - white page, thin teal top rule, black bold title + teal chip (cover style)
+    - white page, thin teal top rule, black title + teal chip (cover style; the
+      diagram schema has no font-weight field, so every label renders regular)
     - one large mint panel (Group container) holding the diagram
     - teal section labels per column ("Data tables" / "Lookup tables" style)
     - flat white node boxes with thin indigo borders, black text (print look)
@@ -62,7 +63,7 @@ def _rect(eid, x, y, w, h, fill, border=None):
             "texts": [{"text": ""}]}
 
 
-def _label(eid, x, y, text, color, size=13, bold=True, width=GROUP_W, halign="left"):
+def _label(eid, x, y, text, color, size=13, width=GROUP_W, halign="left"):
     return {"tag": "Textbox", "id": eid, "x": x, "y": y, "width": width, "height": 24,
             "text": text, "fontSize": size, "color": color, "hAlign": halign}
 
@@ -143,10 +144,10 @@ def build_document() -> dict:
         # data source, not as the brand. The page should read as a personal
         # project built on dunnhumby's public dataset, not as their product.
         _label("tcj-footer-copy", LEFT, panel["y"] + panel["h"] + 34,
-               "© 2026 Ashish Kumar", FOOTER_GRAY, size=11, bold=False, width=700),
+               "© 2026 Ashish Kumar", FOOTER_GRAY, size=11, width=700),
         _label("tcj-footer-data", content_right - 360, panel["y"] + panel["h"] + 34,
                "data: dunnhumby · The Complete Journey", FOOTER_GRAY,
-               size=11, bold=False, width=360, halign="right"),
+               size=11, width=360, halign="right"),
     ]
 
     entities = header + [panel_group] + col_labels + nodes + footer

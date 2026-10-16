@@ -22,9 +22,11 @@ or with `curl -s <url> | python3 -m json.tool`.
 > LLM layers are opt-in and fail closed."
 
 ### 2. The whole portfolio at a glance
-`http://localhost:8001/board` (same data as the live [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/))
-> "85 stores scored every cycle. The dashboard is the buyer's first screen:
-> 47 need intervention, 18 are mid-intervention, 20 are working well."
+`http://localhost:8001/board` — the five stores in the bundled Campaign 18
+recording. The live [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/)
+serves the full 85-store portfolio.
+> "Every store is scored each cycle and sorted into needs-decision, responding
+> and awaiting-data, so the buyer's first screen is a triage list, not a table."
 
 ### 3. One decision, fully explained — the core of the pitch
 `http://localhost:8001/why/317`
@@ -51,11 +53,15 @@ never repeats the hallucination.
 > models safe. That's the skill — not calling an API, but making it safe."
 
 ### 6. Measure before you spend
-`http://localhost:8001/simulate/306?started_day=531&window_days=56`
+`https://retail-decision-intelligence-agent.onrender.com/simulate/306?started_day=531&window_days=56`
 > "Before any budget moves, the agent replays the calibrated causal prior
 > (DiD +2.84%, CI [-0.5, 6.2]) against the store's observed baseline. Raw
 > lift is explicitly labeled NOT causal — the +9.7% market drift measured
 > in Part 1 is exactly what raw lift wrongly credits to the intervention."
+
+The replay reads actuals live, so this step points at the deployed service: the
+bundled local recording covers only its five stores, and the seeding script
+stops its stub on exit.
 
 ### 7. The human gate
 Approvals live in the operator console (`/ui/approvals`, operator-only — not part of the public demo).
