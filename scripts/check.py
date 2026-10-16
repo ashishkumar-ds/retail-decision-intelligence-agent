@@ -22,6 +22,10 @@ so a change in one place cannot silently drift from its consumers:
    artifact carries a rights notice the MIT licence contradicts, or credits the
    data provider as the rights holder instead of the LICENSE holder.
 
+Section 12 refuses to *publish* rather than to *drift*: it scans every tracked
+file for provider-shaped API keys, because 770654a committed a live Groq key
+into .env.example and no claim-checking gate can see a leaked value.
+
 Run: ``python scripts/check.py`` (exit 0 = consistent, 1 = drift found).
 """
 from __future__ import annotations
@@ -344,6 +348,36 @@ check("demo: seed_demo.sh parses .env.local as data (never sources or evals it)"
       bool(_seed_code) and not re.search(r"(^|\s)(source|\.)\s+\S*\.env|\beval\b[^\n]*\.env",
                                          _seed_code),
       "one pasted placeholder in .env.local aborts the whole demo under `set -e`")
+
+# 12. No tracked file may carry a live-looking API key. 770654a committed a real
+#     Groq key into .env.example - the file every reader is told to copy to
+#     .env.local, in a public repo - and it was still valid when the next gate
+#     ran. Doc gates cannot see that, because the leak is a *value*, not a claim.
+#     Scans the bytes that would be published (git ls-files) for the key shapes of
+#     the providers this repo supports. Placeholders are written so they miss the
+#     {20,} tail on purpose ("PASTE_YOUR_GROQ_KEY_HERE", "sk-ant-..."), so only
+#     something key-shaped can trip it. Fails closed if git is unavailable.
+import subprocess  # noqa: E402
+
+_SECRET_SHAPES = (
+    ("groq", rb"gsk_[A-Za-z0-9]{20,}"),
+    ("anthropic", rb"sk-ant-[A-Za-z0-9_-]{20,}"),
+    ("openrouter", rb"sk-or-v1-[A-Za-z0-9]{20,}"),
+    ("github", rb"ghp_[A-Za-z0-9]{20,}"),
+    ("aws", rb"AKIA[0-9A-Z]{16}"),
+)
+_git_ls = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True)
+_tracked = _git_ls.stdout.decode().split() if _git_ls.returncode == 0 else []
+_secret_leaks = [
+    f"{_rel} ({_provider})"
+    for _rel in _tracked
+    for _provider, _shape in _SECRET_SHAPES
+    if re.search(_shape, (ROOT / _rel).read_bytes() if (ROOT / _rel).is_file() else b"")
+]
+check("security: no tracked file carries a provider-shaped API key",
+      bool(_tracked) and not _secret_leaks,
+      f"published keys={_secret_leaks}" if _secret_leaks
+      else f"scanned {len(_tracked)} tracked files")
 
 print()
 if failures:
