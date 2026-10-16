@@ -33,3 +33,8 @@ button.bucket-head{display:flex;width:100%;align-items:center;gap:12px;backgroun
    identifies the page. The divider goes with it, or it dangles with nothing on
    its right. */
 @media(max-width:600px){.brand-product,.brand-divider{display:none}}
+
+/* The nav wordmark is the real dunnhumby logo (public/dunnhumby.svg), so the
+   text metrics on .brand-logo no longer apply - size it by height and let the
+   intrinsic 401:93 ratio set the width. */
+img.brand-logo{height:19px;width:auto}
