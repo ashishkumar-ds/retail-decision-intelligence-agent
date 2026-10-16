@@ -3,9 +3,9 @@
     {
       "tag": "Shape",
       "id": "tcj-top-rule",
-      "x": 40,
+      "x": 28,
       "y": 22,
-      "width": 1550,
+      "width": 1554,
       "height": 4,
       "bgColor": "#38b2ab",
       "borderColor": "#38b2ab",
@@ -17,23 +17,16 @@
       ]
     },
     {
-      "tag": "Shape",
+      "tag": "Textbox",
       "id": "tcj-title",
       "x": 40,
       "y": 52,
       "width": 1100,
-      "height": 44,
-      "bgColor": "#ffffff",
-      "borderColor": "#ffffff",
-      "styleMode": "plain",
-      "texts": [
-        {
-          "text": "The Retail Decision Intelligence Agent",
-          "fontSize": 26,
-          "hAlign": "left",
-          "color": "#000000"
-        }
-      ]
+      "height": 40,
+      "text": "The Retail Decision Intelligence Agent",
+      "fontSize": 26,
+      "hAlign": "left",
+      "color": "#000000"
     },
     {
       "tag": "Shape",
@@ -58,7 +51,7 @@
       "id": "tcj-panel",
       "x": 28,
       "y": 150,
-      "width": 1566,
+      "width": 1554,
       "height": 1188,
       "bgColor": "#ebf7f5",
       "borderColor": "#ebf7f5",
@@ -841,9 +834,9 @@
     {
       "tag": "Shape",
       "id": "tcj-footer-rule",
-      "x": 40,
+      "x": 28,
       "y": 1364,
-      "width": 1550,
+      "width": 1554,
       "height": 2,
       "bgColor": "#cccccc",
       "borderColor": "#cccccc",

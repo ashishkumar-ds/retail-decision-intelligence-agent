@@ -101,15 +101,26 @@ def build_document() -> dict:
 
     content_right = max(e["x"] + e["width"] for e in nodes)
     content_bottom = max(e["y"] + e["height"] for e in nodes)
-    panel = {"x": LEFT - 12, "y": 150,
-             "w": content_right + 24 - (LEFT - 12),
+    # Two margins, deliberately: the FURNITURE (rules + panel) bleeds 12pt past the
+    # text on each side so the panel has internal padding, and the CONTENT (title,
+    # chip, column labels, nodes, footer text) all sits on LEFT. Everything that
+    # should share an edge now shares one - the panel used to end 24pt past the
+    # content while starting only 12pt before it, and the rules sat on a third box.
+    FURNITURE_PAD = 12
+    furniture_x = LEFT - FURNITURE_PAD
+    furniture_w = (content_right + FURNITURE_PAD) - furniture_x
+
+    panel = {"x": furniture_x, "y": 150,
+             "w": furniture_w,
              "h": content_bottom + 24 - 150}
 
     header = [
-        _rect("tcj-top-rule", LEFT, 22, content_right + 20 - LEFT, 4, TEAL),
-        {"tag": "Shape", "id": "tcj-title", "x": LEFT, "y": 52, "width": 1100, "height": 44,
-         "bgColor": WHITE, "borderColor": WHITE, "styleMode": "plain",
-         "texts": [{"text": "The Retail Decision Intelligence Agent", "fontSize": 26, "hAlign": "left", "color": BLACK}]},
+        _rect("tcj-top-rule", furniture_x, 22, furniture_w, 4, TEAL),
+        # A Textbox, not a Shape: Shape text is inset by --er-shape-h-inset (7.5% of
+        # the shape's own width), so a 1100-wide title box indented the title 82pt and
+        # it lined up with neither the rule nor the chip. Textbox text has no inset.
+        {"tag": "Textbox", "id": "tcj-title", "x": LEFT, "y": 52, "width": 1100, "height": 40,
+         "text": "The Retail Decision Intelligence Agent", "fontSize": 26, "hAlign": "left", "color": BLACK},
         {"tag": "Shape", "id": "tcj-chip", "x": LEFT, "y": 106, "width": 118, "height": 26,
          "bgColor": TEAL, "borderColor": TEAL, "styleMode": "plain",
          "texts": [{"text": "architecture", "fontSize": 12, "color": WHITE}]},
@@ -127,7 +138,7 @@ def build_document() -> dict:
         lab["containerId"] = "tcj-panel"
 
     footer = [
-        _rect("tcj-footer-rule", LEFT, panel["y"] + panel["h"] + 26, content_right + 20 - LEFT, 2, GRAY),
+        _rect("tcj-footer-rule", furniture_x, panel["y"] + panel["h"] + 26, furniture_w, 2, GRAY),
         # The author holds the copyright (see LICENSE); dunnhumby is named as the
         # data source, not as the brand. The page should read as a personal
         # project built on dunnhumby's public dataset, not as their product.
