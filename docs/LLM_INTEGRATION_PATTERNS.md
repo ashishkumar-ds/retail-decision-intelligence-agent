@@ -81,7 +81,8 @@
 - Their commerce domain (cart, checkout, listings) — irrelevant to us.
 - Multi-runtime packaging (Messages API + SDK + Managed Agents) — start with one
   runtime; add others only when actually needed.
-- Next.js web apps.
+- **Their** Next.js web app, as a front end to port. Our board under `app/` is our
+  own surface, built to `docs/FRONTEND_CONTRACT.md`.
 
 ---
 

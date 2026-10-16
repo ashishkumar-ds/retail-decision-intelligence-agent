@@ -315,9 +315,10 @@ Before changing code, they should agree on the
 Phase 2 intervention/outcome/evidence schemas and decide whether the Campaign
 boundary remains file-based or gains a formally supported read-only API.
 
-The next validation baseline is the frozen Phase 1 suite (`21 passed, 2
-skipped`), the pinned dependency set, the live forecast contract
-`predicted_sales_value`, and the prohibition on mutating Project 2 data. Any
+The next validation baseline is the full test suite kept green in CI (the
+Phase 1 behaviors it pins are frozen; its size is not), the pinned dependency
+set, the live forecast contract `predicted_sales_value`, and the prohibition on
+mutating Project 2 data. Any
 future adaptive or LLM work must preserve deterministic fallback behavior,
 guardrails, provenance, human control, and the explicit IMPLEMENTED/PLANNED/
 FUTURE status distinction in this document.
