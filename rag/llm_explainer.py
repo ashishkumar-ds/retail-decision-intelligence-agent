@@ -328,16 +328,23 @@ def ground_llm_output(text: str, evidence: Mapping[str, Any],
 def maybe_llm_narrative(store_id: int, question: str, template_narrative: str,
                         evidence: Mapping[str, Any], corpus: Sequence[CorpusChunk],
                         retrieved: Sequence[tuple[CorpusChunk, float]],
-                        llm_enabled: bool) -> tuple[str, str]:
+                        llm_enabled: bool, skip_reason: str = "") -> tuple[str, str]:
     """Return (narrative, guard_llm_status). Never raises: every failure mode
     degrades to the deterministic template.
+
+    ``skip_reason`` names why the layer was not attempted when the caller knows
+    something the flag does not - the daily spend budget is spent, say. Without
+    it the status would claim "LLM_EXPLANATIONS_ENABLED off" for a layer that is
+    switched on and merely unaffordable, which is the kind of small lie that
+    makes an incident hard to read.
 
     Each attempt is recorded to the off-path telemetry log (see
     ``rag/llm_telemetry.py``) so guard vetoes and silent degradations are
     countable; telemetry never influences this function's result.
     """
     if not llm_enabled:
-        return template_narrative, "deterministic-template (LLM_EXPLANATIONS_ENABLED off)"
+        return template_narrative, (
+            f"deterministic-template ({skip_reason or 'LLM_EXPLANATIONS_ENABLED off'})")
     started = time.monotonic()
 
     def _record(outcome: str, **fields: Any) -> None:

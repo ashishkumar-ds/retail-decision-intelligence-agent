@@ -112,6 +112,7 @@ from presentation.site import (
     render_simulate,
     render_why,
 )
+from rag import llm_budget
 from rag.advisor import maybe_advisory_triage
 from rag.corpus import load_corpus
 from rag.explainer import explain_store
@@ -1557,8 +1558,41 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
     }
 
 
+def _llm_admission(request: Request) -> tuple[bool, str]:
+    """Spend admission for an endpoint whose feature flag allows an LLM call.
+
+    Returns ``(may_call_the_llm, skip_reason)``, or raises 429. Call it only
+    after the endpoint's own flag says the layer is on: it CONSUMES budget, and
+    the flag is what decides whether a call would happen at all. The two
+    ceilings behave differently on purpose (see ``rag/llm_budget.py``): a spent
+    daily budget is a fact about the account, so it degrades to the template and
+    still serves 200; an exhausted per-client window is a fact about this
+    caller, so it answers 429 with ``Retry-After`` instead of letting a loop
+    masquerade as a visitor. Neither can affect the recommendation itself.
+    """
+    allowed, used = llm_budget.daily_allowance()
+    if not allowed:
+        logger.warning("[LLM BUDGET] daily cap spent (%s/%s calls); serving templates",
+                       used, llm_budget.daily_call_budget())
+        return False, (f"daily LLM budget spent ({used}/{llm_budget.daily_call_budget()} "
+                       "calls today); template served")
+    ip = llm_budget.client_ip(request.headers.get("x-forwarded-for"),
+                             request.client.host if request.client else "")
+    allowed, retry_after = llm_budget.ip_allowance(ip)
+    if not allowed:
+        logger.warning("[LLM BUDGET] client %s over %s LLM calls/hour",
+                       ip, llm_budget.per_ip_hourly_limit())
+        raise HTTPException(
+            status_code=429,
+            detail=(f"rate limit: {llm_budget.per_ip_hourly_limit()} LLM-backed requests per "
+                    "hour per client; template narratives remain available via /why."),
+            headers={"Retry-After": str(retry_after)},
+        )
+    return True, ""
+
+
 @app.get("/why/{store_id}")
-def explain_recommendation(store_id: int, question: str = ""):
+def explain_recommendation(store_id: int, request: Request, question: str = ""):
     """Grounded 'why' explanation for a store's recommendation (Priority 4).
 
     Tier-1 grounding: the narrative cites the store's recommendation record
@@ -1566,6 +1600,10 @@ def explain_recommendation(store_id: int, question: str = ""):
     methodology chunks explain the reasoning principles. Fail-closed: the
     numeric grounding guard and citation guard refuse to serve an answer
     whose numbers or citations cannot be traced.
+
+    The optional LLM rephrase on top of that is spend-gated (see
+    ``rag/llm_budget.py``): a spent daily budget degrades to the template, and an
+    exhausted per-client window answers 429 with ``Retry-After``.
     """
     if not rag_enabled():
         raise HTTPException(
@@ -1575,6 +1613,7 @@ def explain_recommendation(store_id: int, question: str = ""):
     if question and len(question) > 500:
         raise HTTPException(status_code=400, detail="question must be at most 500 characters")
     question = sanitize_question(question)
+    llm_on, llm_skip = _llm_admission(request) if llm_explanations_enabled() else (False, "")
     try:
         result = explain_store(
             store_id,
@@ -1582,7 +1621,8 @@ def explain_recommendation(store_id: int, question: str = ""):
             event_records=[e.to_record() for e in _phase2_registry.read_events()],
             corpus=load_corpus(),
             question=question,
-            llm_enabled=llm_explanations_enabled(),
+            llm_enabled=llm_on,
+            llm_skip_reason=llm_skip,
         )
     except ValueError as error:
         logger.error("[WHY ENDPOINT] grounding guard failed for store %s: %s", store_id, error)
@@ -1591,7 +1631,7 @@ def explain_recommendation(store_id: int, question: str = ""):
 
 
 @app.get("/advisory/{store_id}")
-def advisory_triage(store_id: int, question: str = ""):
+def advisory_triage(store_id: int, request: Request, question: str = ""):
     """LLM triage suggestion for a human reviewer - ABOVE the human gate.
 
     Reads the SAME grounded evidence the /why endpoint serves, then (when
@@ -1602,6 +1642,10 @@ def advisory_triage(store_id: int, question: str = ""):
     True, and this endpoint writes nothing - no recommendation-log append,
     no ledger entry, no state mutation. The deterministic engine's own
     recommendation remains the only decision.
+
+    The LLM call is spend-gated exactly like ``/why`` (see ``rag/llm_budget.py``):
+    a spent daily budget falls back to the engine's own recommendation, and an
+    exhausted per-client window answers 429 with ``Retry-After``.
     """
     if not rag_enabled():
         raise HTTPException(
@@ -1611,6 +1655,7 @@ def advisory_triage(store_id: int, question: str = ""):
     if question and len(question) > 500:
         raise HTTPException(status_code=400, detail="question must be at most 500 characters")
     question = sanitize_question(question)
+    adv_on, adv_skip = _llm_admission(request) if llm_advisory_enabled() else (False, "")
     corpus = load_corpus()
     # Deterministic base: the TEMPLATE narrative (LLM off here), so the
     # advisory is grounded against the engine's own text, not an already-
@@ -1650,7 +1695,7 @@ def advisory_triage(store_id: int, question: str = ""):
     advisory, advisory_status = maybe_advisory_triage(
         store_id, question, current_rec, fallback_note,
         grounded["narrative"], evidence, corpus, retrieved,
-        llm_enabled=llm_advisory_enabled(), precedents=precedents,
+        llm_enabled=adv_on, precedents=precedents, skip_reason=adv_skip,
     )
     return jsonable_encoder({
         "store_id": store_id,
@@ -2166,9 +2211,9 @@ def ui_simulate(store_id: int | None = None, started_day: int | None = None):
 
 
 @app.get("/ui/why/{store_id}", response_class=HTMLResponse)
-def ui_why(store_id: int, question: str = ""):
+def ui_why(store_id: int, request: Request, question: str = ""):
     try:
-        result = explain_recommendation(store_id, question=question)
+        result = explain_recommendation(store_id, request, question=question)
     except HTTPException as error:
         return render_page(f"Why store {store_id}?", "/ui",
                            f"<div class='banner err'>{error.detail}</div>")

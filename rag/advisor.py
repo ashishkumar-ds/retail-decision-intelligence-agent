@@ -208,9 +208,14 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
                           evidence: Mapping[str, Any], corpus: Sequence[CorpusChunk],
                           retrieved: Sequence[tuple[CorpusChunk, float]],
                           llm_enabled: bool,
-                          precedents: Sequence[CorpusChunk] = ()) -> tuple[dict[str, Any], str]:
+                          precedents: Sequence[CorpusChunk] = (),
+                          skip_reason: str = "") -> tuple[dict[str, Any], str]:
     """Return (advisory, status). Never raises; every failure degrades to the
     deterministic fallback (the engine's own recommendation and reason).
+
+    ``skip_reason`` names why the LLM was not attempted when the caller knows a
+    reason the flag does not (the daily spend budget, say), so the status cannot
+    claim the layer is switched off when it is on and merely unaffordable.
 
     The advisory dict is structurally inert: auto_applied is always False,
     requires_human_approval is always True, and nothing here writes to the
@@ -228,7 +233,7 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
         "requires_human_approval": True,
     }
     if not llm_enabled:
-        return fallback, "deterministic (LLM_ADVISORY_ENABLED off)"
+        return fallback, f"deterministic ({skip_reason or 'LLM_ADVISORY_ENABLED off'})"
     started = time.monotonic()
 
     def _record(outcome: str, **fields: Any) -> None:

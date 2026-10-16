@@ -281,13 +281,16 @@ def explain_store(store_id: int,
                   event_records: Sequence[Mapping[str, Any]],
                   corpus: Sequence[CorpusChunk],
                   question: str = "",
-                  llm_enabled: bool = False) -> dict[str, Any]:
+                  llm_enabled: bool = False,
+                  llm_skip_reason: str = "") -> dict[str, Any]:
     """Full grounded explanation for a store. Raises ValueError if a
     grounding guard fails (fail-closed contract).
 
     With ``llm_enabled`` the template narrative is additionally rephrased by
     an LLM and its output must pass the SAME grounding guards - any failure
-    degrades back to the template (see rag/llm_explainer.py)."""
+    degrades back to the template (see rag/llm_explainer.py). ``llm_skip_reason``
+    is passed through so a caller that withheld the LLM for its own reason (the
+    spend budget) reports that reason in the guard status."""
     evidence = gather_store_evidence(store_id, recommendation_records, event_records)
     narrative, citations = build_narrative(evidence)
 
@@ -312,6 +315,7 @@ def explain_store(store_id: int,
     # LLM rephrase layer (additive, gated, fail-closed to the template).
     narrative, llm_guard = maybe_llm_narrative(
         store_id, question, narrative, evidence, list(corpus), retrieved, llm_enabled,
+        skip_reason=llm_skip_reason,
     )
 
     return {
