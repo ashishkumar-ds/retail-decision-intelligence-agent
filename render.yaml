@@ -54,8 +54,12 @@ services:
         value: https://api.groq.com/openai/v1
       - key: LLM_MODEL
         value: qwen/qwen3.8-27b
+      # Tokens-per-minute, not requests, is the free tier's binding limit (Groq
+      # free = 8000/min, and input + max_tokens count against it). A grounded
+      # rephrase measures ~1300 in / ~140 out, so a 4000 cap spends most of the
+      # minute on one call and 429s the next. 1000 fits several calls in it.
       - key: LLM_MAX_TOKENS
-        value: 4000
+        value: 1000
       - key: LLM_EXPLANATIONS_ENABLED
         value: true
       - key: LLM_ADVISORY_ENABLED
