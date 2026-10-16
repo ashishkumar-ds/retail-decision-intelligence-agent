@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Live LLM smoke test for the /why rephrase layer.
 
-Calls the real Anthropic API once (cost: a fraction of a cent) and verifies
+Calls the configured provider once (cost: a fraction of a cent) and verifies
 the full path: rephrase -> grounding gate -> status. Exits 0 only when the
 narrative comes back ``llm-grounded``.
 
+The provider is selected exactly the way the app selects it, so this exercises
+the real path rather than a stand-in (see ``rag/llm_explainer.py``):
+
+  Anthropic (default):  export ANTHROPIC_API_KEY=sk-ant-...
+  OpenAI-compatible:    export LLM_PROVIDER=openai_compat LLM_API_KEY=...
+                        export LLM_BASE_URL=https://api.groq.com/openai/v1
+                        export LLM_MODEL=<model>
+
 Usage:
-  export ANTHROPIC_API_KEY=sk-ant-...
   python scripts/smoke_llm_live.py [store_id]
 
 The key is read from the environment or from a local ``.env.local`` file
@@ -35,8 +42,11 @@ from memory.history import read_log  # noqa: E402
 from rag.corpus import load_corpus  # noqa: E402
 from rag.llm_explainer import maybe_llm_narrative  # noqa: E402
 
-if not os.getenv("ANTHROPIC_API_KEY"):
-    print("ERROR: ANTHROPIC_API_KEY not set (env or .env.local).", file=sys.stderr)
+_provider = os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+_required_key = "LLM_API_KEY" if _provider == "openai_compat" else "ANTHROPIC_API_KEY"
+if not os.getenv(_required_key):
+    print(f"ERROR: {_required_key} not set for LLM_PROVIDER={_provider} "
+          "(env or .env.local).", file=sys.stderr)
     sys.exit(2)
 
 store_id = int(sys.argv[1]) if len(sys.argv) > 1 else None
