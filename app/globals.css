@@ -30,5 +30,6 @@ button.bucket-head{display:flex;width:100%;align-items:center;gap:12px;backgroun
 /* Nav brand on narrow screens: "retail decision intelligence agent" is too long
    to sit beside the dunnhumby wordmark below 600px, so the product name is
    dropped at the same breakpoint that hides .brand em - the wordmark alone
-   identifies the page. */
-@media(max-width:600px){.brand-product{display:none}}
+   identifies the page. The divider goes with it, or it dangles with nothing on
+   its right. */
+@media(max-width:600px){.brand-product,.brand-divider{display:none}}
