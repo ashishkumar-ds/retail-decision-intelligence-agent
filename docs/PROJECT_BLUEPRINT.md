@@ -81,6 +81,50 @@ space was renamed). Its deterministic modules are:
 Supporting modules are `guardrails/`, `tools/campaign_tool.py`,
 `tools/forecast_tool.py`, `memory/history.py`, and `app/main.py`.
 
+### 3.1 Design-pattern fit
+
+Because the decision path is deterministic, "which agent design pattern is this?"
+has a specific answer rather than being left implicit. Evaluated against Google
+Cloud's [Choose a design pattern for your agentic AI
+system](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system):
+
+- **Deterministic workflow, not dynamic orchestration.** That guide's first test
+  is whether the task "can be completed in predefined workflow steps or is the
+  task open-ended". Routing, planning, scoring and verification are predefined,
+  so its non-agentic branch applies: for a highly structured workload, a
+  model-driven orchestration layer adds latency and cost without adding
+  capability. Each recommendation is produced with zero model calls, which is
+  what makes it recomputable by hand (ADR-0001).
+- **Sequential + custom-logic patterns.** `route → plan → score → verify → gate`
+  is the guide's *sequential* shape — a fixed linear order where each stage's
+  output is the next stage's input, with orchestration logic in code and no model
+  consulted to orchestrate — combined with its *custom logic* pattern, since the
+  plan branches (`flag_for_review` skips scoring, `score_and_recommend` runs it).
+  The difference from the guide's wording is that the stages are deterministic
+  modules, not model-backed agents.
+- **Review and critique, in code.** `verifier` is the guide's *generator/critic*
+  step with the model call removed: a batch that fails verification is rejected
+  outright (nothing is persisted), and `approvals/ledger.py::decision_gate`
+  re-runs the guardrails and verifier at decision time. The guide prices this
+  pattern at "at least one additional model call"; here the critic still refuses,
+  and it costs none.
+- **Human-in-the-loop, enforced in code.** Approval-required recommendations block
+  on the durable pending store, write paths fail closed (503) without a bearer
+  credential, and the board is the external review surface that pattern requires.
+  It is *asynchronous* — a sweep does not hold a request open waiting for a person
+  — which suits a scheduled batch better than a blocking pause.
+- **The off-path LLM is a single-turn model with no tools.** The optional
+  explainer/advisory layers are the closest thing to the guide's *single-agent*
+  pattern, but deliberately weaker: one model turn, no `tools` passed, and output
+  rejected unless it grounds in cited evidence. The guide's multi-agent patterns
+  (coordinator, hierarchical, swarm) target open-ended problems needing dynamic
+  routing, and the security controls it pairs with them (agent identity, tool
+  registry, gateway) have nothing to protect while no model calls a tool.
+
+This is a deliberate fit, not an omission: the branch is re-chosen if the workload
+changes. A tool-using model or dynamic routing across open-ended requests would
+move the system onto a different branch of that guide.
+
 ## 4. Integration contracts — IMPLEMENTED
 
 ### Campaign audit contract
