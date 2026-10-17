@@ -147,3 +147,33 @@ def test_why_log_still_wins_when_present(monkeypatch, tmp_path):
     body = TestClient(main.app).get("/why/7").json()
     assert "r-log" in [c["id"] for c in body["citations"]]
     assert "recommendation-test" not in [c["id"] for c in body["citations"]]
+
+
+def test_every_board_store_is_explainable(monkeypatch, tmp_path):
+    """The invariant the two surfaces must share: board ids ⊆ explainable ids.
+
+    Any store the board lists must have a narrative here - this is the property
+    that broke when /why read the log alone.
+    """
+    main = _seeded_pending(monkeypatch, tmp_path)
+    main._pending_approvals.clear()
+    for store_id in (101, 202, 303):
+        main._pending_approvals[store_id] = {
+            "store_id": store_id, "recommendation": "EXTEND_INTERVENTION",
+            "reason": f"store {store_id} needs more time",
+            "store_health_score": 40.0, "recovery_pct": 15.0,
+            "days_remaining": 12, "confidence": 0.9,
+            "requires_human_approval": True,
+            "recommendation_id": f"recommendation-{store_id}",
+            "forecast_status": "AVAILABLE",
+            "generated_at": "2026-10-12T00:00:00+00:00",
+        }
+    client = TestClient(main.app)
+    board = client.get("/board").json()
+    bucket_ids = {e["store_id"] for entries in board["buckets"].values() for e in entries}
+    assert bucket_ids == {101, 202, 303}
+
+    for store_id in sorted(bucket_ids):
+        body = client.get(f"/why/{store_id}").json()
+        assert "no recommendation on record" not in body["narrative"], store_id
+        assert body["citations"], store_id
