@@ -25,3 +25,34 @@ def _isolate_offpath_llm_telemetry(tmp_path, monkeypatch):
     ``OFFPATH_LLM_LOG_PATH``.
     """
     monkeypatch.setenv("OFFPATH_LLM_LOG_PATH", str(tmp_path / "offpath_llm.jsonl"))
+
+
+@pytest.fixture(autouse=True)
+def _isolate_upstream_warmup(monkeypatch):
+    """Keep the warm-up daemon inside the test that started it.
+
+    ``_kick_upstream_warmup`` starts a daemon thread that pings the LIVE
+    forecast/campaign upstreams and then backfills the module-global
+    ``_observed_baselines`` from whatever ``RECOMMENDATION_LOG_PATH`` points at
+    when it finally gets there. A real ping takes seconds, so the thread
+    routinely outlived its test and landed a baseline in the next one -
+    ``test_refresh_observed_baselines_fails_open`` asserted the dict was empty
+    while a store-9 write from the previous test was still in flight.
+
+    The suite must never touch a live upstream, so the pings are stubbed for
+    every test (the throttle test re-patches them to count calls), and any
+    in-flight warm-up thread is joined before the next test starts.
+    """
+    import threading
+
+    from app import main
+
+    monkeypatch.setattr(main, "ping_forecast_upstream", lambda *args, **kwargs: None)
+    monkeypatch.setattr(main, "ping_campaign_upstream", lambda *args, **kwargs: None)
+    monkeypatch.setattr(main, "_last_warmup_kick", 0.0)
+    main._observed_baselines.clear()
+    yield
+    for thread in threading.enumerate():
+        if thread.name == "upstream-warmup":
+            thread.join(timeout=10)
+    main._observed_baselines.clear()
