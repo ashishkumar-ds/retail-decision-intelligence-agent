@@ -159,6 +159,58 @@ def test_working_label_collapses_verdict_mapping():
     assert working_label("plain") == "plain"
 
 
+_WHY_RESULT = {
+    "store_id": 27,
+    "question": "",
+    "narrative": ("Store 27's latest recommendation is NEEDS_REVIEW with a confidence of 1.0 "
+                  "[rec:recommendation-a5ff843a52aaa422]."),
+    "citations": [{"type": "rec", "id": "recommendation-a5ff843a52aaa422",
+                   "detail": "latest recommendation record"}],
+    "methodology": [{"chunk_id": "src-1", "title": "Difference-in-Differences and Matched Controls",
+                     "part": 4, "score": 15.25,
+                     "license_note": "in-repo methodology note (authored for this project)"}],
+    "evidence": {"store_id": 27,
+                 "latest_recommendation": {
+                     "store_id": 27, "recommendation": "NEEDS_REVIEW", "confidence": 1.0,
+                     "reason": "No forecast signal available for store 27.",
+                     "store_health_score": 0.0, "recovery_pct": 0.0,
+                     "recovery_direction": "flat", "days_remaining": 60, "days_elapsed": 0,
+                     "requires_human_approval": True, "forecast_status": "NO_DATA",
+                     "forecast_signal_available": False, "baseline_forecast": 0,
+                     "current_forecast": 0, "generated_at": "2026-10-13T17:06:48+00:00",
+                     "recommendation_id": "recommendation-a5ff843a52aaa422"},
+                 "outcome": {"evidence_state": None}},
+    "guard": {"numeric_grounding": "passed", "citations": "passed", "llm": "llm-grounded"},
+}
+
+
+def test_why_page_reads_as_an_explanation_not_a_repr():
+    """Regression: render_why dumped `citations` as a Python repr and then every
+    remaining key (`evidence`, `methodology`, `guard`) as `key: value` lines, so
+    the operator page was a data dump rather than an answer."""
+    from presentation.site import render_why
+
+    html = render_why(27, _WHY_RESULT)
+    assert "<span class='cite'" in html                     # markers became chips
+    assert "Evidence the engine used" in html
+    assert "Recommendation record" in html                  # readable citation type
+    assert "Relevance" in html                              # methodology table
+    assert "Grounding checks" in html and "&#10003;" in html
+    assert "Human approval required" in html and "Yes" in html
+    assert "<details class='raw'" in html                   # raw payload collapsed
+    assert "'type':" not in html                            # no Python repr
+    assert "'store_id':" not in html
+    assert "no forecast signal (business data gap, not an integration error)" in html
+
+
+def test_why_page_unknown_store_is_an_honest_banner(client):
+    response = client.get("/ui/why/999999")
+    assert response.status_code == 200
+    assert "no recommendation on record" in response.text
+    # the sections still render, so the page is complete rather than truncated
+    assert "Grounding checks" in response.text and "Raw evidence" in response.text
+
+
 def test_dashboard_never_renders_raw_verdict_dict(client, monkeypatch):
     _seed_pending(client, monkeypatch)
     response = client.get("/ui")

@@ -29,7 +29,9 @@ serves the full 85-store portfolio.
 > and awaiting-data, so the buyer's first screen is a triage list, not a table."
 
 ### 3. One decision, fully explained — the core of the pitch
-`http://localhost:8001/why/317`
+`http://localhost:8001/why/317` — the machine-readable answer.
+`http://localhost:8001/ui/why/317` — the same answer as a page (decision,
+evidence, citations, methodology, grounding checks; raw JSON collapsed).
 > "Every recommendation carries citations by ID — [rec:...] for decisions,
 > [event:...] for measured outcomes. Any number in this narrative can be
 > recomputed by hand from the evidence. That's the standard: explainable

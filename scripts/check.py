@@ -335,6 +335,25 @@ check("licence: every surface credits the LICENSE holder, none credits the data 
       bool(_attribution) and not _uncredited and not _miscredited,
       f"attribution={_attribution!r} uncredited={_uncredited} miscredited={_miscredited}")
 
+# 11f. The board's store detail page ("why") referenced eight class names that
+#      globals.css never defined (`panel`, `chip`, `badge`, `detail-grid`,
+#      `narrative`, `chips`, `section-title`, `back`), so the view rendered as
+#      unstyled stacks of chips carrying 40-character record ids. A view that
+#      names a style must have that style: every class token the Next app
+#      applies is required to exist in the stylesheet.
+_CLASSNAME_RE = re.compile(r'className=(?:"([^"]*)"|\{`([^`]*)`\})')
+_css_text = (ROOT / "app" / "globals.css").read_text(encoding="utf-8")
+_defined_classes = set(re.findall(r"\.([A-Za-z][A-Za-z0-9_-]*)", _css_text))
+_used_classes: set[str] = set()
+for _tsx in sorted((ROOT / "app").rglob("*.tsx")):
+    for _static, _template in _CLASSNAME_RE.findall(_tsx.read_text(encoding="utf-8")):
+        # `${...}` holds a value the stylesheet cannot know (a bucket name, a
+        # tone); only the literal tokens around it are contract.
+        _used_classes.update(re.sub(r"\$\{[^}]*\}", " ", _static or _template).split())
+_undefined_classes = sorted(_used_classes - _defined_classes)
+check("frontend: every className the Next app applies is defined in globals.css",
+      not _undefined_classes, f"undefined={_undefined_classes}")
+
 # 11e. The demo seeder reads .env.local as dotenv data, never as shell. `source`
 #      ran a pasted placeholder as a command ("LLM_API_KEY= PASTE_YOUR_KEY_HERE"
 #      executed PASTE_YOUR_KEY_HERE) and `set -e` then aborted the demo before it
