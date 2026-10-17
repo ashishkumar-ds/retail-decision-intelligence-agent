@@ -701,7 +701,7 @@ def get_recommendations():
     To (re)compute and persist, use ``POST /recommendations/run`` (auth-gated).
     """
     latest: dict[int, dict] = {}
-    for record in _board_records():
+    for record in _readable_records():
         store_id = record.get("store_id")
         if isinstance(store_id, int):
             latest[store_id] = record
@@ -1647,6 +1647,13 @@ def explain_recommendation(store_id: int, request: Request, question: str = ""):
     The optional LLM rephrase on top of that is spend-gated (see
     ``rag/llm_budget.py``): a spent daily budget degrades to the template, and an
     exhausted per-client window answers 429 with ``Retry-After``.
+
+    Reads the same union as the board (``_readable_records``: log ∪ durable
+    pending store), so a store the board lists is always explainable here. On a
+    diskless host the JSONL log is wiped at restart while the pending store
+    survives (Supabase), so a log-only read would answer "nothing to explain"
+    for every store the board is showing - the detail page and the board would
+    disagree about the same store.
     """
     if not rag_enabled():
         raise HTTPException(
@@ -1660,7 +1667,7 @@ def explain_recommendation(store_id: int, request: Request, question: str = ""):
     try:
         result = explain_store(
             store_id,
-            recommendation_records=read_log(),
+            recommendation_records=_readable_records(),
             event_records=[e.to_record() for e in _phase2_registry.read_events()],
             corpus=load_corpus(),
             question=question,
@@ -1706,7 +1713,7 @@ def advisory_triage(store_id: int, request: Request, question: str = ""):
     try:
         grounded = explain_store(
             store_id,
-            recommendation_records=read_log(),
+            recommendation_records=_readable_records(),
             event_records=[e.to_record() for e in _phase2_registry.read_events()],
             corpus=corpus,
             question=question,
@@ -1778,13 +1785,20 @@ def evaluate_phase2_portfolio(payload: dict = Body(default={}),
     return jsonable_encoder(report)
 
 
-def _board_records() -> list[dict[str, Any]]:
-    """Records the board classifies: JSONL log plus durable pending store.
+def _readable_records() -> list[dict[str, Any]]:
+    """The records every read-only surface classifies: log union pending store.
+
+    One choke point for the read surfaces (/board, /board/view,
+    /recommendations, /why, /advisory) so a store can never be listed on the
+    board and simultaneously "unexplainable" on its detail page.
 
     Union (log wins per store): the pending queue holds only gated records, so
     an either/or fallback drops every healthy CONTINUE/MONITOR store whenever
     the log is empty (Render diskless/disk-wiped -> 85 shows as 48). Pending
     fills gaps for gated stores missing from the log; it never removes log rows.
+    The pending store is a derived projection of the same records (app/state.py),
+    not a second source of truth, so the union cannot invent a store: every
+    record's fields were written by the deterministic engine.
     """
     log_records = read_log()
     seen = {r.get("store_id") for r in log_records if isinstance(r.get("store_id"), int)}
@@ -1827,13 +1841,13 @@ def get_status_board():
     where it is not. Pure classification over the persisted recommendation log;
     intervention entries are ordered by the monitor's attention ranking.
     Falls back to the durable pending store when the log is empty
-    (see _board_records) so the stakeholder surface self-heals disklessly.
+    (see _readable_records) so the stakeholder surface self-heals disklessly.
     """
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     pending_records = list(_pending_approvals.values())
     ranked = ranked_attention_queue(pending_records)
     board = build_board(
-        _board_records(),
+        _readable_records(),
         ranked_attention=ranked,
         pending_store_ids=set(_pending_approvals),
     )
@@ -1854,7 +1868,7 @@ def get_status_board_html():
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     ranked = rank_attention(list(_pending_approvals.values()))
     board = build_board(
-        _board_records(),
+        _readable_records(),
         ranked_attention=ranked,
         pending_store_ids=set(_pending_approvals),
     )

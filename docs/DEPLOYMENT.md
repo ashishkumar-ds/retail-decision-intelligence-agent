@@ -140,9 +140,11 @@ store durable, not the JSONL logs.
 The app needs **zero code changes** for the pending store: `storage/database.py` +
 `app/state.py` already select Postgres when `DATABASE_URL` is a `postgres://`
 URL and run the versioned migrations on first connect. Reads are diskless-durable
-too: `/board`, `/board/view` and `/recommendations` fall back to the durable
-pending store when the JSONL log is empty (see `_board_records` in `app/main.py`;
-log wins when present). This section is the click-through
+too: `/board`, `/board/view`, `/recommendations` and the `/why` detail page fall
+back to the durable pending store when the JSONL log is empty (see
+`_readable_records` in `app/main.py`; log wins when present). One union feeds
+every read surface, so a store the board lists is never unexplainable on its
+detail page. This section is the click-through
 (verified against Supabase docs 2026-10-10):
 
 1. **Supabase Dashboard → your project → Connect → Postgres.** Copy the

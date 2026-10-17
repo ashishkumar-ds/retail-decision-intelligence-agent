@@ -1,8 +1,9 @@
 """Board fallback: empty JSONL log + Supabase-backed pending store still serves.
 
-Covers the diskless-Render case: /board, /board/view and /recommendations
-classify the durable pending-approval records instead of answering empty.
-Log wins when present (system of record); pending fills the gap.
+Covers the diskless-Render case: /board, /board/view, /recommendations and the
+/why detail page classify the durable pending-approval records instead of
+answering empty. Log wins when present (system of record); pending fills the
+gap - so the board and the detail page never disagree about the same store.
 """
 from fastapi.testclient import TestClient
 
@@ -103,3 +104,46 @@ def test_log_wins_when_present(monkeypatch, tmp_path):
     assert board["total_stores"] == 2
     assert board["buckets"]["working_well"][0]["store_id"] == 9
     assert board["needs_decision"] == 1
+
+
+# --- /why detail page reads the same union as the board -----------------------
+
+def test_why_explains_a_store_that_only_exists_in_pending(monkeypatch, tmp_path):
+    """A store the board lists must be explainable on its detail page.
+
+    Diskless restart wipes the JSONL log while the pending store survives, so a
+    log-only /why answered "nothing to explain" for every store the board was
+    still showing - the two read surfaces disagreed about the same store.
+    """
+    main = _seeded_pending(monkeypatch, tmp_path)
+    client = TestClient(main.app)
+    assert client.get("/board").json()["total_stores"] == 1  # board lists store 7
+
+    body = client.get("/why/7").json()
+    assert body["store_id"] == 7
+    assert "no recommendation on record" not in body["narrative"]
+    assert "NEEDS_REVIEW" in body["narrative"]
+    # grounded: the pending record is cited like any other Tier-1 evidence
+    assert "recommendation-test" in [c["id"] for c in body["citations"]]
+    assert body["guard"]["numeric_grounding"] == "passed"
+
+
+def test_why_log_still_wins_when_present(monkeypatch, tmp_path):
+    """The union never demotes the system of record: when the log has the store,
+    the explanation cites the log record, not a stale gated one."""
+    import json
+
+    main = _seeded_pending(monkeypatch, tmp_path)
+    (tmp_path / "empty.jsonl").write_text(
+        json.dumps({"store_id": 7, "recommendation": "CONTINUE",
+                    "reason": "log says the plan is on track",
+                    "store_health_score": 61.0, "recovery_pct": 12.0,
+                    "days_remaining": 30, "confidence": 0.7,
+                    "requires_human_approval": False, "recommendation_id": "r-log",
+                    "forecast_status": "AVAILABLE",
+                    "generated_at": "2026-10-12T00:00:00+00:00"}) + "\n",
+        encoding="utf-8",
+    )
+    body = TestClient(main.app).get("/why/7").json()
+    assert "r-log" in [c["id"] for c in body["citations"]]
+    assert "recommendation-test" not in [c["id"] for c in body["citations"]]
