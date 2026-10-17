@@ -1016,6 +1016,28 @@ def _sweep_metric_lines() -> list[str]:
     return lines
 
 
+def _llm_budget_metric_lines() -> list[str]:
+    """The spend ceiling and its consumption, as gauges.
+
+    A spent daily budget degrades every request to the deterministic template
+    while still answering 200 - a fail-closed state with no user-visible error,
+    which is the whole reason ADR-0006 measures the off-path layers. Reporting
+    both numbers lets an alert fire on "used >= budget" instead of a reviewer
+    noticing that narratives stopped arriving. Unlimited (0) reports no ceiling.
+    """
+    budget = llm_budget.daily_call_budget()
+    if budget <= 0:
+        return []
+    return [
+        "# HELP retail_llm_daily_calls_used LLM calls consumed today (UTC).",
+        "# TYPE retail_llm_daily_calls_used gauge",
+        f"retail_llm_daily_calls_used {llm_budget.daily_used()}",
+        "# HELP retail_llm_daily_call_budget Account-wide daily LLM call ceiling.",
+        "# TYPE retail_llm_daily_call_budget gauge",
+        f"retail_llm_daily_call_budget {budget}",
+    ]
+
+
 def _llm_metric_lines() -> list[str]:
     """Off-path LLM layers: measured, never trusted (rag/llm_telemetry.py).
 
@@ -1023,10 +1045,11 @@ def _llm_metric_lines() -> list[str]:
     degradation to the deterministic output looks identical to health. Empty
     until the first event lands - an absent series is the honest representation.
     """
+    lines = _llm_budget_metric_lines()
     llm = summarise_llm_telemetry()
     if not llm["total"]:
-        return []
-    lines = ["# TYPE retail_offpath_llm_events_total counter"]
+        return lines
+    lines.append("# TYPE retail_offpath_llm_events_total counter")
     for (layer, outcome), count in sorted(llm["outcomes"].items()):
         lines.append(
             f'retail_offpath_llm_events_total{{layer="{layer}",outcome="{outcome}"}} {count}')
@@ -1046,6 +1069,26 @@ def _llm_metric_lines() -> list[str]:
         lines.append("# TYPE retail_prefilter_chunks_total counter")
         for key, value in sorted(prefilter.items()):
             lines.append(f'retail_prefilter_chunks_total{{result="{key}"}} {value}')
+    # Token accounting is the only cost signal the service has, and the cache
+    # read is how a stable prompt is told from a drifting one (ADR-0006 is why
+    # the layers are measured at all). Counters, per layer, provider-agnostic:
+    # the adapters normalise input/output/cache_read before they land here.
+    directions = {"tokens_in": "input", "tokens_out": "output"}
+    tokens = [((layer, directions[key]), value) for (layer, key), value in llm["counts"].items()
+              if key in directions]
+    if tokens:
+        lines.append("# TYPE retail_offpath_llm_tokens_total counter")
+        for (layer, direction), value in sorted(tokens):
+            lines.append(
+                f'retail_offpath_llm_tokens_total'
+                f'{{layer="{layer}",direction="{direction}"}} {value}')
+    cached = [(layer, value) for (layer, key), value in llm["counts"].items()
+              if key == "cache_read"]
+    if cached:
+        lines.append("# TYPE retail_offpath_llm_cache_read_tokens_total counter")
+        for layer, value in sorted(cached):
+            lines.append(
+                f'retail_offpath_llm_cache_read_tokens_total{{layer="{layer}"}} {value}')
     return lines
 
 

@@ -14,6 +14,17 @@ identical decisions and identical logs — one warning line at most. "Absence of
 failure metrics is not health" (the reasoning behind `RetailSweepStale`) applies
 to the LLM layers exactly as it applies to the sweep scheduler.
 
+The same trail carries the layer's cost and cache signals: every attempt that
+reached a provider records `tokens_in` / `tokens_out` / `cache_read` (normalised
+across providers in `rag/llm_usage.py`), and `/metrics` exposes them as
+`retail_offpath_llm_tokens_total` and
+`retail_offpath_llm_cache_read_tokens_total`. The daily call ceiling is reported
+as a gauge (`retail_llm_daily_calls_used` / `retail_llm_daily_call_budget`), so a
+spent budget - another fail-closed degradation with no user-visible error - is
+alertable rather than silent. The provider path itself is canaried nightly
+against the configured model (`.github/workflows/llm-smoke.yml`): a retired model
+or a rotated key looks exactly like health to a layer that always fails closed.
+
 `evaluation/llm_cases.py` + `evaluation/llm_evals.py` measure the other half:
 which drafts the gates must veto, and — holding the harness fixed and swapping
 in an adversarial provider — that no provider can get ungrounded content

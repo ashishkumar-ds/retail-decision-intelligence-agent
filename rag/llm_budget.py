@@ -64,6 +64,19 @@ def daily_call_budget() -> int:
     return _limit(os.getenv("LLM_DAILY_CALL_BUDGET"), 250)
 
 
+def daily_used(*, now: float | None = None) -> int:
+    """Calls consumed today (UTC). Read-only: this does not consume a slot.
+
+    Exposed so ``/metrics`` can show the spend ceiling next to its consumption.
+    A budget that silently degrades every request to the template is exactly the
+    kind of fail-closed state ADR-0006 says is invisible without a measurement.
+    """
+    stamp = now if now is not None else time.time()
+    today = time.strftime("%Y-%m-%d", time.gmtime(stamp))
+    with _lock:
+        return _daily_calls.get(today, 0)
+
+
 def reset() -> None:
     """Drop every counter. For tests, and for ops who need a manual reset."""
     with _lock:

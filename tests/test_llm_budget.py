@@ -56,6 +56,19 @@ def test_limits_of_zero_mean_unlimited(monkeypatch):
     assert all(llm_budget.daily_allowance(now=1.0 + i)[0] for i in range(50))
 
 
+def test_daily_used_is_read_only_and_tracks_consumption(monkeypatch):
+    """The gauge /metrics reads must observe spend without spending."""
+    _reset(monkeypatch, daily="5")
+    now = 3_000_000.0
+    assert llm_budget.daily_used(now=now) == 0
+    assert llm_budget.daily_used(now=now) == 0  # reading consumes nothing
+    llm_budget.daily_allowance(now=now)
+    llm_budget.daily_allowance(now=now)
+    assert llm_budget.daily_used(now=now) == 2
+    # Yesterday's count is not today's.
+    assert llm_budget.daily_used(now=now + 86_400) == 0
+
+
 def test_a_misconfigured_limit_falls_back_to_the_default_never_to_unlimited(monkeypatch):
     """A typo must not silently uncap the thing that guards the account."""
     _reset(monkeypatch, per_ip="twenty", daily="lots")

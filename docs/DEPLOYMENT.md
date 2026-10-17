@@ -92,6 +92,15 @@ per-instance and reset on deploy. That is fine for a demo and it is stated here
 rather than discovered later. The guard is on **spend, never on output**: the
 decision path does not know it exists.
 
+A spent budget is fail-closed but still answers `200`, so it must be visible:
+`/metrics` reports `retail_llm_daily_calls_used` against
+`retail_llm_daily_call_budget`, and every real call's `tokens_in` /
+`tokens_out` / `cache_read` land in the off-path telemetry trail and surface as
+`retail_offpath_llm_tokens_total` and
+`retail_offpath_llm_cache_read_tokens_total`. The scheduled canary
+(`.github/workflows/llm-smoke.yml`) makes one live call a night, so a retired
+model or a rotated key is caught before a visitor is the one who notices.
+
 Turning it on is two steps, and only the second one is secret:
 
 1. `render.yaml` already declares the switches (it is committed; it holds no key).
@@ -215,8 +224,10 @@ DATABASE_URL=postgresql://... python -m pytest tests/test_live_postgres.py -q
   runtime package is missing from the image, or if `.dockerignore` stops
   excluding `.env*` and `logs/`.
 - **Alerts**: `ops/observability/alerts.yml` ships the rules worth having
-  (decision concentration, sweep failures, sweep staleness, approval backlog);
-  `/metrics` is token-gated, so scrape with `authorization: Bearer`.
+  (decision concentration, sweep failures, sweep staleness, approval backlog,
+  and three for the off-path LLM: guard-rejection surge, degradation to
+  template, and a spent daily budget); `/metrics` is token-gated, so scrape with
+  `authorization: Bearer`.
 - **Egress**: `/metrics`, `/analytics/root-causes` and the board's root-cause
   section are the only surfaces that leave the process, and all reason text is
   numerically redacted before it is sent. `ROOT_CAUSE_TAGGING_ENABLED` gates

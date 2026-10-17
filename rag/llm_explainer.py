@@ -18,6 +18,7 @@ import time
 from typing import Any, Mapping, Sequence
 
 from . import llm_telemetry as telemetry
+from . import llm_usage
 from .corpus import CorpusChunk
 
 logger = logging.getLogger("retail_decision_agent.llm_explainer")
@@ -224,9 +225,19 @@ def _rephrase_openai_compat(block: str) -> str:
         raise LLMUnavailableError(f"openai_compat call failed: {error}") from error
     try:
         text = payload["choices"][0]["message"]["content"]
-        usage = payload.get("usage") or {}
-        logger.info("[LLM EXPLAIN] provider=openai_compat model=%s input=%s output=%s",
-                    model, usage.get("prompt_tokens"), usage.get("completion_tokens"))
+        raw_usage = payload.get("usage")
+        usage = raw_usage if isinstance(raw_usage, Mapping) else {}
+        details = usage.get("prompt_tokens_details")
+        # OpenAI-compatible providers report prompt-cache hits here (Groq does
+        # for supported models); absent means "no cache information", not zero.
+        cached = details.get("cached_tokens") if isinstance(details, Mapping) else None
+        llm_usage.set_last(
+            tokens_in=usage.get("prompt_tokens"),
+            tokens_out=usage.get("completion_tokens"),
+            cache_read=cached,
+        )
+        logger.info("[LLM EXPLAIN] provider=openai_compat model=%s input=%s output=%s cache_read=%s",
+                    model, usage.get("prompt_tokens"), usage.get("completion_tokens"), cached)
     except (KeyError, IndexError, TypeError) as error:
         raise LLMUnavailableError(f"openai_compat response malformed: {error}") from error
     return text or ""
@@ -272,6 +283,11 @@ def rephrase(store_id: int, question: str, template_narrative: str,
 
     text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
     usage = getattr(response, "usage", None)
+    llm_usage.set_last(
+        tokens_in=getattr(usage, "input_tokens", None),
+        tokens_out=getattr(usage, "output_tokens", None),
+        cache_read=getattr(usage, "cache_read_input_tokens", None),
+    )
     logger.info(
         "[LLM EXPLAIN] model=%s input=%s output=%s cache_read=%s",
         _model_name(),
@@ -346,10 +362,14 @@ def maybe_llm_narrative(store_id: int, question: str, template_narrative: str,
         return template_narrative, (
             f"deterministic-template ({skip_reason or 'LLM_EXPLANATIONS_ENABLED off'})")
     started = time.monotonic()
+    # A vetoed draft was still a paid call, so its tokens are counted too: the
+    # usage ledger is reset per attempt and folded into whichever outcome lands.
+    llm_usage.reset()
 
     def _record(outcome: str, **fields: Any) -> None:
         telemetry.record("explainer", outcome,
-                         latency_ms=(time.monotonic() - started) * 1000, **fields)
+                         latency_ms=(time.monotonic() - started) * 1000,
+                         counts=llm_usage.last(), **fields)
 
     try:
         draft = rephrase(store_id, question, template_narrative, evidence, retrieved)
