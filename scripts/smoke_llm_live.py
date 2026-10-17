@@ -49,17 +49,41 @@ if not os.getenv(_required_key):
           "(env or .env.local).", file=sys.stderr)
     sys.exit(2)
 
+def _synthetic_record(store_id: int) -> dict:
+    """A minimal, grounded record, so the smoke runs with no local audit trail.
+
+    A canary must not depend on this box's state: CI checks out a repo whose
+    ``logs/`` is gitignored, so a record that only exists locally would fail the
+    scheduled smoke for the wrong reason. Every number here is carried into the
+    evidence block, so the template built from it stays groundable.
+    """
+    return {
+        "store_id": store_id,
+        "recommendation_id": "rec-smoke0001",
+        "recommendation": "CONTINUE",
+        "confidence": 1.0,
+        "store_health_score": 100.0,
+        "recovery_pct": 4.0,
+        "days_remaining": 30,
+    }
+
+
 store_id = int(sys.argv[1]) if len(sys.argv) > 1 else None
 records = [r for r in read_log() if r.get("store_id")]
-if store_id is None:
-    if not records:
-        print("ERROR: no recommendation records in logs; pass a store_id.", file=sys.stderr)
+latest = None
+if store_id is not None:
+    latest = next((r for r in reversed(records) if r.get("store_id") == store_id), None)
+    if latest is None:
+        print(f"ERROR: no recommendation record for store {store_id}.", file=sys.stderr)
         sys.exit(2)
+elif records:
     store_id = records[-1]["store_id"]
-latest = next((r for r in reversed(records) if r.get("store_id") == store_id), None)
+    latest = next((r for r in reversed(records) if r.get("store_id") == store_id), None)
 if latest is None:
-    print(f"ERROR: no recommendation record for store {store_id}.", file=sys.stderr)
-    sys.exit(2)
+    store_id = store_id if store_id is not None else 317
+    latest = _synthetic_record(store_id)
+    print("note: no recommendation records in logs; using a synthetic grounded record.",
+          file=sys.stderr)
 
 # Build Tier-1 evidence the same shape /why uses (inline, no FastAPI needed).
 
