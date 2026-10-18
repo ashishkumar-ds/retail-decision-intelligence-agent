@@ -1,65 +1,174 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 /* Body is Roboto, the same face dunnhumby.com serves (OFL). Display stays Space Grotesk: dunnhumby's display face TESCOModern is proprietary with no public license, so this is the closest neutral grotesk fallback. */
 /* impeccable-disable overused-font: Space Grotesk is the documented brand fallback, not a default pick */
-:root{--teal:#38b2ab;--mint:#edf8f5;--indigo:#26245c;--ink:#202044;--muted:#71818b;--line:#d7e5e1;--surface:#fff;--peach:#f9e8dc;--lavender:#e7e6f6;--yellow:#f5e9b8;--green:#d9f0e8}*{box-sizing:border-box}body{margin:0;background:var(--mint);color:var(--ink);font-family:'Roboto',sans-serif}a{color:inherit;text-decoration:none}.topline{height:6px;background:var(--teal)}.shell{max-width:1240px;margin:0 auto;padding:0 34px}.nav{display:flex;justify-content:space-between;align-items:center;padding:25px 0 16px}.brand{display:flex;align-items:center;gap:11px;letter-spacing:-.03em}.brand-logo{display:block;color:var(--indigo);font:700 19px/1 'Roboto',Arial,sans-serif;letter-spacing:-.08em}.brand-divider{width:1px;height:22px;background:var(--line)}.brand-product{font:600 14px 'Roboto',Arial,sans-serif;color:var(--muted);letter-spacing:-.02em}.navlinks{display:flex;gap:27px;color:var(--muted);font-size:13px}.navlinks a{color:var(--indigo);font-weight:700}.read-only{display:flex;align-items:center;gap:7px}.read-only i,.live-dot i{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block}.hero{display:flex;justify-content:space-between;align-items:end;padding:66px 0 45px}.eyebrow{display:block;text-transform:uppercase;letter-spacing:.16em;font-size:10px;font-weight:700;color:#2e9892}.hero h1{font:700 clamp(40px,6vw,70px)/.96 'Space Grotesk';letter-spacing:-.07em;margin:13px 0 18px}.hero h1 span{color:var(--teal)}.hero p{max-width:460px;color:var(--muted);font-size:16px;line-height:1.55}.hero-meta{display:flex;flex-direction:column;align-items:flex-end;gap:7px;color:var(--muted);font-size:12px}.hero-meta strong{color:var(--indigo);font-size:13px}.live-dot{display:flex;align-items:center;gap:8px;color:#2e9892;font-weight:700;margin-bottom:2px}.summary{display:grid;grid-template-columns:1.4fr repeat(5,1fr);gap:10px;margin-bottom:57px}.summary-intro,.summary-card{min-height:130px;border-radius:18px;padding:20px}.summary-intro{background:var(--indigo);color:#fff}.summary-intro .eyebrow{color:#8bd4ce}.summary-intro h2{font:600 24px 'Space Grotesk';letter-spacing:-.04em;margin:25px 0 4px}.summary-intro p{color:#b3b6d2;font-size:12px}.summary-card{position:relative;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}.summary-card span{font-size:12px;color:var(--muted);line-height:1.25}.summary-card strong{font:700 33px 'Space Grotesk';letter-spacing:-.06em}.summary-card i{position:absolute;width:44px;height:44px;border-radius:50%;right:-12px;bottom:-13px;background:var(--green)}.summary-card.critical i{background:var(--peach)}.summary-card.recovering i{background:var(--lavender)}.summary-card.watch i{background:var(--yellow)}.section{margin-bottom:70px}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:18px}.section-head h2{font:600 30px 'Space Grotesk';letter-spacing:-.05em;margin-top:9px}.served{font-size:12px;color:var(--muted);padding-bottom:5px}.bucket{background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:13px}.bucket-head{display:flex;align-items:center;gap:15px;padding:17px 21px;border-bottom:1px solid #edf2f0}.bucket-marker{width:10px;height:10px;border-radius:50%;background:var(--teal)}.bucket.critical .bucket-marker{background:#e7886e}.bucket.recovering .bucket-marker{background:#7975c5}.bucket.watch .bucket-marker{background:#d1a52c}.bucket-head h3{font:600 16px 'Space Grotesk';margin:0 0 3px}.bucket-head span{font-size:12px;color:var(--muted)}.store-row{display:grid;grid-template-columns:90px minmax(0,1fr) 100px;gap:22px;padding:21px;border-bottom:1px solid #edf2f0;align-items:start}.store-row:last-child{border-bottom:0}.store-leading{display:flex;flex-direction:column;gap:3px}.store-id{font:700 25px 'Space Grotesk';letter-spacing:-.05em}.store-caption{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}.tier{font-size:10px;color:#2e9892;text-transform:uppercase;margin-top:9px}.store-main{min-width:0}.row-title{display:flex;align-items:center;gap:10px;justify-content:space-between}.row-title h3{font:600 17px 'Space Grotesk';margin:0;letter-spacing:-.025em}.store-main>p{font-size:13px;color:var(--muted);line-height:1.45;margin:5px 0 17px}.status{border-radius:99px;padding:5px 9px;font-size:10px;font-weight:700;white-space:nowrap}.status.available{background:var(--green);color:#247b6f}.status.error{background:var(--peach);color:#a84e3f}.status.no_data{background:#eef1f0;color:#66767b}.metric-row{display:flex;gap:29px;flex-wrap:wrap}.metric{display:flex;flex-direction:column;gap:4px}.metric span,.decision span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}.metric strong{font:600 14px 'Space Grotesk'}.detail-link{align-self:center;color:#2e9892;font-size:12px;font-weight:700;text-align:right}.detail-link span{font-size:17px;margin-left:5px}.decision{margin-top:18px;background:#f7fbfa;border:1px solid var(--line);border-radius:13px;padding:14px}.decision-kicker{color:#2e9892;font-size:10px;text-transform:uppercase;letter-spacing:.13em;font-weight:700;margin-bottom:12px}.decision-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}.decision strong{display:block;font:600 13px 'Space Grotesk';margin-top:4px}.decision p{font-size:12px;color:var(--muted);margin:12px 0 7px;line-height:1.45}.decision small{color:#9aa9a8;font-size:10px}.empty{padding:24px 22px;color:var(--muted);font-size:13px}.notice{padding:13px 16px;background:var(--peach);border:1px solid #edc7b9;border-radius:12px;color:#8e4c40;font-size:13px}.loading{padding:60px 0;color:var(--muted)}.footer{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:22px;padding-bottom:32px;color:#879797;font-size:11px}@media(max-width:900px){.summary{grid-template-columns:repeat(3,1fr)}.summary-intro{grid-column:span 3}.hero{padding-top:45px}.store-row{grid-template-columns:72px minmax(0,1fr)}.detail-link{grid-column:2;text-align:left}.shell{padding:0 20px}}@media(max-width:600px){.navlinks{gap:12px}.brand em{display:none}.hero{display:block;padding:42px 0 30px}.hero-meta{align-items:flex-start;margin-top:24px}.summary{grid-template-columns:repeat(2,1fr);margin-bottom:40px}.summary-intro{grid-column:span 2}.summary-card{min-height:105px}.section-head{display:block}.served{display:block;margin-top:10px}.store-row{grid-template-columns:1fr;gap:14px}.detail-link{grid-column:auto}.row-title{align-items:flex-start;flex-direction:column}.decision-grid{grid-template-columns:1fr}.footer{display:block;line-height:1.8}}
+/* One stylesheet for both pages: the board (/), the "why" page (/store/[id]).
+   Small-text tokens are chosen to clear WCAG AA (4.5:1) on mint, white and
+   #f6faf9 - the teal that reads fine as a 6px bar does not read fine as 10px
+   uppercase text, so --teal stays brand and --teal-text carries words. */
+:root {
+  --teal: #38b2ab;      /* brand: bar, markers, dots (non-text) */
+  --teal-text: #17645f; /* 6.4:1 on mint - labels, links, eyebrows */
+  --mint: #edf8f5;
+  --indigo: #26245c;
+  --ink: #202044;
+  --muted: #4f6069;     /* 6.0:1 on mint */
+  --line: #d7e5e1;
+  --surface: #fff;
+  --panel: #f6faf9;
+  --peach: #f9e8dc;
+  --red-ink: #a1432c;
+  --green: #d9f0e8;
+  --yellow: #f5e9b8;
+  --amber-ink: #8a5a12;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: var(--mint); color: var(--ink); font-family: 'Roboto', sans-serif }
+a { color: inherit; text-decoration: none }
+.topline { height: 6px; background: var(--teal) }
+.shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
-/* Stakeholder readability pass: 3 KPI tiles, intervention-first sections,
-   compact rows, collapsible buckets. Appended overrides (no edits above). */
-.hero{padding:38px 0 30px}
-.hero h1{font-size:clamp(32px,4.5vw,52px)}
-.summary{grid-template-columns:1.2fr repeat(3,1fr);margin-bottom:36px}
-.summary-intro,.summary-card{min-height:112px}
-.section{margin-bottom:8px}
-.bucket{margin-bottom:18px;border:1px solid var(--line);border-radius:16px;padding:6px 18px 14px;background:var(--surface)}
-button.bucket-head{display:flex;width:100%;align-items:center;gap:12px;background:none;border:0;padding:14px 0;cursor:pointer;font:inherit;color:inherit;text-align:left}
-.bucket-toggle{margin-left:auto;width:34px;height:34px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--line);color:var(--muted);background:#f6faf9;transition:transform .2s ease,background .2s ease,color .2s ease}
-.bucket-head:hover .bucket-toggle{border-color:var(--teal);color:#2e9892}
-.bucket-toggle.open{transform:rotate(180deg);background:var(--indigo);border-color:var(--indigo);color:#fff}
-.show-toggle{display:block;margin:4px auto 8px;background:none;border:1px solid var(--line);border-radius:999px;padding:7px 18px;font:600 12px 'Roboto',sans-serif;color:var(--indigo);cursor:pointer}
-.store-row{display:grid;grid-template-columns:150px 1fr auto;gap:18px;align-items:start;padding:16px 0}
-.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
-.metric-row.secondary .metric{opacity:.75}
-.metric{background:#f6faf9;border-radius:10px;padding:8px 12px}
-.directional-note{margin:8px 0 0;font-size:11.5px;color:var(--muted);font-style:italic}
-.store-row.compact{grid-template-columns:110px 1fr auto;gap:12px;align-items:center;padding:9px 0}
-.store-row.compact .store-id{font-weight:700;color:var(--indigo)}
-.compact-reason{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.decision{margin-top:12px;padding:10px 14px;background:#f6faf9;border-radius:10px}
-@media(max-width:900px){.summary{grid-template-columns:repeat(2,1fr)}.metric-row{grid-template-columns:repeat(2,1fr)}.store-row{grid-template-columns:1fr}}
+/* --- chrome ------------------------------------------------------------- */
+.nav { display: flex; justify-content: space-between; align-items: center; padding: 22px 0 18px }
+.brand { display: flex; align-items: center; gap: 11px; letter-spacing: -.03em }
+img.brand-logo { display: block; height: 19px; width: auto }
+.brand-divider { width: 1px; height: 22px; background: var(--line) }
+.brand-product { font: 600 14px 'Roboto', Arial, sans-serif; color: var(--muted); letter-spacing: -.02em }
+.navlinks { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px }
+.read-only { display: flex; align-items: center; gap: 7px }
+.read-only i, .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block }
 
-/* Nav brand on narrow screens: "retail decision intelligence agent" is too long
-   to sit beside the dunnhumby wordmark below 600px, so the product name is
-   dropped at the same breakpoint that hides .brand em - the wordmark alone
-   identifies the page. The divider goes with it, or it dangles with nothing on
-   its right. */
-@media(max-width:600px){.brand-product,.brand-divider{display:none}}
+/* Header: identity plus data freshness. The numbers come next, so this is a
+   header, not a hero - a 52px title pushed the first figure below the fold. */
+.board-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 10px 0 22px; border-bottom: 1px solid var(--line) }
+.board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 8px 0 0 }
+.eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text) }
+.freshness { margin: 0; font-size: 12.5px; color: var(--muted); text-align: right }
 
-/* The nav wordmark is the real dunnhumby logo (public/dunnhumby.svg), so the
-   text metrics on .brand-logo no longer apply - size it by height and let the
-   intrinsic 401:93 ratio set the width. */
-img.brand-logo{height:19px;width:auto}
+/* --- summary: the gate sentence, then three counts that add up to it ----- */
+.summary { margin: 26px 0 30px }
+.gate-line { margin: 0 0 16px; font-size: 16px; color: var(--ink) }
+.gate-line strong { font: 700 26px 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.05em; color: var(--indigo); margin-right: 6px }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px }
+.tile { display: flex; flex-direction: column; gap: 5px; min-height: 104px; padding: 16px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: inherit }
+.tile:hover { border-color: var(--teal) }
+.tile:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.tile-count { font: 700 34px/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.06em }
+.tile-label { font-size: 12.5px; font-weight: 600; color: var(--muted) }
+.tile-caption { font-size: 11.5px; color: var(--muted) }
+.tile.attention { border-color: #e3b4a6; background: #fdf4f0 }
+.tile.attention .tile-count { color: var(--red-ink) }
+.tile.review { border-color: #cfd9d7; background: var(--panel) }
+.tile.idle .tile-count { color: var(--teal-text) }
 
-/* Store detail (/store/[id]) - the "why" page. These classes were referenced by
-   the page but never defined, so the detail view rendered as unstyled stacks of
-   chips carrying 40-character record ids. Numbers are rendered exactly as the
-   API serves them; nothing here computes. */
-.back{display:inline-block;font-weight:700;font-size:13px;color:#2e9892}
-.detail-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:20px;align-items:start;padding-bottom:40px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px 26px}
-.section-title{font:700 15px 'Space Grotesk','Roboto',sans-serif;color:var(--indigo);margin:0 0 14px;letter-spacing:-.01em}
-.narrative{font-size:15px;line-height:1.7;color:var(--ink);margin:0}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.chip{display:inline-flex;align-items:center;gap:6px;background:#f6faf9;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--indigo)}
-.chip b{color:#2e9892;font-weight:700}
-.chips .badge{border:1px solid var(--line);background:#f6faf9;border-radius:999px;padding:5px 12px;font-size:12px;color:var(--indigo)}
-.chips .badge.ok{border-color:var(--teal);background:var(--green)}
-.chips .badge.warn{border-color:#e8d79a;background:var(--yellow)}
-.kv{display:flex;justify-content:space-between;gap:18px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
-.kv:last-child{border-bottom:0}
-.kv span{color:var(--muted)}
-.kv strong{color:var(--indigo);text-align:right;max-width:62%}
-.kv code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-details.raw{margin:18px 0 0}
-details.raw summary{cursor:pointer;font-size:12px;color:var(--muted)}
-details.raw pre{background:#f6faf9;border:1px solid var(--line);border-radius:10px;padding:12px;font-size:11px;overflow:auto;max-height:320px}
-@media(max-width:900px){.detail-grid{grid-template-columns:1fr}}
+/* --- one section per group --------------------------------------------- */
+.section { margin-bottom: 18px; padding: 4px 20px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface) }
+.bucket-head { display: flex; width: 100%; align-items: center; gap: 12px; padding: 16px 0; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer }
+.bucket-head:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px; border-radius: 8px }
+.bucket-head h2 { font: 600 19px 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em; margin: 0 }
+.bucket-count { display: block; margin-top: 3px; font-size: 12px; color: var(--muted) }
+.bucket-marker { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--teal) }
+.section.attention .bucket-marker { background: #e7886e }
+.section.review .bucket-marker { background: #8fa5a2 }
+.bucket-toggle { margin-left: auto; width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: var(--panel); color: var(--muted); transition: transform .2s ease, background .2s ease, color .2s ease }
+.bucket-head:hover .bucket-toggle { border-color: var(--teal); color: var(--teal-text) }
+.bucket-toggle.open { transform: rotate(180deg); background: var(--indigo); border-color: var(--indigo); color: #fff }
+/* One note per group, never one per row. */
+.bucket-note { margin: 0 0 14px; max-width: 84ch; font-size: 12.5px; line-height: 1.55; color: var(--muted) }
+.shared-decision { margin-bottom: 14px }
+.shared-decision .decision { margin-top: 0 }
+.show-toggle { display: block; margin: 6px auto 2px; padding: 7px 18px; border: 1px solid var(--line); border-radius: 999px; background: none; font: 600 12px 'Roboto', sans-serif; color: var(--indigo); cursor: pointer }
+.show-toggle:hover { border-color: var(--teal) }
+.show-toggle:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.empty { padding: 6px 0 10px; color: var(--muted); font-size: 13px }
+
+/* --- store rows -------------------------------------------------------- */
+.store-row { display: grid; grid-template-columns: 128px minmax(0, 1fr) auto; gap: 18px; align-items: start; padding: 16px 0; border-top: 1px solid var(--line) }
+.store-leading { display: block }
+/* min-width:0 lets the reason sentence wrap instead of widening the grid. */
+.store-main { min-width: 0 }
+.store-id { font: 700 17px 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em; color: var(--indigo) }
+.store-id:hover { text-decoration: underline }
+.state { display: block; margin-top: 4px; font-size: 11.5px; color: var(--muted) }
+.row-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px }
+/* The reason is the row's headline: it is the only text that explains why the
+   store is here, and it is recorded evidence rather than our summary of it. */
+.reason { margin: 0; font-size: 14px; line-height: 1.55 }
+.facts { display: flex; gap: 30px; margin: 12px 0 0 }
+.fact { margin: 0 }
+.fact-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
+.fact-value { margin: 3px 0 0; font: 600 15px 'Roboto', sans-serif; color: var(--indigo) }
+.detail-link { align-self: center; font-size: 12px; font-weight: 700; color: var(--teal-text); text-align: right; white-space: nowrap }
+.detail-link:hover { text-decoration: underline }
+.status { border-radius: 99px; padding: 5px 10px; font-size: 10px; font-weight: 700; white-space: nowrap }
+.status.available { background: var(--green); color: var(--teal-text) }
+.status.error { background: var(--peach); color: var(--red-ink) }
+.status.no_data { background: #eef1f0; color: var(--muted) }
+
+/* --- the decision block ------------------------------------------------ */
+.decision { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--teal); border-radius: 10px; background: var(--panel) }
+.decision-kicker { display: block; margin-bottom: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--teal-text) }
+.decision-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.decision-grid span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
+.decision-grid strong { display: block; margin-top: 3px; font-size: 13.5px; color: var(--indigo) }
+.decision p { margin: 10px 0 0; font-size: 13px; line-height: 1.5 }
+.decision-note { display: block; margin-top: 8px; font-size: 11.5px; color: var(--muted) }
+.id-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 0 8px }
+.id-chip { padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12.5px; font-weight: 600; color: var(--indigo) }
+.id-chip:hover { border-color: var(--teal) }
+.caveat { margin: 6px 0 28px; max-width: 84ch; font-size: 11.5px; line-height: 1.55; color: var(--muted) }
+
+.notice { margin: 16px 0; padding: 13px 16px; border: 1px solid #edc7b9; border-radius: 12px; background: var(--peach); color: #8e4c40; font-size: 13px }
+.loading { padding: 56px 0; color: var(--muted) }
+.footer { display: flex; justify-content: space-between; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px }
+
+/* --- store detail (/store/[id]) - the "why" page ----------------------- */
+.hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 34px 0 30px }
+.hero h1 { font: 700 clamp(30px, 4.5vw, 46px)/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.06em; margin: 13px 0 18px }
+.hero p { max-width: 460px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55 }
+.hero-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--muted); font-size: 12px }
+.hero-meta strong { color: var(--indigo); font-size: 13px }
+.live-dot { display: flex; align-items: center; gap: 8px; color: var(--teal-text); font-weight: 700; margin-bottom: 2px }
+.back { display: inline-block; font-weight: 700; font-size: 13px; color: var(--teal-text) }
+.back:hover { text-decoration: underline }
+.detail-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; padding-bottom: 40px }
+.panel { padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface) }
+.section-title { font: 700 15px 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.01em; color: var(--indigo); margin: 0 0 14px }
+.narrative { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12px; color: var(--indigo) }
+.chip b { color: var(--teal-text); font-weight: 700 }
+.chip code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px }
+.chips .badge { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--panel); font-size: 12px; color: var(--indigo) }
+.chips .badge.ok { border-color: var(--teal); background: var(--green); color: var(--teal-text) }
+.chips .badge.warn { border-color: #e8d79a; background: var(--yellow); color: var(--amber-ink) }
+.kv { display: flex; justify-content: space-between; gap: 18px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px }
+.kv:last-child { border-bottom: 0 }
+.kv span { color: var(--muted) }
+.kv strong { color: var(--indigo); text-align: right; max-width: 62% }
+.kv code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px }
+details.raw { margin: 18px 0 0 }
+details.raw summary { cursor: pointer; font-size: 12px; color: var(--muted) }
+details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 11px; overflow: auto; max-height: 320px }
+.directional-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); font-style: italic }
+
+/* --- narrow screens ---------------------------------------------------- */
+/* "retail decision intelligence agent" cannot sit beside the wordmark below
+   600px, so the product name and its divider drop out - the wordmark alone
+   identifies the page, and the divider would dangle with nothing on its right. */
+@media (max-width: 600px) {
+  .brand-product, .brand-divider { display: none }
+}
+@media (max-width: 900px) {
+  .shell { padding: 0 20px }
+  .board-head { display: block; padding-top: 4px }
+  .freshness { margin-top: 10px; text-align: left }
+  .tiles { grid-template-columns: 1fr }
+  .store-row { grid-template-columns: 96px minmax(0, 1fr); gap: 14px }
+  .detail-link { grid-column: 2; align-self: start; margin-top: 10px; text-align: left }
+  .facts { gap: 22px }
+  .decision-grid { grid-template-columns: 1fr; gap: 10px }
+  .detail-grid { grid-template-columns: 1fr }
+  .hero { display: block }
+  .hero-meta { align-items: flex-start; margin-top: 20px }
+  .footer { display: block; line-height: 1.8 }
+}
