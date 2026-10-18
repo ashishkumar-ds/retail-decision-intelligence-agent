@@ -25,8 +25,9 @@ or with `curl -s <url> | python3 -m json.tool`.
 `http://localhost:8001/board` — the five stores in the bundled Campaign 18
 recording. The live [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/)
 serves the full 85-store portfolio.
-> "Every store is scored each cycle and sorted into needs-decision, responding
-> and awaiting-data, so the buyer's first screen is a triage list, not a table."
+> "Every store is scored each cycle and sorted into needs-a-decision, needs-review
+> (no forecast signal) and no-action-needed, so the buyer's first screen is a
+> triage list, not a table."
 
 ### 3. One decision, fully explained — the core of the pitch
 `http://localhost:8001/why/317` — the machine-readable answer.

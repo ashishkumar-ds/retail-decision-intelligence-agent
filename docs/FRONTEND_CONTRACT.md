@@ -16,9 +16,11 @@ renders what the API says and computes nothing.
 3. **Measured vs projected stays visible.** Money from an outcome renders
    plain; a prior projection renders with a `~` prefix and `(proj.)` label.
    Never sum the two.
-4. **`forecast_status` is a first-class badge:** `AVAILABLE` (fresh),
-   `NO_DATA` (business gap), `ERROR` (upstream down — show "feed stale",
-   never pretend it is zero).
+4. **`forecast_status` is a first-class signal, not decoration:** `ERROR`
+   (upstream down) renders "feed delayed" and `NO_DATA` (business gap) renders
+   when the row is not already inside the no-forecast-signal group. `AVAILABLE`
+   renders no badge — it is the default on every other row, and 37 identical
+   "forecast available" chips are noise. Never render a missing forecast as zero.
 
 ## Setup
 
@@ -38,6 +40,9 @@ renders what the API says and computes nothing.
 ```jsonc
 {
   "total_stores": 5,
+  "needs_decision": 2,          // every gated row, counted across buckets
+  "as_of": "2026-10-18T14:02:00+00:00",
+  "as_of_display": "18 Oct 2026 14:02 UTC+00:00",  // render this, never re-format
   "counts": { "needs_intervention": 2, "working_well": 3, "recovering": 0,
               "watch": 0, "insufficient_data": 0 },
   "buckets": { "<bucket>": [ /* entries below */ ] },
@@ -46,12 +51,35 @@ renders what the API says and computes nothing.
                  "where_it_is_not_working_and_why": [ {"store_id": 299, "why": "..."} ] }
 }
 ```
-Bucket entry (always): `store_id, recommendation, confidence, store_health_score,
-recovery_pct, days_remaining, recommendation_id, decision_status, forecast_status,
-uplift_pct, did_uplift_pct, causal_state, reason`.
-Additions on approval-gated rows: `attention_rank, attention_tier, why_not_working,
-default_action, fallback_action, risk, cost_of_inaction` — render these as the
-decision card ("decide at /ui/approvals", NOT as buttons here).
+Bucket entry (always): `store_id, state, bucket, recommendation, confidence,
+store_health_score, recovery_pct, days_remaining, recommendation_id, generated_at,
+decision_status, decision_status_label, forecast_status, uplift_pct,
+did_uplift_pct, causal_state, reason`. `state` is the row's own bucket word - print
+it even when a surface groups buckets, or the group heading overstates the rows in it.
+
+Gated rows (`requires_human_approval`) additionally carry `why_not_working,
+attention_rank, attention_tier, default_action, fallback_action, default_action_label,
+fallback_action_label, risk, commitment_label, cost_of_inaction`. **Gating is a
+property of the policy, not of the persisted flag** — a `NEEDS_REVIEW` row with no
+forecast signal is gated (and counted in `needs_decision`) whether or not the flag
+was written, so `needs_decision` is the real human workload. Render it; never
+derive a gated count in the browser.
+
+Print the `*_label` fields. `EXTEND_INTERVENTION`, `cautious` and
+`awaiting_decision` are machine tokens; a stakeholder surface says "Extend the
+intervention", "Commits this cycle's budget", "Awaiting a decision" — and a row
+whose `decision_status` is already `approved`/`rejected` says so instead of
+asking for the same decision again. Approvals happen at `/ui/approvals` on the
+API host; do not link there from this board or imply that it approves anything.
+
+### What belongs on a row, and what does not
+
+A row carries the three numbers a decision needs (`store_health_score`,
+`recovery_pct`, `days_remaining`) and one reason sentence. `confidence`,
+`recovery_velocity`, `recovery_direction`, `baseline_forecast`/`current_forecast`,
+`days_elapsed`, `uplift_pct`, `did_uplift_pct`, `causal_state` and `evidence_state`
+are evidence for `/store/[id]`. Measured uplift is empty on every row until an
+evaluation window closes: it is a caveat, stated once, not eight columns of `—`.
 
 ### `GET /recommendations`
 `{"total_stores": 5, "read_only": true, "recommendations": [ /* records */ ]}`
@@ -72,8 +100,12 @@ markers appear; never rewrite the sentences.
 
 ## Design tokens (match the server-rendered UI)
 
-`teal #38b2ab` primary · `mint #ebf7f5` background · `indigo #26245c` text ·
-border `#d9e5e2`. Footer: `© 2026 retail decision intelligence agent · dunnhumby`.
+`teal #38b2ab` (brand bar, markers, dots - non-text only) · `teal-text #17645f`
+(links, labels, eyebrows) · `mint #edf8f5` background · `indigo #26245c` headings ·
+`ink #202044` body · `muted #4f6069` secondary text · border `#d7e5e1` ·
+panel `#f6faf9`. The small-text tokens are the ones that clear WCAG AA 4.5:1 on
+mint, white and panel — `#38b2ab` is 2.4:1 and must never carry text. Footer:
+`© 2026 <LICENSE holder> · data: dunnhumby`.
 
 ---
 
@@ -83,17 +115,37 @@ border `#d9e5e2`. Footer: `© 2026 retail decision intelligence agent · dunnhum
 Build a read-only dashboard called "Retail Decision Board" (Next.js + Tailwind + shadcn/ui),
 client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
 
-1) Board: KPI tiles (total_stores; counts from /board), then one card per bucket
-   in this order needs_intervention, working_well, recovering, watch, insufficient_data,
-   each listing store rows: store_id, recommendation, health, recovery_pct,
-   days_remaining, forecast_status badge, uplift_pct/did_uplift_pct/causal_state.
-   Rows with default_action show a decision card: default vs fallback, risk label,
-   cost_of_inaction text - static text only, NO action buttons.
+1) Board, in this order:
+   a. A compact header (product name, campaign label/timing_window from /board,
+      "Data as of {as_of_display}"). NOT a hero: no 50px title, no paragraph
+      restating the tiles. The first figure must be above the fold.
+   b. One sentence: "{needs_decision} of {total_stores} stores are waiting on a
+      human decision." Then three tiles that add up to it: needs_intervention
+      ("Need a decision"), insufficient_data ("Needs review (no data)"), and
+      working_well+recovering+watch merged ("No action needed", captioned with
+      the per-bucket split). Tiles link to their section.
+   c. One collapsible section per tile group. Rows show store_id, row.state,
+      the one reason sentence, and exactly three numbers: health, recovery_pct,
+      days_remaining ("N days left"). Gated rows show a decision block:
+      default_action_label vs fallback_action_label, commitment_label, and
+      cost_of_inaction - static text, NO buttons, and an already-decided row
+      says "Already decided · {decision_status_label}".
+      When every row in a group is gated and shares one recommendation (the
+      no-forecast-signal group), state the decision ONCE for the group and list
+      the store ids - 47 identical blocks are noise, not information.
+   d. One caveat line for the whole board about measured uplift, never one per row.
 2) Store detail /store/[id]: fetch /why/{id} and render narrative + citation chips.
+
+Do NOT put on a row: confidence, recovery_velocity, recovery_direction, forecast
+baseline/current, days_elapsed, uplift_pct, did_uplift_pct, causal_state,
+evidence_state. Those belong on the detail page. Do NOT render a forecast badge
+for AVAILABLE (it is the default on every row); show a chip only for ERROR
+("feed delayed") and for a missing forecast that is not already the group's story.
 
 Rules: GET only, no auth, no mutations; poll /board every 60s; on 502/504 show
 "service waking up..." and retry once after 30s; render numbers exactly as served
-(no client math); money with "~" prefix + "(proj.)" when flagged as projection;
-forecast_status ERROR renders a "feed stale" chip. Palette: teal #38b2ab, mint #ebf7f5,
-indigo #26245c; footer "© 2026 retail decision intelligence agent · dunnhumby".
+(no client math, no timezone conversion - print as_of_display); money with "~"
+prefix + "(proj.)" when flagged as projection. Palette: teal #38b2ab (non-text),
+teal-text #17645f, mint #edf8f5, indigo #26245c; footer
+"© 2026 <LICENSE holder> · data: dunnhumby".
 ```
