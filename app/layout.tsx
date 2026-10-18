@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Retail Decision Intelligence Agent',
-  description: 'Store review. Which stores are responding, which need a decision, and which are waiting on data.',
+  description: 'Store review. Which stores need a decision, which have no signal to judge, and which need no action.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
