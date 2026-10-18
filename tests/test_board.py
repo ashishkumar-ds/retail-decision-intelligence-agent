@@ -142,6 +142,70 @@ def test_gated_stores_need_intervention():
 def test_watch_is_flat_mid_band_without_gating():
     rec = _rec(recommendation="MONITOR", store_health_score=50.0, recovery_pct=-0.5)
     assert classify_store(rec) == BUCKET_WATCH
+
+
+def test_no_data_store_is_still_a_decision_a_human_owns():
+    """The 47-store bucket is review workload, not dead data.
+
+    A no-forecast-signal store cannot be evaluated, so the choice is review the
+    gap or leave it alone - and that choice is gated, carries the same option
+    pair as every other gated row, and states its own reason. The board reads
+    "waiting on a human decision" for it, never a silent zero.
+    """
+    rec = _rec(7, recommendation="NEEDS_REVIEW", store_health_score=0.0,
+               recovery_pct=0.0, forecast_status="NO_DATA",
+               forecast_signal_available=False)
+    board = build_board([rec])
+    entry = board["buckets"][BUCKET_NO_DATA][0]
+    assert entry["requires_human_approval"] is True
+    assert entry["default_action"] == "NEEDS_REVIEW"
+    assert entry["fallback_action"] == "MONITOR"
+    assert entry["commitment_label"] == "Moves committed money"
+    assert "no forecast signal" in entry["why_not_working"].lower()
+    assert board["needs_decision"] == 1
+
+
+def test_legacy_gated_row_without_the_flag_still_counts():
+    """A log row written before the flag existed is still a gated action.
+
+    guardrails' policy is the source of truth: keying the count on the
+    persisted flag let the board read "1 needs a decision" while 47 gated
+    stores sat beside it.
+    """
+    legacy = _rec(7, recommendation="NEEDS_REVIEW", store_health_score=0.0,
+                  recovery_pct=0.0, forecast_status="NO_DATA",
+                  forecast_signal_available=False)
+    legacy.pop("requires_human_approval")  # written before the flag existed
+    board = build_board([legacy, _rec(8)])  # plus an ungated CONTINUE
+    assert board["needs_decision"] == 1
+    assert board["buckets"][BUCKET_NO_DATA][0]["default_action"] == "NEEDS_REVIEW"
+    assert "default_action" not in board["buckets"][BUCKET_WORKING][0]
+
+
+def test_board_reports_data_freshness_not_poll_interval():
+    records = [_rec(1, generated_at="2026-10-11T00:00:00+00:00"),
+               _rec(2, generated_at="2026-10-11T06:30:00+00:00")]
+    assert build_board(records)["as_of"] == "2026-10-11T06:30:00+00:00"
+    assert build_board([_rec(3)])["as_of"] is None  # nothing to date-stamp
+
+
+def test_every_row_carries_its_own_state_word():
+    """A surface that groups buckets still prints the true state per row.
+
+    The stakeholder tiles merge on-track/momentum/watch into one group; the
+    row's own word is what stops that merge from overstating the stores in it.
+    """
+    records = [
+        _rec(1),  # on track
+        _rec(2, recommendation="MONITOR", store_health_score=56.7, recovery_pct=1.0),
+        _rec(3, recommendation="MONITOR", store_health_score=50.0, recovery_pct=-0.5),
+    ]
+    buckets = build_board(records)["buckets"]
+    assert buckets[BUCKET_WORKING][0]["state"] == "On track"
+    assert buckets[BUCKET_RECOVERING][0]["state"] == "Building momentum"
+    assert buckets[BUCKET_WATCH][0]["state"] == "Watch"
+
+
 def test_every_store_lands_in_exactly_one_bucket():
     records = [
         _rec(1), _rec(2, recommendation="MONITOR", store_health_score=56.7, recovery_pct=1.0),
@@ -196,6 +260,25 @@ def test_decision_status_reflects_pending_and_decided():
     board = build_board(records, pending_store_ids={2})
     assert board["buckets"][BUCKET_WORKING][0]["decision_status"] == "approved"
     assert board["buckets"][BUCKET_INTERVENE][0]["decision_status"] == "awaiting_decision"
+    # ...and the machine token is served with the sentence a board prints
+    assert board["buckets"][BUCKET_WORKING][0]["decision_status_label"] == "Approved"
+    assert board["buckets"][BUCKET_INTERVENE][0]["decision_status_label"] == "Awaiting a decision"
+
+
+def test_html_board_prints_readable_freshness_and_status():
+    """A human-readable page prints sentences, not machine tokens."""
+    from presentation.board import format_as_of
+    records = [_rec(1, generated_at="2026-10-18T14:02:00+00:00"),
+               _rec(2, recommendation="ESCALATE", store_health_score=30.0,
+                    recovery_pct=-5.0, requires_human_approval=True,
+                    generated_at="2026-10-18T14:02:00+00:00")]
+    page = render_board_html(build_board(records, pending_store_ids={2}))
+    assert "data as of 18 Oct 2026 14:02 UTC+00:00" in page
+    assert "Awaiting a decision" in page
+    assert "awaiting_decision" not in page
+    # a stamp we cannot parse is shown as served, never silently dropped
+    assert format_as_of("not-a-date") == "not-a-date"
+    assert format_as_of(None) == ""
 
 
 def test_questions_answer_the_three_manager_questions():
@@ -249,9 +332,14 @@ def test_html_board_shows_decision_options_on_intervention_rows():
                  assessment="NEGATIVE", uplift=-2.0, did=-6.0, state="REFUTED")),
     ]
     page = render_board_html(build_board(records))
-    assert "Decision (default → fallback / risk)" in page
-    assert "PAUSE_INTERVENTION → MONITOR / reversible" in page
-    assert "cost of" in page or "With no action" in page
+    assert "Decision (recommended → alternative · commitment)" in page
+    # the option pair, the commitment and the counterfactual all reach the page
+    assert "Pause the intervention → Monitor only · Undoable this cycle" in page
+    assert "With no action" in page
+    # ...in stakeholder wording: the raw engine code is not a board headline
+    assert "PAUSE_INTERVENTION" not in page
+    # the ungated row keeps an empty decision cell rather than a blank prompt
+    assert "<td class='decision'>-</td>" in page
 
 
 def test_html_view_escapes_and_renders_all_buckets():

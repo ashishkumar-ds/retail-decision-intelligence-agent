@@ -33,7 +33,7 @@ from __future__ import annotations
 import html
 from typing import Any, Mapping, Sequence
 
-from guardrails import choice_pair, cost_of_inaction, risk_of
+from guardrails import choice_pair, cost_of_inaction, requires_human_approval, risk_of
 
 BUCKET_WORKING = "working_well"
 BUCKET_RECOVERING = "recovering"
@@ -56,6 +56,76 @@ BUCKET_LABELS = {
 }
 
 HEALTH_ON_TRACK = 70.0   # scorer's HEALTH_HIGH decision boundary
+
+# Stakeholder wording for the engine's action vocabulary and reversibility
+# tiers. The codes stay on the entry (machine consumers, /why citations); the
+# labels are what a board prints, so both board surfaces read the same sentence
+# and a non-technical reviewer never sees EXTEND_INTERVENTION as a headline.
+ACTION_LABELS = {
+    "CONTINUE": "Continue as planned",
+    "MONITOR": "Monitor only",
+    "EXTEND_INTERVENTION": "Extend the intervention",
+    "PAUSE_INTERVENTION": "Pause the intervention",
+    "ESCALATE": "Escalate to a senior reviewer",
+    "NEEDS_REVIEW": "Review the data gap",
+    "RETARGET_SEGMENT": "Retarget the segment",
+    "TIMING_SHIFT": "Shift the campaign timing",
+    "REALLOCATE_BUDGET": "Reallocate budget",
+}
+# Tier semantics are guardrails' (commitment, not process weight) — see
+# guardrails/__init__.py. "cautious" alone reads as vague to a stakeholder.
+COMMITMENT_LABELS = {
+    "reversible": "Undoable this cycle",
+    "cautious": "Commits this cycle's budget",
+    "irreversible": "Moves committed money",
+}
+
+
+def action_label(code: Any) -> str:
+    """Stakeholder wording for an action code; degrades to the code itself."""
+    text = str(code or "").strip()
+    if not text:
+        return "-"
+    return ACTION_LABELS.get(text, text.replace("_", " ").capitalize())
+
+
+def commitment_label(tier: Any) -> str:
+    return COMMITMENT_LABELS.get(str(tier or ""), str(tier or "-"))
+
+
+# decision_status is a machine token ("awaiting_decision"); a board prints it
+# as a sentence, and an already-decided store must not still read "Decision
+# needed" - the engine re-decides every sweep, so a row can be both.
+DECISION_STATUS_LABELS = {
+    "awaiting_decision": "Awaiting a decision",
+    "approved": "Approved",
+    "rejected": "Rejected",
+}
+
+
+def decision_status_label(status: Any) -> str | None:
+    if status in (None, ""):
+        return None
+    return DECISION_STATUS_LABELS.get(str(status), str(status).replace("_", " "))
+
+
+def format_as_of(value: Any) -> str:
+    """Readable timestamp for the HTML view; the raw value if unparseable.
+
+    Display only - the offset is preserved as written, never normalised to
+    UTC, so the stamp says exactly what the record says.
+    """
+    text = str(value or "")
+    if not text:
+        return ""
+    try:
+        from datetime import datetime
+        stamp = datetime.fromisoformat(text)
+    except ValueError:
+        return text
+    offset = stamp.strftime("%z")
+    zone = f" UTC{offset[:3]}:{offset[3:]}" if len(offset) == 5 else ""
+    return stamp.strftime("%d %b %Y %H:%M") + zone
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -91,6 +161,20 @@ def _no_signal(rec: Mapping[str, Any]) -> bool:
     if rec.get("forecast_signal_available") is True:
         return False
     return rec.get("forecast_status", "NO_DATA") in ("NO_DATA", "ERROR")
+
+
+def _gated(rec: Mapping[str, Any]) -> bool:
+    """Whether the human gate holds this record.
+
+    guardrails' policy is the single source of truth; the persisted flag counts
+    as an additional yes, never as the only one. Log rows written before the
+    flag existed still describe a gated action — a NEEDS_REVIEW row without the
+    flag is still a review a human owns — and keying on the flag alone let the
+    board read "1 needs a decision" while 47 gated stores sat next to it.
+    """
+    if rec.get("requires_human_approval") is True:
+        return True
+    return requires_human_approval(str(rec.get("recommendation") or ""))
 
 
 def _outcome_working(outcome: Mapping[str, Any]) -> str | None:
@@ -156,19 +240,26 @@ def why_not_working(rec: Mapping[str, Any]) -> str:
     return str(rec.get("reason") or "") or "no recorded reason; review the recommendation record."
 
 
-def _entry(rec: Mapping[str, Any], decision_status: str | None,
+def _entry(rec: Mapping[str, Any], decision_status: str | None, bucket: str,
            attention: Mapping[str, Any] | None = None) -> dict[str, Any]:
     outcome = _mapping(rec.get("outcome_evidence"))
     causal = _mapping(outcome.get("causal_evidence"))
     entry: dict[str, Any] = {
         "store_id": rec.get("store_id"),
+        # The row's own state word, from the bucket the engine put it in. A
+        # surface that groups buckets (the stakeholder tiles) still prints the
+        # true state per row, so "no action needed" can never overstate.
+        "state": BUCKET_LABELS[bucket],
+        "bucket": bucket,
         "recommendation": rec.get("recommendation"),
         "confidence": rec.get("confidence"),
         "store_health_score": rec.get("store_health_score"),
         "recovery_pct": rec.get("recovery_pct"),
         "days_remaining": rec.get("days_remaining"),
         "recommendation_id": rec.get("recommendation_id"),
+        "generated_at": rec.get("generated_at"),
         "decision_status": decision_status,
+        "decision_status_label": decision_status_label(decision_status),
         # Forecast SLO signal: AVAILABLE (fresh) vs NO_DATA (business gap) vs
         # ERROR (integration failure — feed down, last-good NOT cached, the
         # store sits in NEEDS_REVIEW until the feed recovers).
@@ -195,16 +286,30 @@ def _entry(rec: Mapping[str, Any], decision_status: str | None,
     if attention is not None:
         entry["attention_rank"] = attention.get("attention_rank")
         entry["attention_tier"] = attention.get("attention_tier")
-    if rec.get("requires_human_approval") is True:
-        entry["why_not_working"] = why_not_working(rec)
-        # Choice architecture (guardrails/__init__.py): for an approval-gated
-        # store, surface the default-vs-fallback option set, the reversibility
-        # of the action, and the cost of doing nothing - so the board tells a
+    if _gated(rec):
+        entry["requires_human_approval"] = True
+        if _no_signal(rec):
+            # A gated store with no forecast signal is a decision the human
+            # owns: the engine cannot evaluate it, so the choice is review the
+            # gap or leave it alone. Stated once, in the same shape as every
+            # other gated row.
+            entry["why_not_working"] = (
+                "No forecast signal for this store — the campaign effect cannot be "
+                "evaluated until the feed recovers."
+            )
+        else:
+            entry["why_not_working"] = why_not_working(rec)
+        # Choice architecture (guardrails/__init__.py): for a gated store,
+        # surface the default-vs-fallback option set, the reversibility of the
+        # action, and the cost of doing nothing - so the board tells a
         # stakeholder WHAT to decide, not just THAT something needs deciding.
         pair = choice_pair(rec.get("recommendation", ""))
         if pair is not None:
             entry["default_action"], entry["fallback_action"] = pair
+            entry["default_action_label"] = action_label(pair[0])
+            entry["fallback_action_label"] = action_label(pair[1])
         entry["risk"] = risk_of(rec.get("recommendation", ""))
+        entry["commitment_label"] = commitment_label(entry["risk"])
         entry["cost_of_inaction"] = cost_of_inaction(rec)
     elif _no_signal(rec):
         entry["why_not_working"] = "no forecast signal for this store — cannot evaluate without data."
@@ -267,110 +372,191 @@ def build_board(records: Sequence[Mapping[str, Any]],
         bucket = classify_store(rec)
         status = _decision_status(rec, store_id, pending_store_ids)
         buckets[bucket].append(_entry(
-            rec, status, attention_by_store.get(store_id),
+            rec, status, bucket, attention_by_store.get(store_id),
         ))
 
     _sort_buckets(buckets)
     counts = {name: len(entries) for name, entries in buckets.items()}
-    # note: the gated workload spans buckets (NEEDS_REVIEW is approval-gated
-    # but classified as no-data) — one hero count so the gate never reads 0.
-    needs_decision = sum(1 for entries in buckets.values() for e in entries if e.get("decision_status") == "awaiting_decision" or "default_action" in e)
+    latest = latest_by_store(records)
+    # note: the gated workload spans buckets (NEEDS_REVIEW is gated but
+    # classified as no-data) — one hero count so the gate never reads 0. The
+    # count follows the guardrails policy, not the persisted flag, so a row
+    # written before the flag existed still counts as a decision a human owns.
+    needs_decision = sum(1 for entries in buckets.values() for e in entries
+                         if e.get("requires_human_approval") is True)
+    # Freshness the stakeholder can check: the newest sweep among the records
+    # this board is actually showing. The poll interval is a property of the
+    # screen; this is a property of the data.
+    as_of = max((str(r.get("generated_at")) for r in latest.values()
+                 if r.get("generated_at")), default=None)
     return {
         "total_stores": sum(counts.values()),
         "needs_decision": needs_decision,
+        "as_of": as_of,
+        # Display-ready, so no surface re-formats a served stamp into the
+        # viewer's timezone: the board prints the record's own clock and offset.
+        "as_of_display": format_as_of(as_of) or None,
         "counts": counts,
         "buckets": buckets,
         "questions": _build_questions(buckets),
     }
+# --- the server-rendered HTML view -------------------------------------------
+# Tabular copy lives in constants, not in the render function: the gate in CI
+# fails any function that reaches D, and prose in a loop is complexity that buys
+# nothing.
+
+BOARD_HEADINGS = {
+    BUCKET_INTERVENE: "Needs intervention — awaiting a human decision",
+    BUCKET_WORKING: "Campaign working well — on track",
+    BUCKET_RECOVERING: "Building momentum — positive, not yet at target",
+    BUCKET_WATCH: "Watch — flat or declining, no action required yet",
+    BUCKET_NO_DATA: "Needs review (no data) — no forecast signal, gated for a human",
+}
+# Stated once per bucket, never on every row: the 47 identical sentences a
+# per-row note produced told the reader nothing the count did not.
+BOARD_NOTES = {
+    BUCKET_NO_DATA: (
+        "No forecast signal reached these stores, so the campaign effect cannot be "
+        "evaluated for them. No data is not zero — it is no verdict. Each one is "
+        "gated for a human: review the data gap, or leave it on monitor."
+    ),
+    BUCKET_INTERVENE: (
+        "The engine has already chosen the options; a human picks one. Nothing on "
+        "this page approves anything."
+    ),
+}
+BOARD_COLUMNS = ("<tr><th>Store</th><th>Recommendation</th><th>Health</th><th>Recovery %</th>"
+                 "<th>Days left</th><th>Status</th>"
+                 "<th>Decision (recommended → alternative · commitment)</th>"
+                 "<th>Why / reason</th></tr>")
+BOARD_STYLE = (
+    "body{font-family:system-ui,sans-serif;margin:24px;color:#111}"
+    ".ctx{color:#555;font-size:13px;margin:0 0 4px}"
+    ".gate{font-size:15px;margin:0 0 16px}"
+    ".tiles{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0 28px}"
+    ".tile{border:1px solid #ddd;border-radius:8px;padding:10px 16px;min-width:120px}"
+    ".tile .n{font-size:28px;font-weight:700;display:block}"
+    ".tile .label{color:#555;font-size:12px;text-transform:capitalize}"
+    ".needs_intervention{border-color:#c0392b}.working_well{border-color:#1e8449}"
+    ".note{color:#555;font-size:12.5px;margin:0 0 10px;max-width:78ch}"
+    "table{border-collapse:collapse;width:100%;margin-bottom:28px;font-size:13px}"
+    "th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}"
+    "th{background:#f5f5f5}.why{max-width:300px}.decision{max-width:250px}"
+    ".cost{color:#555;font-size:12px}.empty{color:#999;text-align:center}"
+)
+
+
+def _esc(value: Any) -> str:
+    return html.escape(str(value if value is not None else "-"))
+
+
+def _decision_cell(entry: Mapping[str, Any]) -> str:
+    """Recommended → alternative, what it commits, and the counterfactual."""
+    if not entry.get("default_action"):
+        return "-"
+    recommended = entry.get("default_action_label") or action_label(entry["default_action"])
+    alternative = entry.get("fallback_action_label") or action_label(entry.get("fallback_action"))
+    decision = f"{recommended} → {alternative} · {entry.get('commitment_label') or '-'}"
+    cost = entry.get("cost_of_inaction")
+    return f"{decision}<br><span class='cost'>{_esc(cost)}</span>" if cost else decision
+
+
+def _row_html(entry: Mapping[str, Any]) -> str:
+    why = entry.get("why_not_working") or entry.get("reason") or "-"
+    days = entry.get("days_remaining")
+    days_cell = f"{_esc(days)} days left" if days is not None else "-"
+    return (
+        f"<tr><td>{_esc(entry.get('store_id'))}</td>"
+        f"<td>{_esc(action_label(entry.get('recommendation')))}</td>"
+        f"<td>{_esc(entry.get('store_health_score'))}</td>"
+        f"<td>{_esc(entry.get('recovery_pct'))}</td><td>{days_cell}</td>"
+        f"<td>{_esc(entry.get('decision_status_label') or '-')}</td>"
+        f"<td class='decision'>{_decision_cell(entry)}</td>"
+        f"<td class='why'>{_esc(why)}</td></tr>"
+    )
+
+
+def _section_html(name: str, entries: Sequence[Mapping[str, Any]]) -> str:
+    note = BOARD_NOTES.get(name)
+    note_html = f"<p class='note'>{_esc(note)}</p>" if note else ""
+    rows = "".join(_row_html(entry) for entry in entries)
+    body = rows or "<tr><td colspan='8' class='empty'>none</td></tr>"
+    return (f"<h2>{_esc(BOARD_HEADINGS[name])} ({_esc(len(entries))})</h2>"
+            f"{note_html}<table>{BOARD_COLUMNS}{body}</table>")
+
+
+def _root_causes_html(board: Mapping[str, Any]) -> str:
+    """Optional analytics section (analytics/root_cause.py).
+
+    Present only when the caller supplied it (the endpoint gates it behind
+    ROOT_CAUSE_TAGGING_ENABLED, because rendering must not silently send text
+    to a third party). Absent -> nothing rendered.
+    """
+    root_causes = board.get("root_causes") or {}
+    if not root_causes.get("counts"):
+        return ""
+    rows = "".join(
+        f"<tr><td>{_esc(label)}</td><td>{_esc(count)}</td></tr>"
+        for label, count in sorted(root_causes["counts"].items(), key=lambda item: -item[1])
+    )
+    drivers = ", ".join(f"{_esc(label)} ({_esc(count)})"
+                        for label, count in sorted(root_causes.get("driver_counts", {}).items(),
+                                                   key=lambda item: -item[1]))
+    return (
+        f"<h2>Root causes across the estate ({_esc(root_causes.get('tagged'))} tagged)</h2>"
+        f"<table><tr><th>Root cause</th><th>Stores</th></tr>{rows}</table>"
+        f"<p class='note'>Drivers: {drivers or '-'}. "
+        f"{_esc(root_causes.get('status'))} — labels are advisory analytics, "
+        "never a decision input.</p>"
+    )
+
+
+def _board_context(board: Mapping[str, Any]) -> str:
+    """Campaign identity and data freshness, both served by the API.
+
+    Never inferred, and stated once for the page rather than per section.
+    """
+    campaign = board.get("campaign") if isinstance(board.get("campaign"), Mapping) else {}
+    label = " ".join(str(campaign.get(key) or "") for key in ("label", "timing_window")).strip()
+    return " · ".join(part for part in (
+        label,
+        f"{board.get('total_stores')} stores",
+        f"data as of {board.get('as_of_display') or format_as_of(board.get('as_of'))}"
+        if board.get("as_of") else "",
+    ) if part)
+
+
 def render_board_html(board: Mapping[str, Any],
                       title: str = "Retail Decision Intelligence — Store Board") -> str:
     """Server-rendered read-only HTML view (no client JS, no external assets).
 
-    All dynamic strings are HTML-escaped; the board is evidence-cited text.
+    Trimmed to the same shape as the stakeholder board: one place states how
+    fresh the data is, one place states the gated workload, and each row
+    carries the three numbers a decision needs plus its one reason. The
+    measured-uplift columns are gone — they stay empty until an evaluation
+    window closes, and the reason text already names the measured lift when
+    there is one. All dynamic strings are HTML-escaped; the board is
+    evidence-cited text.
     """
-    def esc(value: Any) -> str:
-        return html.escape(str(value if value is not None else "-"))
-
+    counts = board.get("counts", {})
     tiles = "".join(
-        f'<div class="tile {esc(name)}"><span class="n">{esc(count)}</span>'
-        f'<span class="label">{esc(BUCKET_LABELS.get(name, name))}</span></div>'
-        for name, count in board.get("counts", {}).items()
+        f'<div class="tile {_esc(name)}"><span class="n">{_esc(count)}</span>'
+        f'<span class="label">{_esc(BUCKET_LABELS.get(name, name))}</span></div>'
+        for name, count in counts.items()
     )
-
-    headings = {
-        BUCKET_INTERVENE: "Needs intervention — awaiting a human decision",
-        BUCKET_WORKING: "Campaign working well",
-        BUCKET_RECOVERING: "Recovering (positive momentum, not yet at target)",
-        BUCKET_WATCH: "Watch — no action required yet",
-        BUCKET_NO_DATA: "Needs review (no data) — flagged for analyst review",
-    }
-    columns = ("<tr><th>Store</th><th>Recommendation</th><th>Health</th><th>Recovery %</th>"
-               "<th>Days left</th><th>Uplift %</th><th>DiD %</th><th>Status</th>"
-               "<th>Decision (default → fallback / risk)</th><th>Why / reason</th></tr>")
-    sections: list[str] = []
-    for name in BUCKET_ORDER:
-        entries = board.get("buckets", {}).get(name, [])
-        if not entries:
-            continue  # note: zero-count buckets carry no decision value
-        rows = []
-        for e in entries:
-            why = e.get("why_not_working") or e.get("reason") or "-"
-            cost = e.get("cost_of_inaction")
-            if cost:
-                why = f"{why} — {cost}"
-            # Decision options are only meaningful on the intervention bucket.
-            if e.get("default_action") and e.get("fallback_action"):
-                decision = f"{e['default_action']} → {e['fallback_action']} / {e.get('risk') or '-'}"
-            else:
-                decision = "-"
-            rows.append(
-                f"<tr><td>{esc(e.get('store_id'))}</td><td>{esc(e.get('recommendation'))}</td>"
-                f"<td>{esc(e.get('store_health_score'))}</td><td>{esc(e.get('recovery_pct'))}</td>"
-                f"<td>{esc(e.get('days_remaining'))}</td><td>{esc(e.get('uplift_pct'))}</td>"
-                f"<td>{esc(e.get('did_uplift_pct'))}</td><td>{esc(e.get('decision_status') or '-')}</td>"
-                f"<td class='decision'>{esc(decision)}</td><td class='why'>{esc(why)}</td></tr>"
-            )
-        body = "".join(rows) or "<tr><td colspan='10' class='empty'>none</td></tr>"
-        sections.append(
-            f"<h2>{esc(headings[name])} ({esc(len(entries))})</h2>"
-            f"<table>{columns}{body}</table>"
-        )
-
-    # Optional analytics section (analytics/root_cause.py): present only when
-    # the caller supplied it (the endpoint gates it behind
-    # ROOT_CAUSE_TAGGING_ENABLED, because rendering must not silently send
-    # text to a third party). Absent -> nothing rendered.
-    root_causes = board.get("root_causes") or {}
-    if root_causes.get("counts"):
-        rows = "".join(
-            f"<tr><td>{esc(label)}</td><td>{esc(count)}</td></tr>"
-            for label, count in sorted(root_causes["counts"].items(),
-                                       key=lambda item: -item[1])
-        )
-        drivers = ", ".join(f"{esc(label)} ({esc(count)})"
-                            for label, count in sorted(root_causes.get("driver_counts", {}).items(),
-                                                       key=lambda item: -item[1]))
-        sections.append(
-            f"<h2>Root causes across the estate ({esc(root_causes.get('tagged'))} tagged)</h2>"
-            f"<table><tr><th>Root cause</th><th>Stores</th></tr>{rows}</table>"
-            f"<p class='empty'>Drivers: {drivers or '-'}. "
-            f"{esc(root_causes.get('status'))} — labels are advisory analytics, "
-            "never a decision input.</p>"
-        )
+    # note: zero-count buckets carry no decision value
+    buckets = board.get("buckets", {})
+    sections = [_section_html(name, buckets.get(name, []))
+                for name in BUCKET_ORDER if buckets.get(name)]
+    sections.append(_root_causes_html(board))
+    gate_line = (f"<strong>{_esc(board.get('needs_decision'))}</strong> of "
+                 f"{_esc(board.get('total_stores'))} stores are waiting on a human decision.")
 
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
-        f"<title>{esc(title)}</title><style>"
-        "body{font-family:system-ui,sans-serif;margin:24px;color:#111}"
-        ".tiles{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0}"
-        ".tile{border:1px solid #ddd;border-radius:8px;padding:10px 16px;min-width:120px}"
-        ".tile .n{font-size:28px;font-weight:700;display:block}"
-        ".tile .label{color:#555;font-size:12px;text-transform:capitalize}"
-        ".needs_intervention{border-color:#c0392b}.working_well{border-color:#1e8449}"
-        "table{border-collapse:collapse;width:100%;margin-bottom:28px;font-size:13px}"
-        "th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}"
-        "th{background:#f5f5f5}.why{max-width:340px}.decision{max-width:200px}.empty{color:#999;text-align:center}"
-        "</style></head><body>"
-        f"<h1>{esc(title)}</h1><div class='tiles'><div class='tile needs_intervention'><span class='n'>{esc(board.get('needs_decision', ''))}</span><span class='label'>Needs decision</span></div>{tiles}</div>{''.join(sections)}"
+        f"<title>{_esc(title)}</title><style>{BOARD_STYLE}</style></head><body>"
+        f"<h1>{_esc(title)}</h1><p class='ctx'>{_esc(_board_context(board))}</p>"
+        f"<p class='gate'>{gate_line}</p>"
+        f"<div class='tiles'>{tiles}</div>{''.join(sections)}"
         "</body></html>"
     )
