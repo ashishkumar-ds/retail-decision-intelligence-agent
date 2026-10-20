@@ -37,7 +37,7 @@ const NO_ACTION_CAPTIONS: [string, string][] = [
 // reader nothing the count did not.
 const GROUP_NOTES: Record<string, string> = {
   insufficient_data:
-    'No forecast signal reached these stores, so the campaign effect cannot be evaluated. No data is not zero - it is no verdict. Approve a store once its data gap is understood, using the check beside its id.',
+    'No forecast signal reached these stores, so the campaign effect cannot be evaluated. No data is not zero - it is no verdict. Mark a store reviewed once its data gap is understood, using the check beside its id.',
   needs_intervention:
     'The engine has already chosen the options; a human picks one. Approving records the recommended action against your approval token.',
 }
@@ -119,6 +119,18 @@ function isPending(row: Row): boolean {
   return row.decision_status !== 'approved' && row.decision_status !== 'rejected'
 }
 
+// A no-data row is a review, not a budget approval. The same per-store write
+// records both, but the action should say what the human is actually doing.
+function isReview(row: Row): boolean {
+  return row.bucket === 'insufficient_data' || row.default_action === 'NEEDS_REVIEW'
+}
+
+function actionLabel(row: Row): string {
+  return isReview(row)
+    ? `Mark store ${row.store_id} reviewed`
+    : `Approve store ${row.store_id}`
+}
+
 // Freshness is a property of the data, not of the poll interval: the old board
 // said "updated every 60 seconds" three times and never said when the figures
 // were produced. The stamp is served display-ready, so the browser never
@@ -161,7 +173,7 @@ function Decision({ row }: { row: Row }) {
           <strong>{display(row.fallback_action_label || row.fallback_action)}</strong>
         </div>
         <div>
-          <span>If this is wrong</span>
+          <span>Commitment</span>
           <strong>{display(row.commitment_label || row.risk)}</strong>
         </div>
       </div>
@@ -169,7 +181,7 @@ function Decision({ row }: { row: Row }) {
       <small className="decision-note">
         {decided
           ? 'Recorded in the approval ledger.'
-          : 'Approval re-runs the guardrails and verifier at decision time.'}
+          : 'The decision re-runs the guardrails and verifier at decision time.'}
       </small>
     </div>
   )
@@ -299,11 +311,11 @@ function ApproveDialog({
         if (response.status === 401) setError('That token was not accepted. Check it and try again.')
         else if (response.status === 403) setError(/unknown/i.test(message)
           ? 'That token was not recognized. Check it and try again.'
-          : (message || 'This token is not allowed to approve.'))
+          : (message || 'This token is not allowed to record decisions.'))
         else if (response.status === 404) setError('This store is no longer pending a decision. The board will refresh.')
-        else if (response.status === 409) setError(message || 'The decision-time gate refused this approval. Nothing was recorded.')
-        else if (response.status === 503) setError('Approval is disabled on this deployment (no approval token is configured).')
-        else setError(message || 'Approval failed. Nothing was recorded.')
+        else if (response.status === 409) setError(message || 'The decision-time gate refused this action. Nothing was recorded.')
+        else if (response.status === 503) setError('Decisions are disabled on this deployment (no approval token is configured).')
+        else setError(message || 'The decision was not recorded.')
         return
       }
       try {
@@ -322,6 +334,8 @@ function ApproveDialog({
   }
 
   const fallback = target.fallback_action_label || target.fallback_action
+  const review = isReview(target)
+  const verb = review ? 'Mark store' : 'Approve store'
 
   return (
     <dialog
@@ -339,14 +353,22 @@ function ApproveDialog({
         {done ? (
           <>
             <span className="dialog-eyebrow">Recorded</span>
-            <h2 className="dialog-title">Store {display(target.store_id)} approved</h2>
-            <p className="dialog-sub">The decision is in the approval ledger and the board is refreshing.</p>
+            <h2 className="dialog-title">
+              Store {display(target.store_id)} {review ? 'marked reviewed' : 'approved'}
+            </h2>
+            <p className="dialog-sub">The decision is recorded and the board is refreshing.</p>
           </>
         ) : (
           <>
             <span className="dialog-eyebrow">Human decision</span>
-            <h2 className="dialog-title">Approve store {display(target.store_id)}?</h2>
-            <p className="dialog-sub">This records the recommended action against your approval token.</p>
+            <h2 className="dialog-title">
+              {verb} {display(target.store_id)}{review ? ' reviewed?' : '?'}
+            </h2>
+            <p className="dialog-sub">
+              {review
+                ? 'This records the data-gap review against your approval token.'
+                : 'This records the recommended action against your approval token.'}
+            </p>
             <p className="dialog-recommend">
               <strong>{display(target.default_action_label || target.default_action)}</strong>
               {fallback ? <> instead of {display(fallback)}</> : null}
@@ -382,7 +404,7 @@ function ApproveDialog({
                 Cancel
               </button>
               <button type="submit" className="button-primary" disabled={busy || !token.trim()}>
-                {busy ? 'Approving…' : 'Approve'}
+                {busy ? (review ? 'Marking…' : 'Approving…') : (review ? 'Mark reviewed' : 'Approve')}
               </button>
             </div>
           </>
@@ -473,12 +495,18 @@ export default function BoardPage() {
         ) : board && (
           <>
             <section className="summary">
-              {/* The one number the rest of the page has to add up to. */}
+              {/* The one number is the human workload; the split names the two
+                  kinds of work so no-data reviews never read as budget
+                  approvals. The tiles below use the same three counts. */}
               <p className="gate-line">
                 <strong>{display(board.needs_decision)}</strong>
                 {/* The flex gap is visual only; keep a real space in the text
                     so a screen reader does not say "85of 85". */}
-                <span>{' '}of {display(board.total_stores)} stores are waiting on a human decision.</span>
+                <span>
+                  {' '}of {display(board.total_stores)} stores:{' '}
+                  {display(countFor(board, 'needs_intervention'))} decisions,{' '}
+                  {display(countFor(board, 'insufficient_data'))}{' data\u00A0reviews.'}
+                </span>
               </p>
               <div className="tiles">
                 {GROUPS.map(group => (
@@ -561,8 +589,8 @@ export default function BoardPage() {
                             <button
                               type="button"
                               className="chip-approve"
-                              aria-label={`Approve store ${row.store_id}`}
-                              title={`Approve store ${row.store_id}`}
+                              aria-label={actionLabel(row)}
+                              title={actionLabel(row)}
                               onClick={() => setTarget(row)}
                             >
                               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -620,7 +648,7 @@ export default function BoardPage() {
                 : 'Data freshness unavailable'}
             </span>
           ) : null}
-          <span>Approvals are token-gated</span>
+          <span>Decisions are token-gated</span>
         </footer>
       </main>
 

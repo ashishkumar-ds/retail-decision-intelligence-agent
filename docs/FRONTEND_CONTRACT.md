@@ -47,7 +47,7 @@ renders what the API says and computes nothing.
   "total_stores": 5,
   "needs_decision": 2,          // every gated row, counted across buckets
   "as_of": "2026-10-18T14:02:00+00:00",
-  "as_of_display": "18 Oct 2026 14:02 UTC+00:00",  // render this, never re-format
+  "as_of_display": "18 Oct 2026, 14:02 UTC",  // render this, never re-format
   "counts": { "needs_intervention": 2, "working_well": 3, "recovering": 0,
               "watch": 0, "insufficient_data": 0 },
   "buckets": { "<bucket>": [ /* entries below */ ] },
@@ -70,13 +70,20 @@ forecast signal is gated (and counted in `needs_decision`) whether or not the fl
 was written, so `needs_decision` is the real human workload. Render it; never
 derive a gated count in the browser.
 
+`NEEDS_REVIEW` is a review, not a budget approval: its action is "Review the data
+gap" (fallback "Monitor only"), `risk` is `reversible`, and `commitment_label` is
+"No spend — review only". It still counts in `needs_decision` because a human owns
+the review. The gate sentence must name the split — "N of M stores: X decisions,
+Y data reviews" — so a no-data review never reads as an approval to move money.
+
 Print the `*_label` fields. `EXTEND_INTERVENTION`, `cautious` and
 `awaiting_decision` are machine tokens; a stakeholder surface says "Extend the
 intervention", "Commits this cycle's budget", "Awaiting a decision" — and a row
 whose `decision_status` is already `approved`/`rejected` says so instead of
 asking for the same decision again. Approve actions live on gated rows only
 (`requires_human_approval === true` and not already decided) and call
-`POST /api/approve/{id}`; see "Approval" below.
+`POST /api/approve/{id}`; see "Approval" below. For `insufficient_data` rows label
+the same write "Mark reviewed", not "Approve".
 
 ### What belongs on a row, and what does not
 
@@ -145,8 +152,9 @@ client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
    a. A compact header (product name, campaign label/timing_window from /board,
       "Data as of {as_of_display}"). NOT a hero: no 50px title, no paragraph
       restating the tiles. The first figure must be above the fold.
-   b. One sentence: "{needs_decision} of {total_stores} stores are waiting on a
-      human decision." Then three tiles that add up to it: needs_intervention
+   b. One sentence: "{needs_decision} of {total_stores} stores:
+      {counts.needs_intervention} decisions, {counts.insufficient_data} data
+      reviews." Then three tiles that add up to it: needs_intervention
       ("Need a decision"), insufficient_data ("Needs review (no data)"), and
       working_well+recovering+watch merged ("No action needed", captioned with
       the per-bucket split). Tiles link to their section.

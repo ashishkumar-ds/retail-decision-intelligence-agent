@@ -149,8 +149,8 @@ def test_no_data_store_is_still_a_decision_a_human_owns():
 
     A no-forecast-signal store cannot be evaluated, so the choice is review the
     gap or leave it alone - and that choice is gated, carries the same option
-    pair as every other gated row, and states its own reason. The board reads
-    "waiting on a human decision" for it, never a silent zero.
+    pair as every other gated row, and states its own reason. It is a data
+    review, not a budget approval: the label must not claim committed money.
     """
     rec = _rec(7, recommendation="NEEDS_REVIEW", store_health_score=0.0,
                recovery_pct=0.0, forecast_status="NO_DATA",
@@ -160,7 +160,8 @@ def test_no_data_store_is_still_a_decision_a_human_owns():
     assert entry["requires_human_approval"] is True
     assert entry["default_action"] == "NEEDS_REVIEW"
     assert entry["fallback_action"] == "MONITOR"
-    assert entry["commitment_label"] == "Moves committed money"
+    assert entry["risk"] == "reversible"
+    assert entry["commitment_label"] == "No spend — review only"
     assert "no forecast signal" in entry["why_not_working"].lower()
     assert board["needs_decision"] == 1
 
@@ -273,12 +274,15 @@ def test_html_board_prints_readable_freshness_and_status():
                     recovery_pct=-5.0, requires_human_approval=True,
                     generated_at="2026-10-18T14:02:00+00:00")]
     page = render_board_html(build_board(records, pending_store_ids={2}))
-    assert "data as of 18 Oct 2026 14:02 UTC+00:00" in page
+    assert "data as of 18 Oct 2026, 14:02 UTC" in page
     assert "Awaiting a decision" in page
     assert "awaiting_decision" not in page
     # a stamp we cannot parse is shown as served, never silently dropped
     assert format_as_of("not-a-date") == "not-a-date"
     assert format_as_of(None) == ""
+    assert format_as_of("2026-10-18T14:02:00+00:00") == "18 Oct 2026, 14:02 UTC"
+    # a non-zero offset keeps its own clock, never converted to UTC
+    assert format_as_of("2026-10-18T14:02:00+01:00") == "18 Oct 2026, 14:02 UTC+01:00"
 
 
 def test_questions_answer_the_three_manager_questions():

@@ -79,6 +79,11 @@ COMMITMENT_LABELS = {
     "cautious": "Commits this cycle's budget",
     "irreversible": "Moves committed money",
 }
+# The tier label describes budget exposure. A review has none, so the generic
+# reversible label ("Undoable this cycle") would still imply a budget action.
+ACTION_COMMITMENT_LABELS = {
+    "NEEDS_REVIEW": "No spend — review only",
+}
 
 
 def action_label(code: Any) -> str:
@@ -89,7 +94,10 @@ def action_label(code: Any) -> str:
     return ACTION_LABELS.get(text, text.replace("_", " ").capitalize())
 
 
-def commitment_label(tier: Any) -> str:
+def commitment_label(tier: Any, action: Any = None) -> str:
+    code = str(action or "")
+    if code in ACTION_COMMITMENT_LABELS:
+        return ACTION_COMMITMENT_LABELS[code]
     return COMMITMENT_LABELS.get(str(tier or ""), str(tier or "-"))
 
 
@@ -112,8 +120,8 @@ def decision_status_label(status: Any) -> str | None:
 def format_as_of(value: Any) -> str:
     """Readable timestamp for the HTML view; the raw value if unparseable.
 
-    Display only - the offset is preserved as written, never normalised to
-    UTC, so the stamp says exactly what the record says.
+    Display only - the clock is never converted. A zero offset prints as
+    "UTC" instead of the noisier "+00:00"; a non-zero offset is preserved.
     """
     text = str(value or "")
     if not text:
@@ -124,8 +132,13 @@ def format_as_of(value: Any) -> str:
     except ValueError:
         return text
     offset = stamp.strftime("%z")
-    zone = f" UTC{offset[:3]}:{offset[3:]}" if len(offset) == 5 else ""
-    return stamp.strftime("%d %b %Y %H:%M") + zone
+    if offset == "+0000":
+        zone = " UTC"
+    elif len(offset) == 5:
+        zone = f" UTC{offset[:3]}:{offset[3:]}"
+    else:
+        zone = ""
+    return stamp.strftime("%d %b %Y, %H:%M") + zone
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -309,7 +322,9 @@ def _entry(rec: Mapping[str, Any], decision_status: str | None, bucket: str,
             entry["default_action_label"] = action_label(pair[0])
             entry["fallback_action_label"] = action_label(pair[1])
         entry["risk"] = risk_of(rec.get("recommendation", ""))
-        entry["commitment_label"] = commitment_label(entry["risk"])
+        entry["commitment_label"] = commitment_label(
+            entry["risk"], rec.get("recommendation")
+        )
         entry["cost_of_inaction"] = cost_of_inaction(rec)
     elif _no_signal(rec):
         entry["why_not_working"] = "no forecast signal for this store — cannot evaluate without data."
@@ -538,7 +553,7 @@ def render_board_html(board: Mapping[str, Any],
     there is one. All dynamic strings are HTML-escaped; the board is
     evidence-cited text.
     """
-    counts = board.get("counts", {})
+    counts = board.get("counts") or {}
     tiles = "".join(
         f'<div class="tile {_esc(name)}"><span class="n">{_esc(count)}</span>'
         f'<span class="label">{_esc(BUCKET_LABELS.get(name, name))}</span></div>'
@@ -549,8 +564,12 @@ def render_board_html(board: Mapping[str, Any],
     sections = [_section_html(name, buckets.get(name, []))
                 for name in BUCKET_ORDER if buckets.get(name)]
     sections.append(_root_causes_html(board))
+    # The gate counts every human-owned row, including the no-data reviews.
+    # Name the split so "85 waiting" never reads as 85 budget approvals.
     gate_line = (f"<strong>{_esc(board.get('needs_decision'))}</strong> of "
-                 f"{_esc(board.get('total_stores'))} stores are waiting on a human decision.")
+                 f"{_esc(board.get('total_stores'))} stores: "
+                 f"{_esc(counts.get('needs_intervention', 0))} decisions, "
+                 f"{_esc(counts.get('insufficient_data', 0))} data&nbsp;reviews.")
 
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"
