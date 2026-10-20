@@ -96,21 +96,20 @@ function stateOf(row: Row): string {
   return String(row.state || BUCKET_STATE[row.bucket] || '')
 }
 
-// The series context a first-time visitor needs: which campaign, how many
-// stores, and the plan's fixed window. The campaign name is operator-set on the
-// API when available; otherwise it falls back to the series' locked Campaign 18
-// (Part 2). The store count is served, and 60 days is the recovery plan's fixed
-// window (CONTEXT.md), not a client-side calculation.
+// The series context a first-time visitor needs: which campaign and the plan's
+// fixed window. The campaign name is operator-set on the API when available;
+// otherwise it falls back to the series' locked Campaign 18 (Part 2). 60 days is
+// the recovery plan's fixed window (CONTEXT.md), not a client-side calculation.
+// The store count lives in the gate line, not here, so the header says 85 once.
 const CAMPAIGN_FALLBACK = 'Campaign 18'
 const RECOVERY_WINDOW = '60-day recovery'
 
 function contextLine(board: Board | null): string {
   const label = board?.campaign?.label || CAMPAIGN_FALLBACK
-  const stores = board?.total_stores != null ? `${board.total_stores} stores` : ''
-  // NBSP before each dot keeps it attached to the preceding segment when the
-  // line wraps on a 320px phone; the regular space after it is the break point,
-  // so a line never starts with a dangling separator.
-  return [label, stores, RECOVERY_WINDOW].filter(Boolean).join('\u00A0· ')
+  // NBSP before the dot keeps it attached to the preceding segment if the line
+  // wraps; the regular space after it is the break point, so a line never
+  // starts with a dangling separator.
+  return [label, RECOVERY_WINDOW].join('\u00A0· ')
 }
 
 // The one action on the board is gated: a record is approvable only when the
@@ -457,22 +456,12 @@ export default function BoardPage() {
           </div>
         </nav>
 
-        {/* Identity and freshness. Not a marketing hero: series context, a
-            plain line of purpose (the nav drops the product name on phones),
-            then the numbers. */}
+        {/* Identity. Not a marketing hero: series context, the page name, then
+            the numbers. Freshness lives in the footer so the header stays
+            three lines. */}
         <header className="board-head">
-          <div>
-            <span className="eyebrow">{contextLine(board)}</span>
-            <h1>Store recovery review</h1>
-            <p className="board-sub">What each store needs next, and why.</p>
-          </div>
-          {board ? (
-            <p className="freshness">
-              {board.as_of_display
-                ? `Data as of ${board.as_of_display}`
-                : 'Data freshness unavailable'}
-            </p>
-          ) : null}
+          <span className="eyebrow">{contextLine(board)}</span>
+          <h1>Store recovery review</h1>
         </header>
 
         {(waking || error) && (
@@ -624,6 +613,13 @@ export default function BoardPage() {
 
         <footer className="footer">
           <span>© 2026 Ashish Kumar · data: dunnhumby</span>
+          {board ? (
+            <span>
+              {board.as_of_display
+                ? `Data as of ${board.as_of_display}`
+                : 'Data freshness unavailable'}
+            </span>
+          ) : null}
           <span>Approvals are token-gated</span>
         </footer>
       </main>

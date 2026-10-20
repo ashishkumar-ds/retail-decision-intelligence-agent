@@ -40,13 +40,12 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .nav-status { display: flex; align-items: center; gap: 7px }
 .nav-status i, .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; flex: none }
 
-/* Header: identity plus data freshness. The numbers come next, so this is a
-   header, not a hero - a 52px title pushed the first figure below the fold. */
-.board-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
+/* Header: series context and the page name. The numbers come next, so this is
+   a header, not a hero - a 52px title pushed the first figure below the fold.
+   Data freshness lives in the footer, out of the reading path. */
+.board-head { padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
 .board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
-.board-sub { margin: 7px 0 0; max-width: 520px; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: pretty }
 .eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text); text-wrap: balance }
-.freshness { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); text-align: right }
 
 /* --- summary: the gate sentence, then three counts that add up to it ----- */
 .summary { margin: 24px 0 26px }
@@ -210,8 +209,7 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
    identifies the page, and the divider would dangle with nothing on its right. */
 @media (max-width: 900px) {
   .shell { padding: 0 20px }
-  .board-head { display: block; padding-top: 4px }
-  .freshness { margin-top: 10px; text-align: left }
+  .board-head { padding-top: 4px }
   .detail-grid { grid-template-columns: 1fr }
   .hero { display: block }
   .hero-meta { align-items: flex-start; text-align: left; margin-top: 20px }
@@ -222,8 +220,6 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   .brand-product, .brand-divider { display: none }
   .nav { padding: 16px 0 14px }
   .board-head h1 { font-size: 27px }
-  .board-sub { font-size: 13px; max-width: none }
-  .freshness { font-size: 11.5px }
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
   .summary { margin: 18px 0 20px }
