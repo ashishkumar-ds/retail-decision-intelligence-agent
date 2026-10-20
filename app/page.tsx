@@ -444,13 +444,16 @@ export default function BoardPage() {
           </div>
         </nav>
 
-        {/* Identity and freshness. Not a marketing hero: the numbers come next. */}
+        {/* Identity and freshness. Not a marketing hero: one plain line of
+            purpose, then the numbers. The subline also carries the product
+            name on phones, where the nav drops it. */}
         <header className="board-head">
           <div>
             {campaignLine(board?.campaign) ? (
               <span className="eyebrow">{campaignLine(board?.campaign)}</span>
             ) : null}
             <h1>Store review</h1>
+            <p className="board-sub">What each store needs next, why, and who decides.</p>
           </div>
           {board ? (
             <p className="freshness">

@@ -44,6 +44,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
    header, not a hero - a 52px title pushed the first figure below the fold. */
 .board-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
 .board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
+.board-sub { margin: 7px 0 0; max-width: 520px; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: pretty }
 .eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text) }
 .freshness { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); text-align: right }
 
@@ -221,6 +222,7 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   .brand-product, .brand-divider { display: none }
   .nav { padding: 16px 0 14px }
   .board-head h1 { font-size: 27px }
+  .board-sub { font-size: 13px; max-width: none }
   .freshness { font-size: 11.5px }
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
