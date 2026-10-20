@@ -98,11 +98,10 @@ retail_context?, trajectory?`.
 `{"store_id": 317, "narrative": "… [rec:…] [event:…]", "citations": [{"type","id","detail"}],
   "methodology": [{"chunk_id","title","part","score"}], "evidence": {...},
   "guard": {"numeric_grounding": "passed", "citations": "passed"}}`
-— render `narrative` as trusted rich text only where `[rec:/event:/src:]`
-markers appear; never rewrite the sentences. A marker becomes a numbered
-reference into `citations` — **never print the citation id or the raw
-`rec/event/src` token**. Dedupe `methodology` by `title`: the retriever returns
-the same document in several parts, and `part`/`score` are retrieval internals,
+— strip the internal `[rec:/event:/src:]` citation markers before rendering; never
+rewrite the sentences. **Never print a citation id, the raw `rec/event/src`
+token, a methodology chunk or a source list** on this page: `citations` and
+`methodology` are provenance for the operator `/ui/why` and the raw payload,
 not stakeholder evidence.
 
 ### `GET /pending-approvals`
@@ -162,9 +161,9 @@ client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
       no-forecast-signal group), state the decision ONCE for the group and list
       the store ids; each id pill carries its own small approve check.
    d. One caveat line for the whole board about measured uplift, never one per row.
-2) Store detail /store/[id]: fetch /why/{id}, render the narrative with numbered
-source references (no raw record ids), a source list, the evidence rows, one
-grounding line, and methodology deduped by title.
+2) Store detail /store/[id]: fetch /why/{id}, strip the internal
+[rec:/event:/src:] markers, and render the narrative plus the evidence rows and
+one verification line. No source list, no record ids, no methodology block.
 
 Every gated, undecided store gets an "Approve" button (full width on phones).
 It opens a dialog that asks for the approval token, POSTs /api/approve/{id} with
