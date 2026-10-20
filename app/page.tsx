@@ -96,8 +96,21 @@ function stateOf(row: Row): string {
   return String(row.state || BUCKET_STATE[row.bucket] || '')
 }
 
-function campaignLine(campaign: Board['campaign']): string {
-  return [campaign?.label, campaign?.timing_window].filter(Boolean).join(' · ')
+// The series context a first-time visitor needs: which campaign, how many
+// stores, and the plan's fixed window. The campaign name is operator-set on the
+// API when available; otherwise it falls back to the series' locked Campaign 18
+// (Part 2). The store count is served, and 60 days is the recovery plan's fixed
+// window (CONTEXT.md), not a client-side calculation.
+const CAMPAIGN_FALLBACK = 'Campaign 18'
+const RECOVERY_WINDOW = '60-day recovery'
+
+function contextLine(board: Board | null): string {
+  const label = board?.campaign?.label || CAMPAIGN_FALLBACK
+  const stores = board?.total_stores != null ? `${board.total_stores} stores` : ''
+  // NBSP before each dot keeps it attached to the preceding segment when the
+  // line wraps on a 320px phone; the regular space after it is the break point,
+  // so a line never starts with a dangling separator.
+  return [label, stores, RECOVERY_WINDOW].filter(Boolean).join('\u00A0· ')
 }
 
 // The one action on the board is gated: a record is approvable only when the
@@ -444,14 +457,12 @@ export default function BoardPage() {
           </div>
         </nav>
 
-        {/* Identity and freshness. Not a marketing hero: one plain line of
-            purpose, then the numbers. The subline also carries the product
-            name on phones, where the nav drops it. */}
+        {/* Identity and freshness. Not a marketing hero: series context, a
+            plain line of purpose (the nav drops the product name on phones),
+            then the numbers. */}
         <header className="board-head">
           <div>
-            {campaignLine(board?.campaign) ? (
-              <span className="eyebrow">{campaignLine(board?.campaign)}</span>
-            ) : null}
+            <span className="eyebrow">{contextLine(board)}</span>
             <h1>Store recovery review</h1>
             <p className="board-sub">What each store needs next, and why.</p>
           </div>

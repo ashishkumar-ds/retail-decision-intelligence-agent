@@ -45,7 +45,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .board-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
 .board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
 .board-sub { margin: 7px 0 0; max-width: 520px; font-size: 14px; line-height: 1.5; color: var(--muted); text-wrap: pretty }
-.eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text) }
+.eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text); text-wrap: balance }
 .freshness { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); text-align: right }
 
 /* --- summary: the gate sentence, then three counts that add up to it ----- */
