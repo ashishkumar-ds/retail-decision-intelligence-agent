@@ -452,8 +452,8 @@ export default function BoardPage() {
             {campaignLine(board?.campaign) ? (
               <span className="eyebrow">{campaignLine(board?.campaign)}</span>
             ) : null}
-            <h1>Store review</h1>
-            <p className="board-sub">What each store needs next, why, and who decides.</p>
+            <h1>Store recovery review</h1>
+            <p className="board-sub">What each store needs next, and why.</p>
           </div>
           {board ? (
             <p className="freshness">
