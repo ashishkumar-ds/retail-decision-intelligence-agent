@@ -473,7 +473,9 @@ export default function BoardPage() {
               {/* The one number the rest of the page has to add up to. */}
               <p className="gate-line">
                 <strong>{display(board.needs_decision)}</strong>
-                <span>of {display(board.total_stores)} stores are waiting on a human decision.</span>
+                {/* The flex gap is visual only; keep a real space in the text
+                    so a screen reader does not say "85of 85". */}
+                <span>{' '}of {display(board.total_stores)} stores are waiting on a human decision.</span>
               </p>
               <div className="tiles">
                 {GROUPS.map(group => (
