@@ -26,7 +26,7 @@ function Narrative({ text }: { text: string }) {
     ? <span className="chip" key={i} title={`${KINDS[part] || part}: ${parts[i + 1]}`}><b>{part}</b>{short(parts[i + 1])}</span>
     : <span key={i}>{part}</span>)}</p>
 }
-function Field({ label, value }: { label: string; value: any }) { if (value === null || value === undefined || value === '') return null; return <div className="kv"><span>{label}</span><strong>{label.endsWith('ID') ? <code>{display(value)}</code> : display(value)}</strong></div> }
+function Field({ label, value }: { label: string; value: any }) { if (value === null || value === undefined || value === '') return null; const long = String(value).length > 44; return <div className={long ? 'kv kv-long' : 'kv'}><span>{label}</span><strong>{label.endsWith('ID') ? <code>{display(value)}</code> : display(value)}</strong></div> }
 // A guard pass is green; a degrade (LLM off/unavailable) is amber; anything
 // else is red - the same fail-closed signal the API reports.
 function Guard({ name, value }: { name: string; value: any }) { const text = String(value); const tone = text === 'passed' ? 'ok' : (/unavailable|off/.test(text) ? 'warn' : ''); return <span className={`badge ${tone}`}>{name}: {text}</span> }
@@ -51,7 +51,7 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
     ['Generated at', rec.generated_at],
   ] as [string, any][]).filter(([, value]) => value !== null && value !== undefined && value !== '') : []
 
-  return <><div className="topline"/><main className="shell"><nav className="nav"><Link href="/" className="brand"><img src="/dunnhumby.svg" alt="dunnhumby" className="brand-logo" width={82} height={19}/><span className="brand-divider" aria-hidden="true"/><span className="brand-product">retail decision intelligence agent</span></Link><div className="navlinks"><Link href="/">Overview</Link><span className="read-only"><i/>Read-only</span></div></nav>
+  return <><div className="topline"/><main className="shell"><nav className="nav"><Link href="/" className="brand"><img src="/dunnhumby.svg" alt="dunnhumby" className="brand-logo" width={82} height={19}/><span className="brand-divider" aria-hidden="true"/><span className="brand-product">retail decision intelligence agent</span></Link><div className="navlinks"><Link href="/">Overview</Link><span className="nav-status"><i/>Read-only</span></div></nav>
     <section className="hero"><div><Link href="/" className="back">← Back to board</Link><div className="eyebrow" style={{ marginTop: 24 }}>Store detail</div><h1>Store {display(data?.store_id || id)}</h1><p>What the engine recommends for this store, and the evidence behind it.</p></div>{rec && <div className="hero-meta"><div className="live-dot"><i/>{display(rec.recommendation)}</div><strong>confidence {display(rec.confidence)}</strong><span>forecast {display(rec.forecast_status)}</span></div>}</section>
     {error && <div className="notice">{error}</div>}
     {!data && !error ? <div className="loading">Loading store figures…</div> : data && <div className="detail-grid">
@@ -60,7 +60,7 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
         {data.question ? <p className="directional-note">Question asked: {display(data.question)}</p> : null}
         <Narrative text={data.narrative || ''}/>
         <h3 className="section-title" style={{ marginTop: 28 }}>Citations</h3>
-        {data.citations?.length ? <div className="chips">{data.citations.map((citation, i) => <span className="chip" key={i}><b>{display(citation.type)}</b><code>{display(citation.id)}</code> · {display(citation.detail)}</span>)}</div> : <p className="directional-note">No citations - nothing to ground.</p>}
+        {data.citations?.length ? <div className="chips">{data.citations.map((citation, i) => <span className="chip" key={i}><b>{display(citation.type)}</b><code>{display(citation.id)}</code><span className="chip-detail">{display(citation.detail)}</span></span>)}</div> : <p className="directional-note">No citations - nothing to ground.</p>}
       </article>
       <aside className="panel">
         <h2 className="section-title">Evidence the engine used</h2>
@@ -70,6 +70,6 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
         {data.evidence ? <details className="raw"><summary>Raw evidence (JSON)</summary><pre>{JSON.stringify(data.evidence, null, 2)}</pre></details> : null}
       </aside>
     </div>}
-    <footer className="shell footer"><span>© 2026 Ashish Kumar · data: dunnhumby</span><span>Read-only</span></footer>
+    <footer className="footer"><span>© 2026 Ashish Kumar · data: dunnhumby</span><span>Read-only</span></footer>
   </main></>
 }

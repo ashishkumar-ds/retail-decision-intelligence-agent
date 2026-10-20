@@ -160,15 +160,16 @@ APPROVAL_AUTH_TOKEN_ENV = "APPROVAL_AUTH_TOKEN"
 
 app = FastAPI(title="Retail Decision Intelligence Agent", version=VERSION)
 
-# --- Cross-origin reads for an external read-only frontend --------------------
-# Contract lives in docs/FRONTEND_CONTRACT.md: a Vercel/v0 stakeholder board
-# consuming GET endpoints only. Fail-closed like everything else here - unset
-# (the default) installs NO CORS middleware, so cross-origin reads are refused
-# by the browser and the same-origin /ui is unaffected. Exact origins only,
-# never "*", because write paths carry Authorization headers; a bad entry in
-# the list only ever widens access for the origin that was typed, and this
-# parser drops blanks and normalizes trailing slashes so "https://x.vercel.app/"
-# and "https://x.vercel.app" are one origin.
+# --- Cross-origin access for an external stakeholder frontend -----------------
+# Contract lives in docs/FRONTEND_CONTRACT.md: a Vercel/v0 board consuming the
+# read endpoints plus one token-gated POST /approve/{id}. Fail-closed like
+# everything else here - unset (the default) installs NO CORS middleware, so
+# cross-origin reads are refused by the browser and the same-origin /ui is
+# unaffected. Exact origins only, never "*", because write paths carry
+# Authorization headers; a bad entry in the list only ever widens access for
+# the origin that was typed, and this parser drops blanks and normalizes
+# trailing slashes so "https://x.vercel.app/" and "https://x.vercel.app" are
+# one origin.
 CORS_ALLOW_ORIGINS_ENV = "CORS_ALLOW_ORIGINS"
 
 
@@ -184,7 +185,7 @@ if _cors_origins():
     app.add_middleware(
         CORSMiddleware,
         allow_origins=_cors_origins(),
-        allow_methods=["GET", "POST"],        # POST kept for a future tokened phase
+        allow_methods=["GET", "POST"],        # POST: the token-gated approve
         allow_headers=["Authorization", "Content-Type"],
         max_age=600,
     )

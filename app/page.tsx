@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Stakeholder view. The backend's five buckets are unchanged - this is display
 // grouping only, so a non-technical reviewer gets one answer per store: decide
@@ -37,9 +37,9 @@ const NO_ACTION_CAPTIONS: [string, string][] = [
 // reader nothing the count did not.
 const GROUP_NOTES: Record<string, string> = {
   insufficient_data:
-    'No forecast signal reached these stores, so the campaign effect cannot be evaluated for them. No data is not zero - it is no verdict. Each one is gated for a human: review the data gap, or leave it on monitor.',
+    'No forecast signal reached these stores, so the campaign effect cannot be evaluated. No data is not zero - it is no verdict. Approve a store once its data gap is understood, using the check beside its id.',
   needs_intervention:
-    'The engine has already chosen the options; a human picks one. Nothing on this board approves anything.',
+    'The engine has already chosen the options; a human picks one. Approving records the recommended action against your approval token.',
 }
 
 // Fallback only. The API serves `state` per row; this keeps an older API from
@@ -53,6 +53,7 @@ const BUCKET_STATE: Record<string, string> = {
 }
 
 const PAGE_SIZE = 8
+const TOKEN_KEY = 'rdia.approvalToken'
 
 type Row = Record<string, any>
 type Board = {
@@ -97,6 +98,13 @@ function stateOf(row: Row): string {
 
 function campaignLine(campaign: Board['campaign']): string {
   return [campaign?.label, campaign?.timing_window].filter(Boolean).join(' · ')
+}
+
+// The one action on the board is gated: a record is approvable only when the
+// API says the human gate holds it and it has not been decided already.
+function isPending(row: Row): boolean {
+  if (row.requires_human_approval !== true) return false
+  return row.decision_status !== 'approved' && row.decision_status !== 'rejected'
 }
 
 // Freshness is a property of the data, not of the poll interval: the old board
@@ -148,51 +156,227 @@ function Decision({ row }: { row: Row }) {
       {row.cost_of_inaction ? <p>{display(row.cost_of_inaction)}</p> : null}
       <small className="decision-note">
         {decided
-          ? 'Recorded in the operator console. This board is read-only.'
-          : 'Approval happens in the operator console. This board is read-only.'}
+          ? 'Recorded in the approval ledger.'
+          : 'Approval re-runs the guardrails and verifier at decision time.'}
       </small>
     </div>
   )
 }
 
-// One row, three numbers and the one sentence that explains them. Confidence,
+// One card, three numbers and the one sentence that explains them. Confidence,
 // velocity, forecast baseline, measured uplift and DiD are deliberately absent:
 // they are evidence for the store page, not inputs to a portfolio decision.
-function StoreRow({ row, quietFeed = false }: { row: Row; quietFeed?: boolean }) {
+function StoreRow({
+  row,
+  quietFeed = false,
+  onApprove,
+}: {
+  row: Row
+  quietFeed?: boolean
+  onApprove: (row: Row) => void
+}) {
   const days = row.days_remaining
+  const decided = row.decision_status === 'approved' || row.decision_status === 'rejected'
   return (
     <article className="store-row">
-      <div className="store-leading">
-        <Link href={`/store/${row.store_id}`} className="store-id">{display(row.store_id)}</Link>
-        <span className="state">{display(stateOf(row))}</span>
-      </div>
-      <div className="store-main">
-        <div className="row-title">
-          <p className="reason">{display(row.why_not_working || row.reason)}</p>
-          <FeedChip status={row.forecast_status} quiet={quietFeed} />
+      <div className="store-top">
+        <div className="store-leading">
+          <Link href={`/store/${row.store_id}`} className="store-id">{display(row.store_id)}</Link>
+          <span className="state">{display(stateOf(row))}</span>
         </div>
-        <dl className="facts">
-          <div className="fact">
-            <dt className="fact-label">Health</dt>
-            <dd className="fact-value">{display(row.store_health_score)}</dd>
-          </div>
-          <div className="fact">
-            <dt className="fact-label">Recovery</dt>
-            <dd className="fact-value">{display(row.recovery_pct)}%</dd>
-          </div>
-          <div className="fact">
-            <dt className="fact-label">Window</dt>
-            <dd className="fact-value">
-              {days === null || days === undefined ? '—' : `${display(days)} days left`}
-            </dd>
-          </div>
-        </dl>
-        <Decision row={row} />
+        <Link href={`/store/${row.store_id}`} className="detail-link" aria-label={`Why store ${row.store_id}`}>
+          Why <span aria-hidden="true">→</span>
+        </Link>
       </div>
-      <Link href={`/store/${row.store_id}`} className="detail-link" aria-label={`Why store ${row.store_id}`}>
-        Why <span aria-hidden="true">→</span>
-      </Link>
+      <div className="row-title">
+        <p className="reason">{display(row.why_not_working || row.reason)}</p>
+        <FeedChip status={row.forecast_status} quiet={quietFeed} />
+      </div>
+      <dl className="facts">
+        <div className="fact">
+          <dt className="fact-label">Health</dt>
+          <dd className="fact-value">{display(row.store_health_score)}</dd>
+        </div>
+        <div className="fact">
+          <dt className="fact-label">Recovery</dt>
+          <dd className="fact-value">{display(row.recovery_pct)}%</dd>
+        </div>
+        <div className="fact">
+          <dt className="fact-label">Window</dt>
+          <dd className="fact-value">
+            {days === null || days === undefined ? '—' : `${display(days)} days left`}
+          </dd>
+        </div>
+      </dl>
+      <Decision row={row} />
+      <div className="card-actions">
+        {isPending(row) ? (
+          <>
+            <span className="approve-hint">Token-gated</span>
+            <button type="button" className="approve-button" onClick={() => onApprove(row)}>
+              Approve
+            </button>
+          </>
+        ) : decided ? (
+          <span className="approved-note">{display(row.decision_status_label)}</span>
+        ) : null}
+      </div>
     </article>
+  )
+}
+
+// The write action. The backend refuses unauthenticated approvals (503 when no
+// token is configured, 401/403 otherwise), so the dialog collects the operator
+// token and keeps it in this tab's session storage only. The decision itself is
+// re-gated server-side, so a stale board cannot force an approval through.
+function ApproveDialog({
+  target,
+  onClose,
+  onApproved,
+}: {
+  target: Row
+  onClose: () => void
+  onApproved: () => void
+}) {
+  const ref = useRef<HTMLDialogElement | null>(null)
+  const [token, setToken] = useState('')
+  const [remembered, setRemembered] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    ref.current?.showModal()
+    try {
+      const stored = window.sessionStorage.getItem(TOKEN_KEY)
+      if (stored) {
+        setToken(stored)
+        setRemembered(true)
+      }
+    } catch {
+      // Storage can be blocked; the field still works for this action.
+    }
+  }, [])
+
+  function forgetToken() {
+    setRemembered(false)
+    setToken('')
+    try {
+      window.sessionStorage.removeItem(TOKEN_KEY)
+    } catch {
+      // ignore
+    }
+  }
+
+  async function submit(event: any) {
+    event.preventDefault()
+    const value = token.trim()
+    if (!value || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const response = await fetch(api(`/approve/${target.store_id}`), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${value}` },
+        body: JSON.stringify({}),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        const detail = payload && typeof payload.detail === 'object' ? payload.detail : null
+        const message = detail?.message || (typeof payload?.detail === 'string' ? payload.detail : '')
+        if (response.status === 401) setError('That token was not accepted. Check it and try again.')
+        else if (response.status === 403) setError(/unknown/i.test(message)
+          ? 'That token was not recognized. Check it and try again.'
+          : (message || 'This token is not allowed to approve.'))
+        else if (response.status === 404) setError('This store is no longer pending a decision. The board will refresh.')
+        else if (response.status === 409) setError(message || 'The decision-time gate refused this approval. Nothing was recorded.')
+        else if (response.status === 503) setError('Approval is disabled on this deployment (no approval token is configured).')
+        else setError(message || 'Approval failed. Nothing was recorded.')
+        return
+      }
+      try {
+        window.sessionStorage.setItem(TOKEN_KEY, value)
+      } catch {
+        // ignore
+      }
+      setDone(true)
+      onApproved()
+      window.setTimeout(() => ref.current?.close(), 1100)
+    } catch {
+      setError('Could not reach the approval service. Nothing was recorded.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const fallback = target.fallback_action_label || target.fallback_action
+
+  return (
+    <dialog
+      ref={ref}
+      className="approve-dialog"
+      onClose={onClose}
+      onCancel={event => {
+        if (busy) event.preventDefault()
+      }}
+      onClick={event => {
+        if (event.target === ref.current && !busy) ref.current?.close()
+      }}
+    >
+      <form className="dialog-body" onSubmit={submit}>
+        {done ? (
+          <>
+            <span className="dialog-eyebrow">Recorded</span>
+            <h2 className="dialog-title">Store {display(target.store_id)} approved</h2>
+            <p className="dialog-sub">The decision is in the approval ledger and the board is refreshing.</p>
+          </>
+        ) : (
+          <>
+            <span className="dialog-eyebrow">Human decision</span>
+            <h2 className="dialog-title">Approve store {display(target.store_id)}?</h2>
+            <p className="dialog-sub">This records the recommended action against your approval token.</p>
+            <p className="dialog-recommend">
+              <strong>{display(target.default_action_label || target.default_action)}</strong>
+              {fallback ? <> instead of {display(fallback)}</> : null}
+            </p>
+            {remembered ? (
+              <p className="dialog-note">
+                Using the token saved in this tab.{' '}
+                <button type="button" className="link-button" onClick={forgetToken}>
+                  Use a different token
+                </button>
+              </p>
+            ) : (
+              <>
+                <label className="dialog-label" htmlFor="approval-token">Approval token</label>
+                <input
+                  id="approval-token"
+                  className="dialog-input"
+                  type="password"
+                  value={token}
+                  onChange={event => setToken(event.target.value)}
+                  placeholder="Paste the operator token"
+                  autoComplete="off"
+                  required
+                />
+              </>
+            )}
+            {error ? <p className="dialog-error">{error}</p> : null}
+            <p className="dialog-note">
+              Kept in this tab only. The backend re-runs the guardrails and verifier before it records anything.
+            </p>
+            <div className="dialog-actions">
+              <button type="button" className="button-ghost" onClick={() => ref.current?.close()} disabled={busy}>
+                Cancel
+              </button>
+              <button type="submit" className="button-primary" disabled={busy || !token.trim()}>
+                {busy ? 'Approving…' : 'Approve'}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
+    </dialog>
   )
 }
 
@@ -202,6 +386,7 @@ export default function BoardPage() {
   const [waking, setWaking] = useState(false)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ needs_intervention: true })
   const [showAll, setShowAll] = useState<Record<string, boolean>>({})
+  const [target, setTarget] = useState<Row | null>(null)
 
   // Render free services sleep after ~15 min idle: on a cold start, wait 30s
   // and retry once before showing an error (docs/FRONTEND_CONTRACT.md).
@@ -255,7 +440,7 @@ export default function BoardPage() {
             <span className="brand-product">retail decision intelligence agent</span>
           </Link>
           <div className="navlinks">
-            <span className="read-only"><i aria-hidden="true" />Read-only</span>
+            <span className="nav-status"><i aria-hidden="true" />Live board</span>
           </div>
         </nav>
 
@@ -288,19 +473,22 @@ export default function BoardPage() {
               {/* The one number the rest of the page has to add up to. */}
               <p className="gate-line">
                 <strong>{display(board.needs_decision)}</strong>
-                of {display(board.total_stores)} stores are waiting on a human decision.
+                <span>of {display(board.total_stores)} stores are waiting on a human decision.</span>
               </p>
               <div className="tiles">
                 {GROUPS.map(group => (
                   <a className={`tile ${GROUP_TONES[group]}`} key={group} href={`#${group}`}>
                     <span className="tile-count">{display(countFor(board, group))}</span>
                     <span className="tile-label">{GROUP_LABELS[group]}</span>
-                    {captionFor(board, group) ? (
-                      <span className="tile-caption">{captionFor(board, group)}</span>
-                    ) : null}
                   </a>
                 ))}
               </div>
+              {/* The honest split sits under the row for every width: inside one
+                  tile it wrapped to two lines and stretched all three to its
+                  height, leaving the other two mostly empty. */}
+              {captionFor(board, 'no_action') ? (
+                <p className="tiles-note">{captionFor(board, 'no_action')}</p>
+              ) : null}
             </section>
 
             {GROUPS.map(group => {
@@ -350,23 +538,40 @@ export default function BoardPage() {
                   {open && sharedDecision ? (
                     <div className="shared-decision">
                       <Decision row={rows[0]} />
-                      <p className="bucket-note">
-                        One choice covers every store in this list.
-                      </p>
                     </div>
                   ) : null}
 
                   {open && (sharedDecision ? (
                     <div className="id-list">
                       {visible.map(row => (
-                        <Link
-                          key={row.store_id}
-                          href={`/store/${row.store_id}`}
-                          className="id-chip"
-                          title={display(row.reason)}
-                        >
-                          {display(row.store_id)}
-                        </Link>
+                        <span className="id-item" key={row.store_id}>
+                          <Link
+                            href={`/store/${row.store_id}`}
+                            className="id-chip"
+                            title={display(row.reason)}
+                          >
+                            {display(row.store_id)}
+                          </Link>
+                          {isPending(row) ? (
+                            <button
+                              type="button"
+                              className="chip-approve"
+                              aria-label={`Approve store ${row.store_id}`}
+                              title={`Approve store ${row.store_id}`}
+                              onClick={() => setTarget(row)}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path
+                                  d="M3.5 8.5l3 3 6-7"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                          ) : null}
+                        </span>
                       ))}
                     </div>
                   ) : visible.map(row => (
@@ -374,6 +579,7 @@ export default function BoardPage() {
                       key={row.store_id}
                       row={row}
                       quietFeed={group === 'insufficient_data'}
+                      onApprove={setTarget}
                     />
                   )))}
 
@@ -400,11 +606,19 @@ export default function BoardPage() {
           </>
         )}
 
-        <footer className="shell footer">
+        <footer className="footer">
           <span>© 2026 Ashish Kumar · data: dunnhumby</span>
-          <span>Read-only</span>
+          <span>Approvals are token-gated</span>
         </footer>
       </main>
+
+      {target ? (
+        <ApproveDialog
+          target={target}
+          onClose={() => setTarget(null)}
+          onApproved={() => load()}
+        />
+      ) : null}
     </>
   )
 }

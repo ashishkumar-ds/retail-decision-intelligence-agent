@@ -141,7 +141,7 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 - [LLM integration patterns](docs/LLM_INTEGRATION_PATTERNS.md) — how the optional LLM layer is quarantined
 - [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
 - [Deployment](docs/DEPLOYMENT.md) — Render + Supabase setup, durable-storage trade-offs
-- [Frontend contract](docs/FRONTEND_CONTRACT.md) — read-only API spec for the Vercel board
+- [Frontend contract](docs/FRONTEND_CONTRACT.md) — board spec for the Vercel surface (reads plus one token-gated approve)
 - Off-path classifiers ([classifier.dev](https://classifier.dev), Jev) — keep-biased RAG pre-filter + root-cause tags, keyless; numbers redacted before egress, failures degrade safe ([ADR-0005](docs/adr/0005-redact-numbers-before-egress.md))
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).

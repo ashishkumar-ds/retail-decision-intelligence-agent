@@ -1,4 +1,4 @@
-# Frontend contract — read-only stakeholder board (v0 / Vercel)
+# Frontend contract — stakeholder board (v0 / Vercel)
 
 The spec to paste into **v0.dev** (or hand to any frontend tool) to build an
 external dashboard for this API. One rule governs everything below: **the UI
@@ -7,9 +7,14 @@ renders what the API says and computes nothing.
 
 ## Hard boundaries (non-negotiable)
 
-1. **GET endpoints only.** No approve/reject/execute UI, no bearer token in
-   the browser, no forms that mutate. Decisions live in the server-rendered
-   `/ui` behind the Human Gate.
+1. **Reads are GET; there is exactly one write.** The board may `POST
+   /approve/{store_id}` through its own same-origin proxy (`/api/approve/{id}`),
+   forwarding an `Authorization: Bearer <approval token>` the operator enters in
+   the page. The token is never bundled, never stored server-side, and never
+   prefilled; it may live in `sessionStorage` for the tab. The backend re-runs
+   the guardrails + verifier at decision time and refuses with `401`/`403`/`409`/
+   `503`. **Approve is per store, one call at a time — no bulk approve.** Reject,
+   re-run and every other mutation stay in `/ui` on the API host.
 2. **Never recompute.** Render `store_health_score`, `recovery_pct`,
    `confidence`, margins exactly as served. No client-side scoring, no
    derived "improvement" numbers.
@@ -69,8 +74,9 @@ Print the `*_label` fields. `EXTEND_INTERVENTION`, `cautious` and
 `awaiting_decision` are machine tokens; a stakeholder surface says "Extend the
 intervention", "Commits this cycle's budget", "Awaiting a decision" — and a row
 whose `decision_status` is already `approved`/`rejected` says so instead of
-asking for the same decision again. Approvals happen at `/ui/approvals` on the
-API host; do not link there from this board or imply that it approves anything.
+asking for the same decision again. Approve actions live on gated rows only
+(`requires_human_approval === true` and not already decided) and call
+`POST /api/approve/{id}`; see "Approval" below.
 
 ### What belongs on a row, and what does not
 
@@ -98,6 +104,23 @@ markers appear; never rewrite the sentences.
 ### `GET /pending-approvals`
 `{"count": 2, "pending": [ /* records awaiting a human */ ]}` — read-only count.
 
+### `POST /approve/{store_id}` — the one write
+Proxied same-origin as `POST /api/approve/{store_id}` with the operator's
+`Authorization: Bearer <token>` forwarded unchanged; the proxy injects no
+credential and allows no other POST path.
+
+- `200` `{"message": "... approved.", "recommendation": {...}}`
+- `401` missing/malformed header · `403` unknown token or viewer role
+- `409` `{"detail": {"message": "Decision-time gate failed; approval refused.", "checks": {...}}}`
+  — the guardrails/verifier re-run refused; **nothing was recorded**
+- `503` no approval token configured server-side (fail closed)
+- `404` store is not in the pending queue; it may already be decided
+
+The dialog must: collect the token (password field), keep it in `sessionStorage`
+for the tab only, show the served error, and refresh `/board` after a `200` so
+the gate count and the row's `decision_status` come from the API. Never
+optimistically mark a row approved on a `409`.
+
 ## Design tokens (match the server-rendered UI)
 
 `teal #38b2ab` (brand bar, markers, dots - non-text only) · `teal-text #17645f`
@@ -112,7 +135,7 @@ mint, white and panel — `#38b2ab` is 2.4:1 and must never carry text. Footer:
 ## Paste-ready v0 prompt
 
 ```text
-Build a read-only dashboard called "Retail Decision Board" (Next.js + Tailwind + shadcn/ui),
+Build a stakeholder dashboard called "Retail Decision Board" (Next.js + Tailwind + shadcn/ui),
 client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
 
 1) Board, in this order:
@@ -124,17 +147,28 @@ client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
       ("Need a decision"), insufficient_data ("Needs review (no data)"), and
       working_well+recovering+watch merged ("No action needed", captioned with
       the per-bucket split). Tiles link to their section.
-   c. One collapsible section per tile group. Rows show store_id, row.state,
-      the one reason sentence, and exactly three numbers: health, recovery_pct,
-      days_remaining ("N days left"). Gated rows show a decision block:
-      default_action_label vs fallback_action_label, commitment_label, and
-      cost_of_inaction - static text, NO buttons, and an already-decided row
-      says "Already decided · {decision_status_label}".
+   c. One collapsible section per tile group. Each store is a card: its id and
+      row.state on one top line with "Why →" at the far right, then the one
+      reason sentence, then exactly three numbers (health, recovery_pct,
+      days_remaining "N days left") on one aligned row. Gated rows show a
+      decision block: default_action_label vs fallback_action_label,
+      commitment_label, and cost_of_inaction. An already-decided row says
+      "Already decided · {decision_status_label}" and shows no button.
       When every row in a group is gated and shares one recommendation (the
       no-forecast-signal group), state the decision ONCE for the group and list
-      the store ids - 47 identical blocks are noise, not information.
+      the store ids; each id pill carries its own small approve check.
    d. One caveat line for the whole board about measured uplift, never one per row.
 2) Store detail /store/[id]: fetch /why/{id} and render narrative + citation chips.
+
+Every gated, undecided store gets an "Approve" button (full width on phones).
+It opens a dialog that asks for the approval token, POSTs /api/approve/{id} with
+a Bearer header, shows the served error, and refreshes /board on success. Per
+store only - no "approve all".
+
+Responsive: one layout that works at 390px. The three tiles stay in one row on
+phones (compact count + label, caption below the row), so the first store is on
+the first screen. Give every element in a card the same left edge - do not use a
+fixed id column. Touch targets >= 40px.
 
 Do NOT put on a row: confidence, recovery_velocity, recovery_direction, forecast
 baseline/current, days_elapsed, uplift_pct, did_uplift_pct, causal_state,
@@ -142,10 +176,11 @@ evidence_state. Those belong on the detail page. Do NOT render a forecast badge
 for AVAILABLE (it is the default on every row); show a chip only for ERROR
 ("feed delayed") and for a missing forecast that is not already the group's story.
 
-Rules: GET only, no auth, no mutations; poll /board every 60s; on 502/504 show
-"service waking up..." and retry once after 30s; render numbers exactly as served
-(no client math, no timezone conversion - print as_of_display); money with "~"
-prefix + "(proj.)" when flagged as projection. Palette: teal #38b2ab (non-text),
-teal-text #17645f, mint #edf8f5, indigo #26245c; footer
-"© 2026 <LICENSE holder> · data: dunnhumby".
+Rules: GET for reads; the only write is POST /api/approve/{id} with a Bearer
+token the operator types into the dialog (never bundled, never prefilled); poll
+/board every 60s; on 502/504 show "service waking up..." and retry once after
+30s; render numbers exactly as served (no client math, no timezone conversion -
+print as_of_display); money with "~" prefix + "(proj.)" when flagged as
+projection. Palette: teal #38b2ab (non-text), teal-text #17645f, mint #edf8f5,
+indigo #26245c; footer "© 2026 <LICENSE holder> · data: dunnhumby".
 ```
