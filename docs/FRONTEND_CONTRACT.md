@@ -1,8 +1,8 @@
-# Frontend contract — stakeholder board (v0 / Vercel)
+# Frontend contract — stakeholder board (Next.js / Vercel)
 
-The spec to paste into **v0.dev** (or hand to any frontend tool) to build an
-external dashboard for this API. One rule governs everything below: **the UI
-is a view, never a second source of truth** (`presentation/site.py`) — it
+The contract the stakeholder board (`app/`, deployed on Vercel) implements,
+and the spec for any other read-only client of this API. One rule governs
+everything below: **the UI is a view, never a second source of truth** — it
 renders what the API says and computes nothing.
 
 ## Hard boundaries (non-negotiable)
@@ -153,63 +153,3 @@ it predates today (UTC), the API re-evaluates the persisted cohort on that read
 before serving, so the header stamp rolls forward without the UI re-formatting
 anything — the UI still prints `as_of_display` exactly as served.
 
----
-
-## Paste-ready v0 prompt
-
-```text
-Build a stakeholder dashboard called "Retail Decision Board" (Next.js + Tailwind + shadcn/ui),
-client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
-
-1) Board, in this order:
-   a. A compact header (product name, campaign label/timing_window from /board,
-      "Data as of {as_of_display}" - the only place the date appears). NOT a
-      hero: no 50px title, no paragraph restating the tiles. The first figure
-      must be above the fold.
-   b. One sentence: "{needs_decision} of {total_stores} stores are waiting on a
-      human review." Then three tiles that add up to it: needs_intervention
-      ("Need a decision"), insufficient_data ("Needs review (no data)"), and
-      working_well+recovering+watch merged ("No action needed", captioned with
-      the per-bucket split). The tiles carry the split; do not repeat their
-      counts in the sentence. Tiles link to their section.
-   c. One collapsible section per tile group. Each store is a card: its id and
-      row.state on one top line with "Why →" at the far right, then the one
-      reason sentence, then exactly three numbers (health, recovery_pct,
-      days_remaining "N days left") on one aligned row. Gated rows show a
-      decision block: default_action_label vs fallback_action_label,
-      commitment_label, and cost_of_inaction. An already-decided row says
-      "Already decided · {decision_status_label}" and shows no button.
-      When every row in a group is gated and shares one recommendation (the
-      no-forecast-signal group), state the decision ONCE for the group and list
-      the store ids; each id pill carries its own small approve check.
-   d. One caveat line for the whole board about measured uplift, never one per row.
-2) Store detail /store/[id]: fetch /why/{id}, strip the internal
-[rec:/event:/src:] markers, and render the narrative plus the evidence rows and
-one verification line. No source list, no record ids, no methodology block.
-
-Every gated, undecided store gets an "Approve" button (full width on phones).
-It opens a dialog that asks for the approval token, POSTs /api/approve/{id} with
-a Bearer header, shows the served error, and refreshes /board on success. Per
-store only - no "approve all".
-
-Responsive: one layout that works at 390px. The three tiles stay in one row on
-phones (compact count + label, caption below the row), so the first store is on
-the first screen. Give every element in a card the same left edge - do not use a
-fixed id column. Touch targets >= 40px.
-
-Do NOT put on a row: confidence, recovery_velocity, recovery_direction, forecast
-baseline/current, days_elapsed, uplift_pct, did_uplift_pct, causal_state,
-evidence_state. Those belong on the detail page. Do NOT render a forecast badge
-for AVAILABLE (it is the default on every row); show a chip only for ERROR
-("feed delayed") and for a missing forecast that is not already the group's story.
-
-Rules: GET for reads (the API may self-refresh its own persisted evidence on the
-first stale /board read of the day); the only client write is POST
-/api/approve/{id} with a Bearer token the operator types into the dialog (never
-bundled, never prefilled); poll /board every 60s; on 502/504 show "service
-waking up..." and retry once after 30s; render numbers exactly as served (no
-client math, no timezone conversion - print as_of_display); money with "~"
-prefix + "(proj.)" when flagged as projection. Palette: teal #38b2ab (non-text),
-teal-text #17645f, mint #edf8f5, indigo #26245c; footer "© 2026 <LICENSE holder> ·
-data: dunnhumby".
-```

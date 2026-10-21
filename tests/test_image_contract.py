@@ -100,13 +100,12 @@ def _shipped_directories() -> list[pathlib.Path]:
 #   anthropic - `[llm]` extra: rag/llm_explainer.py + rag/advisor.py import it
 #               inside the provider call and fall back to the deterministic
 #               template when it is missing.
-#   pandas    - evaluation/industry_benchmark.py, a one-shot benchmark script.
 #   pypdf     - rag/ingest_pdf.py, the one-shot corpus ingestion script.
 #   psycopg*  - `[storage]` extra: storage/database.py imports it only when
 #               DATABASE_URL selects Postgres (SQLite is the default backend).
 # They stay out of [project] dependencies on purpose - a lazily imported extra
 # is how the default image stays small. Anything else must be declared.
-OPTIONAL_IMPORTS = {"anthropic", "pandas", "psycopg", "psycopg2", "pypdf"}
+OPTIONAL_IMPORTS = {"anthropic", "psycopg", "psycopg2", "pypdf"}
 
 
 def _third_party_imports() -> set[str]:
