@@ -482,12 +482,22 @@ export default function BoardPage() {
           </div>
         </nav>
 
-        {/* Identity. Not a marketing hero: series context, the page name, then
-            the numbers. Freshness lives in the footer so the header stays
-            three lines. */}
+        {/* Identity. Not a marketing hero: series context, the page name, and
+            the data's freshness on the same line. Stated here only - never
+            repeated in the footer. The header stays three lines and the first
+            figure stays above the fold. */}
         <header className="board-head">
-          <span className="eyebrow">{contextLine(board)}</span>
-          <h1>Store recovery review</h1>
+          <div>
+            <span className="eyebrow">{contextLine(board)}</span>
+            <h1>Store recovery review</h1>
+          </div>
+          {board ? (
+            <time className="board-asof" dateTime={board.as_of || undefined}>
+              {board.as_of_display
+                ? `Data as of ${board.as_of_display}`
+                : 'Data freshness unavailable'}
+            </time>
+          ) : null}
         </header>
 
         {(error || (board && waking)) && (
@@ -678,13 +688,6 @@ export default function BoardPage() {
 
         <footer className="footer">
           <span>© 2026 Ashish Kumar · data: dunnhumby</span>
-          {board ? (
-            <span>
-              {board.as_of_display
-                ? `Data as of ${board.as_of_display}`
-                : 'Data freshness unavailable'}
-            </span>
-          ) : null}
           <span>Decisions are token-gated</span>
         </footer>
       </main>

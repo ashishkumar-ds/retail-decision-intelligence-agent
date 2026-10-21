@@ -46,11 +46,14 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .nav-status { display: flex; align-items: center; gap: 7px }
 .nav-status i, .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; flex: none }
 
-/* Header: series context and the page name. The numbers come next, so this is
-   a header, not a hero - a 52px title pushed the first figure below the fold.
-   Data freshness lives in the footer, out of the reading path. */
-.board-head { padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
+/* Header: series context, the page name and freshness. The numbers come next,
+   so this is a header, not a hero - a 52px title pushed the first figure below
+   the fold. Freshness rides the identity line beside the title. */
+.board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
 .board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
+/* Freshness qualifies every number below it, so it rides the identity line
+   rather than the footer. Eyebrow weight keeps it quiet; stated once. */
+.board-asof { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--teal-text); white-space: nowrap }
 .eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text); text-wrap: balance }
 
 /* --- summary: the gate sentence, then three counts that add up to it ----- */
@@ -244,6 +247,8 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   .brand-product, .brand-divider { display: none }
   .nav { padding: 16px 0 14px }
   .board-head h1 { font-size: 27px }
+  /* Drop to its own left-aligned line; allow a break at 320px. */
+  .board-asof { white-space: normal; letter-spacing: .12em; flex-basis: 100% }
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
   .summary { margin: 18px 0 20px }

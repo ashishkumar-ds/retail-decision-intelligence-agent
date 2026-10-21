@@ -138,7 +138,10 @@ optimistically mark a row approved on a `409`.
 (links, labels, eyebrows) · `mint #edf8f5` background · `indigo #26245c` headings ·
 `ink #202044` body · `muted #4f6069` secondary text · border `#d7e5e1` ·
 panel `#f6faf9`. The small-text tokens are the ones that clear WCAG AA 4.5:1 on
-mint, white and panel — `#38b2ab` is 2.4:1 and must never carry text. Footer:
+mint, white and panel — `#38b2ab` is 2.4:1 and must never carry text. Freshness
+(`Data as of {as_of_display}`) rides the header identity line, right-aligned on
+desktop and on its own left line on phones, wrapped in `<time datetime="{as_of}">`;
+it is stated once and never repeated in the footer. Footer:
 `© 2026 <LICENSE holder> · data: dunnhumby`.
 
 ---
@@ -151,8 +154,9 @@ client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
 
 1) Board, in this order:
    a. A compact header (product name, campaign label/timing_window from /board,
-      "Data as of {as_of_display}"). NOT a hero: no 50px title, no paragraph
-      restating the tiles. The first figure must be above the fold.
+      "Data as of {as_of_display}" - the only place the date appears). NOT a
+      hero: no 50px title, no paragraph restating the tiles. The first figure
+      must be above the fold.
    b. One sentence: "{needs_decision} of {total_stores} stores are waiting on a
       human review." Then three tiles that add up to it: needs_intervention
       ("Need a decision"), insufficient_data ("Needs review (no data)"), and
