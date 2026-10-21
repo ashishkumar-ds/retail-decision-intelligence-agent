@@ -28,6 +28,17 @@ def _isolate_offpath_llm_telemetry(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _disable_board_self_refresh(monkeypatch):
+    """The live board re-evaluates against the forecast API on a stale read.
+
+    The suite must never fan out over a live upstream (same rule as the warm-up
+    fixture below); each test opts in by patching ``_board_self_refresh_enabled``
+    or the refresh seam it needs.
+    """
+    monkeypatch.setenv("BOARD_SELF_REFRESH", "0")
+
+
+@pytest.fixture(autouse=True)
 def _isolate_upstream_warmup(monkeypatch):
     """Keep the warm-up daemon inside the test that started it.
 

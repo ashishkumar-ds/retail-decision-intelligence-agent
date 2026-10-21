@@ -10,6 +10,8 @@ import hashlib
 import json
 import logging
 import os
+import threading
+import time
 import uuid
 
 try:
@@ -1833,6 +1835,128 @@ def _campaign_label() -> dict[str, Any] | None:
     return campaign
 
 
+_BOARD_REFRESH_LOCK = threading.Lock()
+_BOARD_REFRESH_RETRY_SECONDS = 600.0  # back off a failed upstream; never hammer reads
+_board_refresh_last_attempt: float = 0.0
+
+
+def _board_self_refresh_enabled() -> bool:
+    """Self-refresh belongs to a live board; the test suite disables it explicitly."""
+    return os.getenv("BOARD_SELF_REFRESH", "1") != "0"
+
+
+def _parse_generated_at(rec: Mapping[str, Any]) -> datetime | None:
+    raw = rec.get("generated_at")
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+
+
+def _persisted_audit_runs() -> tuple[list[dict[str, Any]], list[int]]:
+    """Rebuild the audit universe from the board's own persisted records.
+
+    Project 2's audit feed can reset to empty. When it does the sweep has no
+    store universe (``_fetch_audit_store_ids`` raises "No store_ids found") and
+    the board freezes on its last stamp. The records this board already serves
+    name every tracked store, and ``generated_at - days_elapsed`` is the
+    campaign first run that produced ``days_elapsed``. Feeding those
+    reconstructed runs through the same deterministic engine re-evaluates the
+    same cohort against the live forecast - no store or campaign start is
+    invented.
+
+    Decided stores are skipped: a fresh recommendation must never append over
+    a human's approval and make a decided store look undecided again.
+    """
+    records = _readable_records()
+    decided = {rec.get("store_id") for rec in records if "decided_at" in rec}
+    latest: dict[int, Mapping[str, Any]] = {}
+    first_runs: dict[int, datetime] = {}
+    for rec in records:
+        store_id = rec.get("store_id")
+        if not isinstance(store_id, int):
+            continue
+        latest[store_id] = rec
+        generated_at = _parse_generated_at(rec)
+        elapsed = rec.get("days_elapsed")
+        if generated_at is None or elapsed is None:
+            continue
+        try:
+            elapsed_days = max(int(elapsed), 0)
+        except (TypeError, ValueError):
+            continue
+        candidate = generated_at - timedelta(days=elapsed_days)
+        # Use the whole append-only history, not just the latest re-stamp: each
+        # refresh writes a new generated_at, so the latest record alone would
+        # let the derived campaign start drift with the evaluation time-of-day.
+        if store_id not in first_runs or candidate < first_runs[store_id]:
+            first_runs[store_id] = candidate
+
+    runs: list[dict[str, Any]] = []
+    store_ids: list[int] = []
+    for store_id in sorted(latest):
+        if store_id in decided or store_id not in first_runs:
+            continue
+        runs.append({"store_ids": [store_id],
+                     "run_timestamp": first_runs[store_id].isoformat()})
+        store_ids.append(store_id)
+    return runs, store_ids
+
+
+def _newest_generated_at(records: Sequence[Mapping[str, Any]]) -> datetime | None:
+    newest: datetime | None = None
+    for rec in records:
+        generated_at = _parse_generated_at(rec)
+        if generated_at is not None and (newest is None or generated_at > newest):
+            newest = generated_at
+    return newest
+
+
+def _board_needs_refresh(records: Sequence[Mapping[str, Any]] | None = None) -> bool:
+    """True when the newest recommendation predates today (UTC)."""
+    newest = _newest_generated_at(records if records is not None else _readable_records())
+    if newest is None:
+        return False
+    return newest.date() < datetime.now(timezone.utc).date()
+
+
+def _refresh_stale_board() -> None:
+    """Re-evaluate the persisted cohort when the board's stamp is not today.
+
+    Rides the read path like ``_kick_upstream_warmup``, but this is the one GET
+    that may persist: the board refreshing its own evidence, never a
+    client-supplied change. Best-effort and cooldown-guarded - a bad upstream
+    leaves the persisted board untouched and must not slow every request.
+    """
+    global _board_refresh_last_attempt
+    if not _board_self_refresh_enabled() or not _board_needs_refresh():
+        return
+    now = time.monotonic()
+    if now - _board_refresh_last_attempt < _BOARD_REFRESH_RETRY_SECONDS:
+        return
+    if not _BOARD_REFRESH_LOCK.acquire(blocking=False):
+        return  # another request is already refreshing
+    _board_refresh_last_attempt = now
+    try:
+        if not warm_up(max_wait_seconds=25):
+            logger.info("[BOARD REFRESH] forecast upstream not warm; keeping persisted board")
+            return
+        audit_runs, store_ids = _persisted_audit_runs()
+        if not store_ids:
+            return
+        logger.info("[BOARD REFRESH] re-evaluating %d persisted stores", len(store_ids))
+        _evaluate_and_persist_stores(audit_runs, store_ids)
+        logger.info("[BOARD REFRESH] persisted fresh recommendations for %d stores", len(store_ids))
+    except Exception as error:
+        logger.warning("[BOARD REFRESH] failed, keeping persisted board: %s: %s",
+                       type(error).__name__, error)
+    finally:
+        _BOARD_REFRESH_LOCK.release()
+
+
 @app.get("/board")
 def get_status_board():
     """Executive status board (the stakeholder surface).
@@ -1845,6 +1969,7 @@ def get_status_board():
     (see _readable_records) so the stakeholder surface self-heals disklessly.
     """
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
+    _refresh_stale_board()  # a frozen snapshot heals on the first load of the day
     pending_records = list(_pending_approvals.values())
     ranked = ranked_attention_queue(pending_records)
     board = build_board(

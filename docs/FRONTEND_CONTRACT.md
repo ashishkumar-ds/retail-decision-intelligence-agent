@@ -7,7 +7,7 @@ renders what the API says and computes nothing.
 
 ## Hard boundaries (non-negotiable)
 
-1. **Reads are GET; there is exactly one write.** The board may `POST
+1. **Reads are GET; there is exactly one client write.** The board may `POST
    /approve/{store_id}` through its own same-origin proxy (`/api/approve/{id}`),
    forwarding an `Authorization: Bearer <approval token>` the operator enters in
    the page. The token is never bundled, never stored server-side, and never
@@ -15,6 +15,10 @@ renders what the API says and computes nothing.
    the guardrails + verifier at decision time and refuses with `401`/`403`/`409`/
    `503`. **Approve is per store, one call at a time — no bulk approve.** Reject,
    re-run and every other mutation stay in `/ui` on the API host.
+   The API itself may **self-refresh its persisted evidence** on the first stale
+   `GET /board` of the day (see Freshness). That is a server-side re-evaluation
+   of the same cohort, accepts no client input, and is never a second client
+   write path.
 2. **Never recompute.** Render `store_health_score`, `recovery_pct`,
    `confidence`, margins exactly as served. No client-side scoring, no
    derived "improvement" numbers.
@@ -144,6 +148,11 @@ desktop and on its own left line on phones, wrapped in `<time datetime="{as_of}"
 it is stated once and never repeated in the footer. Footer:
 `© 2026 <LICENSE holder> · data: dunnhumby`.
 
+`as_of` is the newest recommendation's evaluation time, not the wall clock. When
+it predates today (UTC), the API re-evaluates the persisted cohort on that read
+before serving, so the header stamp rolls forward without the UI re-formatting
+anything — the UI still prints `as_of_display` exactly as served.
+
 ---
 
 ## Paste-ready v0 prompt
@@ -194,11 +203,13 @@ evidence_state. Those belong on the detail page. Do NOT render a forecast badge
 for AVAILABLE (it is the default on every row); show a chip only for ERROR
 ("feed delayed") and for a missing forecast that is not already the group's story.
 
-Rules: GET for reads; the only write is POST /api/approve/{id} with a Bearer
-token the operator types into the dialog (never bundled, never prefilled); poll
-/board every 60s; on 502/504 show "service waking up..." and retry once after
-30s; render numbers exactly as served (no client math, no timezone conversion -
-print as_of_display); money with "~" prefix + "(proj.)" when flagged as
-projection. Palette: teal #38b2ab (non-text), teal-text #17645f, mint #edf8f5,
-indigo #26245c; footer "© 2026 <LICENSE holder> · data: dunnhumby".
+Rules: GET for reads (the API may self-refresh its own persisted evidence on the
+first stale /board read of the day); the only client write is POST
+/api/approve/{id} with a Bearer token the operator types into the dialog (never
+bundled, never prefilled); poll /board every 60s; on 502/504 show "service
+waking up..." and retry once after 30s; render numbers exactly as served (no
+client math, no timezone conversion - print as_of_display); money with "~"
+prefix + "(proj.)" when flagged as projection. Palette: teal #38b2ab (non-text),
+teal-text #17645f, mint #edf8f5, indigo #26245c; footer "© 2026 <LICENSE holder> ·
+data: dunnhumby".
 ```

@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 
+// The board self-heals a stale snapshot on its first read of the day; that
+// re-evaluation fans out over the forecast API, so give the proxy room beyond
+// the platform default instead of timing out mid-refresh.
+export const maxDuration = 60
+
 type RouteContext = { params: Promise<{ path: string[] }> }
 
 const ALLOWED_PATHS = new Set(['board', 'health', 'recommendations', 'pending-approvals'])
