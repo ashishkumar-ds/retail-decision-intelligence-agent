@@ -1837,7 +1837,7 @@ def _campaign_label() -> dict[str, Any] | None:
 
 _BOARD_REFRESH_LOCK = threading.Lock()
 _BOARD_REFRESH_RETRY_SECONDS = 600.0  # back off a failed upstream; never hammer reads
-_board_refresh_last_attempt: float = 0.0
+_board_refresh_last_attempt: float | None = None
 
 
 def _board_self_refresh_enabled() -> bool:
@@ -1935,7 +1935,8 @@ def _refresh_stale_board() -> None:
     if not _board_self_refresh_enabled() or not _board_needs_refresh():
         return
     now = time.monotonic()
-    if now - _board_refresh_last_attempt < _BOARD_REFRESH_RETRY_SECONDS:
+    if (_board_refresh_last_attempt is not None
+            and now - _board_refresh_last_attempt < _BOARD_REFRESH_RETRY_SECONDS):
         return
     if not _BOARD_REFRESH_LOCK.acquire(blocking=False):
         return  # another request is already refreshing

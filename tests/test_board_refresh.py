@@ -85,7 +85,7 @@ def test_refresh_stale_board_evaluates_the_persisted_cohort(monkeypatch):
         main, "_evaluate_and_persist_stores",
         lambda runs, ids: calls.append((runs, ids)),
     )
-    monkeypatch.setattr(main, "_board_refresh_last_attempt", 0.0)
+    monkeypatch.setattr(main, "_board_refresh_last_attempt", None)
 
     main._refresh_stale_board()
 
@@ -104,11 +104,28 @@ def test_refresh_defers_when_upstream_is_not_warm(monkeypatch):
     monkeypatch.setattr(main, "_board_needs_refresh", lambda *args, **kwargs: True)
     monkeypatch.setattr(main, "warm_up", lambda **kwargs: False)
     monkeypatch.setattr(main, "_evaluate_and_persist_stores", lambda *args: calls.append(1))
-    monkeypatch.setattr(main, "_board_refresh_last_attempt", 0.0)
+    monkeypatch.setattr(main, "_board_refresh_last_attempt", None)
 
     main._refresh_stale_board()
 
     assert calls == []
+
+
+def test_first_refresh_is_not_suppressed_on_a_cold_host(monkeypatch):
+    # time.monotonic() is small in a fresh container; "never attempted" must not
+    # be confused with "attempted at 0" and silently skip the first refresh.
+    calls = []
+    monkeypatch.setattr(main, "_board_self_refresh_enabled", lambda: True)
+    monkeypatch.setattr(main, "_board_needs_refresh", lambda *args, **kwargs: True)
+    monkeypatch.setattr(main, "warm_up", lambda **kwargs: True)
+    monkeypatch.setattr(main, "_persisted_audit_runs", lambda: ([], [1]))
+    monkeypatch.setattr(main, "_evaluate_and_persist_stores", lambda *args: calls.append(1))
+    monkeypatch.setattr(main, "_board_refresh_last_attempt", None)
+    monkeypatch.setattr(main.time, "monotonic", lambda: 1.0)
+
+    main._refresh_stale_board()
+
+    assert calls == [1]
 
 
 def test_refresh_failure_keeps_board_and_backs_off(monkeypatch):
@@ -123,7 +140,7 @@ def test_refresh_failure_keeps_board_and_backs_off(monkeypatch):
         raise RuntimeError("upstream exploded")
 
     monkeypatch.setattr(main, "_evaluate_and_persist_stores", boom)
-    monkeypatch.setattr(main, "_board_refresh_last_attempt", 0.0)
+    monkeypatch.setattr(main, "_board_refresh_last_attempt", None)
 
     main._refresh_stale_board()  # must swallow the failure and release the lock
     main._refresh_stale_board()  # cooldown: no immediate retry
