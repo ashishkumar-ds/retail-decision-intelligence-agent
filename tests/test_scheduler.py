@@ -237,21 +237,24 @@ def test_warm_up_treats_connection_errors_as_retryable():
 # --- restart-safe approvals ----------------------------------------------------
 
 
-def test_pending_approvals_survive_log_replay():
-    """The durability contract: rebuilding from the log restores pending
-    approvals and drops decided stores."""
+def test_latest_records_survive_log_replay():
+    """The durability contract: rebuilding from the log restores the latest
+    record per store, including non-gated and already-decided rows, so a
+    diskless board can rebuild without the JSONL file."""
     log_records = [
         {"store_id": 1, "recommendation_id": "r1", "requires_human_approval": True},
         {"store_id": 2, "recommendation_id": "r2", "requires_human_approval": True},
         {"store_id": 3, "recommendation_id": "r3", "requires_human_approval": False},
         {"store_id": 2, "recommendation_id": "r2", "requires_human_approval": True,
          "approved": True, "decided_at": "2026-08-30T00:00:00+00:00"},
-        {"store_id": 1, "recommendation_id": "r1-bad", "not_a_dict_marker": None},
+        {"store_id": 1, "not_a_dict_marker": None},
     ]
     with mock.patch.object(main, "read_log", return_value=log_records):
-        pending = main._rebuild_pending_approvals()
-    assert set(pending.keys()) == {1}
-    assert pending[1]["recommendation_id"] == "r1"
+        latest = main._rebuild_pending_approvals()
+    assert set(latest.keys()) == {1, 2, 3}
+    assert latest[1]["recommendation_id"] == "r1"
+    assert latest[2]["decided_at"] == "2026-08-30T00:00:00+00:00"
+    assert latest[3]["requires_human_approval"] is False
     with mock.patch.object(main, "read_log", return_value=[]):
         assert main._rebuild_pending_approvals() == {}
 

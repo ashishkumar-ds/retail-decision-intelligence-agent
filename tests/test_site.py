@@ -75,7 +75,9 @@ def test_ui_approve_with_valid_token_records_decision(client, monkeypatch):
                            data={"token": "test-token", "actor": "operator-site"})
     assert response.status_code == 200
     assert "approved" in response.text.lower()
-    assert store_id not in main._pending_approvals  # queue drained
+    stored = next(r for r in main._pending_approvals.values() if r["store_id"] == store_id)
+    assert "decided_at" in stored  # decision is durable on a diskless deploy
+    assert store_id not in {r["store_id"] for r in main._gated_pending_records()}
     decided = main.read_log()
     assert any(e["store_id"] == store_id and e.get("approved") for e in decided)
 
@@ -101,7 +103,9 @@ def test_ui_reject_records_rejection(client, monkeypatch):
     response = client.post(f"/ui/reject/{store_id}",
                            data={"token": "test-token", "actor": "operator-site"})
     assert response.status_code == 200
-    assert store_id not in main._pending_approvals
+    stored = next(r for r in main._pending_approvals.values() if r["store_id"] == store_id)
+    assert stored.get("approved") is False and "decided_at" in stored
+    assert store_id not in {r["store_id"] for r in main._gated_pending_records()}
     decided = main.read_log()
     assert any(e["store_id"] == store_id and e.get("approved") is False for e in decided)
 

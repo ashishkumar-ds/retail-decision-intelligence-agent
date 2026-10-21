@@ -45,7 +45,7 @@ from app.scheduler import (
     sweep_enabled,
     sweep_interval_seconds,
 )
-from app.state import PendingApprovalStore, RecommendationCacheStore
+from app.state import PendingApprovalStore
 from approvals.identity import (
     TOKENS_ENV as APPROVAL_TOKENS_ENV,
 )
@@ -194,24 +194,21 @@ if _cors_origins():
 
 
 def _rebuild_pending_approvals() -> dict[int, dict]:
-    """Reconstruct the pending-approval queue from the durable log.
+    """Reconstruct the latest-record store from the durable log.
 
-    The pending-approval store (``app/state.py``) is the durable fast-access
-    view; the append-only log is the source of truth. Backfilling the store
-    from the log at first start means a restart no longer loses
-    pending approvals (recommendations flagged for approval and not yet
-    decided are re-queued; decided stores are not).
+    The store keeps one latest record per store, gated or not: on a diskless
+    deploy it is the only durable copy of a store that recovered out of the
+    gate, and the approval queue is a filtered view (``_gated_pending_records``).
+    Decided records are kept too, so a decision survives a restart; the last
+    record for a store wins (the log is append-only, in order).
     """
-    pending: dict[int, dict] = {}
+    latest: dict[int, dict] = {}
     for record in read_log():
         store_id = record.get("store_id")
-        if not isinstance(store_id, int):
-            continue
-        if "decided_at" in record:
-            pending.pop(store_id, None)
-        elif record.get("requires_human_approval"):
-            pending[store_id] = record
-    return pending
+        # A partial/malformed JSONL line must not shadow a valid record.
+        if isinstance(store_id, int) and "recommendation_id" in record:
+            latest[store_id] = record
+    return latest
 
 
 # Pending approvals live in a durable, multi-worker-safe SQLite store
@@ -224,23 +221,20 @@ _pending_approvals = PendingApprovalStore()
 if not _pending_approvals:
     _pending_approvals.seed_from(_rebuild_pending_approvals())
 
-# Durable latest-recommendation projection (app/state.py). The published demo
-# is diskless: the JSONL log is wiped on restart and the pending store holds
-# only gated rows, so a refresh that turns a store into CONTINUE/MONITOR would
-# vanish. Seed once from the log/pending union so an existing deployment is not
-# blank before its first refresh; every evaluate and decision updates it after.
-_recommendation_cache = RecommendationCacheStore()
-if not _recommendation_cache:
-    _cache_seed: dict[int, dict] = {}
-    for _record in read_log():
-        _seed_store_id = _record.get("store_id")
-        if isinstance(_seed_store_id, int):
-            _cache_seed[_seed_store_id] = _record
-    for _record in _pending_approvals.values():
-        _seed_store_id = _record.get("store_id")
-        if isinstance(_seed_store_id, int) and _seed_store_id not in _cache_seed:
-            _cache_seed[_seed_store_id] = _record
-    _recommendation_cache.upsert_many(_cache_seed)
+def _gated_pending_records() -> list[dict[str, Any]]:
+    """Latest rows that still need a human decision (the approval queue).
+
+    ``_pending_approvals`` keeps one latest record per store, gated or not, so
+    a diskless deploy can rebuild the board after the ephemeral log is wiped.
+    Presence in the table is not the gate: ``requires_human_approval`` and an
+    absent ``decided_at`` are.
+    """
+    return [
+        rec for rec in _pending_approvals.values()
+        if rec.get("requires_human_approval") and "decided_at" not in rec
+    ]
+
+
 _phase2_registry = InterventionRegistry()
 
 
@@ -699,6 +693,12 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int]) -> tupl
     log_records = read_log()
     existing_ids = {r.get("recommendation_id") for r in log_records}
     decided_store_ids = {r.get("store_id") for r in log_records if "decided_at" in r}
+    # The durable store keeps one latest record per store, gated or not. On a
+    # diskless deploy the log append below is ephemeral, and a store that
+    # recovered out of the gate (CONTINUE/MONITOR) would otherwise have no
+    # durable row; the board would keep serving its old gated record.
+    stored = {r.get("store_id"): r for r in _pending_approvals.values()}
+    decided_store_ids |= {sid for sid, r in stored.items() if "decided_at" in r}
     newly_logged = 0
     for rec in results:
         if rec["recommendation_id"] not in existing_ids:
@@ -707,19 +707,10 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int]) -> tupl
             rec.setdefault("actor", "system:sweep")
             append_log(rec)
             newly_logged += 1
-        if rec["requires_human_approval"] and rec["store_id"] not in decided_store_ids:
+        if rec["store_id"] not in decided_store_ids:
+            # A human decision is never overwritten by the next evaluation; the
+            # approval queue filters this row out via requires_human_approval.
             _pending_approvals[rec["store_id"]] = rec
-    # Durable projection of every evaluated store (gated or not). On a diskless
-    # deploy the append above is ephemeral and a store that is no longer gated
-    # has no pending row; this is what keeps the board complete after restart.
-    _recommendation_cache.upsert_many({rec["store_id"]: rec for rec in results})
-    # A store that recovered out of the gate (CONTINUE/MONITOR) must leave the
-    # approval queue; otherwise the old gated row keeps it "awaiting" and
-    # /pending-approvals still offers an approval the engine no longer requires.
-    for rec in results:
-        if (not rec.get("requires_human_approval") and "decided_at" not in rec
-                and rec["store_id"] not in decided_store_ids):
-            _pending_approvals.pop(rec["store_id"], None)
     return results, newly_logged, batch_check
 
 
@@ -758,7 +749,8 @@ def run_recommendations(_auth: str = Depends(_require_approval_auth)):
 
 @app.get("/pending-approvals")
 def get_pending_approvals():
-    return {"count": len(_pending_approvals), "pending": list(_pending_approvals.values())}
+    pending = _gated_pending_records()
+    return {"count": len(pending), "pending": pending}
 
 
 @app.get("/attention-queue")
@@ -770,7 +762,7 @@ def get_attention_queue():
     urgency (low health, few days, low confidence, negative lift). Pure read
     over the pending-approval queue; add ?store_id= to filter.
     """
-    ranked = ranked_attention_queue(list(_pending_approvals.values()))
+    ranked = ranked_attention_queue(_gated_pending_records())
     return {"count": len(ranked), "queue": ranked}
 
 
@@ -787,7 +779,7 @@ def monitor_sweep(_auth: str = Depends(_require_approval_auth)):
     warm_up()  # absorb a Render cold start once, instead of in every store's first call
     audit_runs, all_store_ids = _fetch_audit_store_ids()
     results, newly_logged, batch_check = _evaluate_and_persist_stores(audit_runs, all_store_ids)
-    ranked = ranked_attention_queue(list(_pending_approvals.values()))
+    ranked = ranked_attention_queue(_gated_pending_records())
     return {
         "swept_at": utcnow_iso(),
         "total_stores_evaluated": len(results),
@@ -838,6 +830,11 @@ def _latest_decided_record(store_id: int) -> dict | None:
     for record in reversed(read_log()):
         if record.get("store_id") == store_id and "decided_at" in record:
             return record
+    # Diskless: the decision lives in the durable latest-record store, not the
+    # ephemeral JSONL log.
+    for record in _pending_approvals.values():
+        if record.get("store_id") == store_id and "decided_at" in record:
+            return record
     return None
 
 
@@ -851,9 +848,19 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
         if existing is not None:
             return {"message": f"Recommendation for store {store_id} already decided.", "recommendation": existing}
         raise HTTPException(status_code=404, detail=f"No pending recommendation for store {store_id}.")
+    if "decided_at" in rec:
+        _pending_approvals[store_id] = rec
+        return {"message": f"Recommendation for store {store_id} already decided.", "recommendation": rec}
+    if not rec.get("requires_human_approval"):
+        _pending_approvals[store_id] = rec
+        raise HTTPException(
+            status_code=409,
+            detail=f"Store {store_id} does not require approval.",
+        )
+    pending_rec = rec
     decided_at = utcnow_iso()
     rec = {
-        **rec,
+        **pending_rec,
         "approved": True,
         "approval_id": f"approval-{uuid.uuid4().hex}",
         "approved_at": decided_at,
@@ -865,14 +872,18 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
     # re-run at decision time, not just at recommendation time. Fail closed.
     gate = decision_gate(rec)
     if not gate["allowed"]:
-        _pending_approvals.pop(store_id, None)
+        # The gate refused this decision; it did not decide the store. Put the
+        # undecided row back so a human can inspect or retry it.
+        _pending_approvals[store_id] = pending_rec
         raise HTTPException(status_code=409, detail={
             "message": "Decision-time gate failed; approval refused.",
             "checks": gate["checks"],
         })
     append_decision(rec, "approve", actor, gate, decided_by=principal.label())
     append_log(rec)
-    _recommendation_cache.upsert(rec)
+    # Keep the decision durably: on a diskless deploy the log append above is
+    # ephemeral, and the store is the only copy the board can rebuild from.
+    _pending_approvals[store_id] = rec
     return {"message": f"Recommendation for store {store_id} approved.", "recommendation": rec}
 
 
@@ -886,9 +897,19 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
         if existing is not None:
             return {"message": f"Recommendation for store {store_id} already decided.", "recommendation": existing}
         raise HTTPException(status_code=404, detail=f"No pending recommendation for store {store_id}.")
+    if "decided_at" in rec:
+        _pending_approvals[store_id] = rec
+        return {"message": f"Recommendation for store {store_id} already decided.", "recommendation": rec}
+    if not rec.get("requires_human_approval"):
+        _pending_approvals[store_id] = rec
+        raise HTTPException(
+            status_code=409,
+            detail=f"Store {store_id} does not require approval.",
+        )
+    pending_rec = rec
     decided_at = utcnow_iso()
     rec = {
-        **rec,
+        **pending_rec,
         "approved": False,
         "approval_id": f"approval-{uuid.uuid4().hex}",
         "rejected_at": decided_at,
@@ -901,14 +922,15 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
     # must hold before it enters the audit ledger.
     gate = decision_gate(rec)
     if not gate["allowed"]:
-        _pending_approvals.pop(store_id, None)
+        # Refused, not decided: keep the undecided row.
+        _pending_approvals[store_id] = pending_rec
         raise HTTPException(status_code=409, detail={
             "message": "Decision-time gate failed; rejection not recorded.",
             "checks": gate["checks"],
         })
     append_decision(rec, "reject", actor, gate, decided_by=principal.label())
     append_log(rec)
-    _recommendation_cache.upsert(rec)
+    _pending_approvals[store_id] = rec
     return {"message": f"Recommendation for store {store_id} rejected.", "recommendation": rec}
 
 
@@ -970,7 +992,7 @@ def _ledger_metric_lines(decisions: list[dict]) -> list[str]:
         f'retail_decisions_total{{decision="approve"}} {approvals}',
         f'retail_decisions_total{{decision="reject"}} {rejections}',
         "# TYPE retail_pending_approvals gauge",
-        f"retail_pending_approvals {len(_pending_approvals)}",
+        f"retail_pending_approvals {len(_gated_pending_records())}",
         "# TYPE retail_recommendations_total counter",
         f"retail_recommendations_total {len(read_log())}",
         "# TYPE retail_ledger_entries_total counter",
@@ -1820,35 +1842,22 @@ def evaluate_phase2_portfolio(payload: dict = Body(default={}),
 
 
 def _readable_records() -> list[dict[str, Any]]:
-    """The records every read-only surface classifies: log union pending store.
+    """The records every read-only surface classifies: log union latest store.
 
     One choke point for the read surfaces (/board, /board/view,
     /recommendations, /why, /advisory) so a store can never be listed on the
     board and simultaneously "unexplainable" on its detail page.
 
-    Union (log wins per store): the pending queue holds only gated records, so
-    an either/or fallback drops every healthy CONTINUE/MONITOR store whenever
-    the log is empty (Render diskless/disk-wiped -> 85 shows as 48). Pending
-    fills gaps for gated stores missing from the log; it never removes log rows.
-    The pending store is a derived projection of the same records (app/state.py),
-    not a second source of truth, so the union cannot invent a store: every
-    record's fields were written by the deterministic engine.
+    Union (log wins per store): the durable store keeps one latest record per
+    store, gated or not, so an either/or fallback drops every healthy
+    CONTINUE/MONITOR store whenever the log is empty (Render diskless ->
+    85 shows as 48). The store fills gaps for stores missing from the log; it
+    never removes log rows. It is a derived projection of the same records
+    (app/state.py), not a second source of truth, so the union cannot invent a
+    store: every record's fields were written by the deterministic engine.
     """
     log_records = read_log()
     seen = {r.get("store_id") for r in log_records if isinstance(r.get("store_id"), int)}
-    # Durable projection fills what the log cannot on a diskless deploy. It
-    # must come before the pending queue: a refreshed store that recovered out
-    # of the gate is non-gated, so the only copy is here, and it is newer than
-    # the stale gated row still sitting in pending.
-    try:
-        cache_records = _recommendation_cache.values()
-    except Exception:  # storage fail-closed: keep the log/pending surfaces up
-        cache_records = []
-    for rec in cache_records:
-        store_id = rec.get("store_id")
-        if isinstance(store_id, int) and store_id not in seen:
-            log_records.append(dict(rec))
-            seen.add(store_id)
     try:
         pending_records = list(_pending_approvals.values())
     except Exception:  # storage/backend.py fail-closed 503 stays untouched
@@ -2021,12 +2030,12 @@ def get_status_board():
     """
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
     _refresh_stale_board()  # a frozen snapshot heals on the first load of the day
-    pending_records = list(_pending_approvals.values())
-    ranked = ranked_attention_queue(pending_records)
+    gated = _gated_pending_records()
+    ranked = ranked_attention_queue(gated)
     board = build_board(
         _readable_records(),
         ranked_attention=ranked,
-        pending_store_ids=set(_pending_approvals),
+        pending_store_ids={rec["store_id"] for rec in gated},
     )
     # Off-path analytics, opt-in: rendering a board must never silently send
     # reason text to a third-party classifier (see app/config.py).
@@ -2043,11 +2052,12 @@ def get_status_board():
 def get_status_board_html():
     """Human-readable board: same classification as GET /board, rendered HTML."""
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
-    ranked = rank_attention(list(_pending_approvals.values()))
+    gated = _gated_pending_records()
+    ranked = rank_attention(gated)
     board = build_board(
         _readable_records(),
         ranked_attention=ranked,
-        pending_store_ids=set(_pending_approvals),
+        pending_store_ids={rec["store_id"] for rec in gated},
     )
     if root_cause_tagging_enabled():
         from analytics.root_cause import tag_recommendations
@@ -2061,7 +2071,7 @@ def get_pending_cards():
 
     Every card field is enriched from the persisted recommendation log;
     cards carry evidence references, never inline claims."""
-    pending = [_pending_approvals[sid] for sid in sorted(_pending_approvals)]
+    pending = sorted(_gated_pending_records(), key=lambda rec: rec["store_id"])
     return jsonable_encoder(build_attention_digest(pending))
 
 
@@ -2363,8 +2373,9 @@ def _dashboard_quality_tiles(records: Sequence[Mapping[str, Any]],
 @app.get("/ui", response_class=HTMLResponse)
 def ui_dashboard():
     _kick_upstream_warmup()  # free-tier upstreams sleep; wake them behind this read
-    attention = ranked_attention_queue(list(_pending_approvals.values()))
-    records = read_log()
+    gated = _gated_pending_records()
+    attention = ranked_attention_queue(gated)
+    records = _readable_records()
     decisions = read_decisions()
     store_margins = _collect_store_margins(records)
     _enrich_attention_rows(attention)
@@ -2376,7 +2387,7 @@ def ui_dashboard():
         records, sweep_status.get("last_sweep_at"))
     return render_page(
         "Retail Intelligence Decision Dashboard", "/ui",
-        render_dashboard(_pending_approvals.values(), records, attention,
+        render_dashboard(gated, records, attention,
                          quality=quality, sweep_status=sweep_status,
                          decisions=decisions,
                          trend=_activity_trend(records, decisions),
@@ -2387,7 +2398,7 @@ def ui_dashboard():
 @app.get("/ui/approvals", response_class=HTMLResponse)
 def ui_approvals_page():
     return render_page("Approvals", "/ui/approvals",
-                       render_approvals(list(_pending_approvals.values())))
+                       render_approvals(_gated_pending_records()))
 
 
 async def _ui_decide_from_request(store_id: int, request: Request, approved: bool) -> HTMLResponse:
@@ -2408,7 +2419,7 @@ def _ui_decide(store_id: int, token: str, actor: str, approved: bool) -> HTMLRes
         message = f"{error.status_code}: {error.detail}"
     return HTMLResponse(render_page(
         "Approvals", "/ui/approvals",
-        render_approvals(list(_pending_approvals.values()), banner=message),
+        render_approvals(_gated_pending_records(), banner=message),
     ))
 
 

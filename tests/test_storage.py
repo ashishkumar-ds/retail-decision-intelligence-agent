@@ -43,11 +43,11 @@ def test_translate_placeholders():
 def test_migrations_apply_once(tmp_path):
     path = tmp_path / "state.db"
     conn = sqlite3.connect(str(path))
-    assert run_migrations(conn, "sqlite") == [1, 2]
+    assert run_migrations(conn, "sqlite") == [1]
     assert run_migrations(conn, "sqlite") == []
     versions = [r[0] for r in conn.execute(
         "SELECT version FROM schema_migrations ORDER BY version")]
-    assert versions == [1, 2]
+    assert versions == [1]
     conn.close()
 
 
@@ -150,14 +150,12 @@ def test_store_postgres_backend_via_fake_psycopg(monkeypatch):
     sqls = [sql for sql, _ in executed]
     assert "CREATE TABLE IF NOT EXISTS schema_migrations" in sqls[0]
     assert any("CREATE TABLE IF NOT EXISTS pending_approvals" in s for s in sqls)
-    assert any("CREATE TABLE IF NOT EXISTS recommendation_cache" in s for s in sqls)
     assert any("%s" in s for s in sqls) and not any("?" in s for s in sqls)
     migration_inserts = [e for e in executed
                          if e[0].startswith("INSERT INTO schema_migrations")]
-    assert len(migration_inserts) == 2
-    versions = [e[1][0] for e in migration_inserts]
-    assert versions == [1, 2]
-    assert all(e[1][1] for e in migration_inserts)  # iso timestamp recorded
+    assert len(migration_inserts) == 1
+    version, applied_at = migration_inserts[0][1]
+    assert version == 1 and applied_at  # iso timestamp recorded
 
 
 if __name__ == "__main__":

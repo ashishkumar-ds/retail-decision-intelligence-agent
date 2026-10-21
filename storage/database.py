@@ -43,20 +43,6 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
         "CREATE INDEX IF NOT EXISTS idx_pending_approvals_inserted_at"
         " ON pending_approvals (inserted_at)",
     ]),
-    (2, [
-        # Latest-recommendation projection (app/state.py). The append-only
-        # JSONL log is the system of record when the disk persists; on a
-        # diskless deploy the log is wiped, and the gated-only pending store
-        # cannot carry stores that a refresh turns into non-gated CONTINUE/
-        # MONITOR rows. This cache keeps one latest record per store so the
-        # board and /why stay complete after a restart.
-        "CREATE TABLE IF NOT EXISTS recommendation_cache ("
-        " store_id   INTEGER PRIMARY KEY,"
-        " record     TEXT    NOT NULL,"
-        " updated_at TEXT    NOT NULL)",
-        "CREATE INDEX IF NOT EXISTS idx_recommendation_cache_updated_at"
-        " ON recommendation_cache (updated_at)",
-    ]),
 ]
 
 _MIGRATIONS_TABLE = (

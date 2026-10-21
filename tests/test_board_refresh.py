@@ -92,42 +92,30 @@ def test_board_needs_refresh_ignores_decided_rows():
     assert main._board_needs_refresh([decided]) is False
 
 
-def test_readable_records_prefers_the_durable_cache_over_a_stale_pending_row(monkeypatch):
-    class _Cache:
+def test_readable_records_keeps_latest_non_gated_records_from_the_store(monkeypatch):
+    # The store is the only durable copy on a diskless deploy; the read union
+    # must surface a CONTINUE row, not just the gated queue.
+    class _Store:
         def values(self):
             return [{"store_id": 1, "recommendation": "CONTINUE"}]
 
-    class _Pending:
-        def values(self):
-            return [{"store_id": 1, "recommendation": "EXTEND_INTERVENTION"}]
-
     monkeypatch.setattr(main, "read_log", lambda: [])
-    monkeypatch.setattr(main, "_recommendation_cache", _Cache())
-    monkeypatch.setattr(main, "_pending_approvals", _Pending())
+    monkeypatch.setattr(main, "_pending_approvals", _Store())
 
     records = main._readable_records()
 
     assert [rec["recommendation"] for rec in records] == ["CONTINUE"]
 
 
-def test_persist_caches_every_store_and_drops_recovered_from_the_queue(monkeypatch):
-    # A diskless deploy has no log to hold a store that leaves the gate, and
-    # the pending queue must not keep offering an approval the engine no longer
-    # requires. Every evaluated store therefore lands in the durable cache.
+def test_persist_stores_every_latest_record_and_the_queue_filters_gated(monkeypatch):
+    # A diskless deploy has no log to hold a store that leaves the gate. The
+    # store keeps every latest record; the approval queue filters to gated rows,
+    # so a recovered store no longer offers an approval.
     refreshed = {
         1: {"store_id": 1, "recommendation": "CONTINUE", "requires_human_approval": False},
         2: {"store_id": 2, "recommendation": "EXTEND_INTERVENTION", "requires_human_approval": True},
     }
     appended = []
-
-    class _Cache:
-        def __init__(self):
-            self.written = {}
-
-        def upsert_many(self, records):
-            self.written.update(records)
-
-    cache = _Cache()
     pending = {
         1: {"store_id": 1, "recommendation": "EXTEND_INTERVENTION", "requires_human_approval": True},
         2: {"store_id": 2, "recommendation": "EXTEND_INTERVENTION", "requires_human_approval": True},
@@ -138,32 +126,16 @@ def test_persist_caches_every_store_and_drops_recovered_from_the_queue(monkeypat
     monkeypatch.setattr(main, "read_log", lambda: [])
     monkeypatch.setattr(main, "append_log", appended.append)
     monkeypatch.setattr(main, "_recommendation_id", lambda rec: f"id-{rec['store_id']}")
-    monkeypatch.setattr(main, "_recommendation_cache", cache)
     monkeypatch.setattr(main, "_pending_approvals", pending)
 
     results, logged, check = main._evaluate_and_persist_stores([], [1, 2])
 
     assert len(results) == 2
-    assert set(cache.written) == {1, 2}
-    assert 1 not in pending
+    assert pending[1]["recommendation"] == "CONTINUE"
     assert pending[2]["recommendation"] == "EXTEND_INTERVENTION"
+    assert [rec["store_id"] for rec in main._gated_pending_records()] == [2]
     assert len(appended) == 2
     assert logged == 2 and check["passed"] is True
-
-
-def test_recommendation_cache_roundtrips_on_sqlite(tmp_path):
-    from app.state import RecommendationCacheStore
-
-    store = RecommendationCacheStore(path=tmp_path / "state.db")
-    store.upsert_many({1: {"store_id": 1, "recommendation": "CONTINUE"}})
-    store.upsert({"store_id": 1, "recommendation": "MONITOR"})
-    store.upsert_many({2: {"store_id": 2, "recommendation": "NEEDS_REVIEW"}})
-
-    assert len(store) == 2
-    assert {rec["store_id"]: rec["recommendation"] for rec in store.values()} == {
-        1: "MONITOR",
-        2: "NEEDS_REVIEW",
-    }
 
 
 def test_refresh_stale_board_evaluates_the_persisted_cohort(monkeypatch):
