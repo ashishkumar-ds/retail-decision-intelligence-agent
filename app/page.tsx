@@ -462,10 +462,12 @@ export default function BoardPage() {
   const buckets = board?.buckets || {}
   const anyEarlySignal = Object.values(buckets).some(rows =>
     (rows || []).some(row => row.directional_note))
+  // The brand rail is the one moving thing while the feed loads.
+  const loading = !board && !error
 
   return (
     <>
-      <div className="topline" />
+      <div className={`topline${loading ? ' is-loading' : ''}`} />
       <main className="shell">
         <nav className="nav">
           <Link href="/" className="brand">
@@ -492,7 +494,7 @@ export default function BoardPage() {
           </div>
         )}
 
-        {!board && !error ? (
+        {loading ? (
           <section className="loading-board" role="status" aria-live="polite" aria-busy="true">
             <div className="loading-intro">
               <span className="loading-mark" aria-hidden="true">
