@@ -260,3 +260,104 @@ class PendingApprovalStore:
         finally:
             conn.close()
         return [(r[0], json.loads(r[1])) for r in rows]
+
+
+class RecommendationCacheStore:
+    """One durable latest recommendation per store (diskless-safe projection).
+
+    The append-only log remains the system of record where the disk persists.
+    On a diskless deploy (the published demo) the log is wiped on restart and
+    the pending store only holds *gated* rows, so a refreshed store that becomes
+    non-gated (CONTINUE/MONITOR) has nowhere to live and the board keeps its old
+    gated record. This cache is written in the same transaction as the log:
+    every evaluated store, gated or not, with the latest record winning.
+
+    It is a projection, never a decision source. Approve/reject writes the
+    decided record here too, so a decision survives a restart even when the log
+    does not; ``_readable_records`` still lets the log win per store.
+    """
+
+    def __init__(self, path: str | Path | None = None) -> None:
+        self._explicit_path = Path(path) if path is not None else None
+        self._dialect = "sqlite"
+
+    def _resolve(self) -> Path:
+        return self._explicit_path if self._explicit_path is not None else state_path()
+
+    def _connect(self) -> Any:
+        if self._explicit_path is not None:
+            path = self._explicit_path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self._dialect = "sqlite"
+            conn = sqlite3.connect(str(path), timeout=_BUSY_TIMEOUT_MS / 1000.0)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}")
+            run_migrations(conn, "sqlite")
+            return conn
+        url = database_url()
+        if backend(url) == "postgres":
+            self._dialect = "postgres"
+            conn = _storage_connect(url)
+            run_migrations(conn, "postgres")
+            return conn
+        path = self._resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._dialect = "sqlite"
+        conn = sqlite3.connect(str(path), timeout=_BUSY_TIMEOUT_MS / 1000.0)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(f"PRAGMA busy_timeout={_BUSY_TIMEOUT_MS}")
+        run_migrations(conn, "sqlite")
+        return conn
+
+    def _q(self, sql: str) -> str:
+        return translate_placeholders(sql) if self._dialect == "postgres" else sql
+
+    def upsert(self, record: Mapping[str, Any]) -> None:
+        store_id = record.get("store_id")
+        if isinstance(store_id, int):
+            self.upsert_many({store_id: record})
+
+    def upsert_many(self, records: Mapping[int, Mapping[str, Any]]) -> None:
+        if not records:
+            return
+        conn = self._connect()
+        try:
+            conn.executemany(
+                self._q(
+                    "INSERT INTO recommendation_cache(store_id, record, updated_at) VALUES(?,?,?) "
+                    "ON CONFLICT(store_id) DO UPDATE SET "
+                    "record=excluded.record, updated_at=excluded.updated_at"),
+                [
+                    (sid, json.dumps(dict(rec), default=str, ensure_ascii=False), _utcnow_iso())
+                    for sid, rec in records.items()
+                ],
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def values(self) -> list[dict[str, Any]]:
+        conn = self._connect()
+        try:
+            rows = conn.execute(
+                "SELECT record FROM recommendation_cache ORDER BY store_id"
+            ).fetchall()
+        finally:
+            conn.close()
+        return [json.loads(r[0]) for r in rows]
+
+    def __len__(self) -> int:
+        conn = self._connect()
+        try:
+            row = conn.execute("SELECT COUNT(*) FROM recommendation_cache").fetchone()
+        finally:
+            conn.close()
+        return int(row[0])
+
+    def clear(self) -> None:
+        conn = self._connect()
+        try:
+            conn.execute("DELETE FROM recommendation_cache")
+            conn.commit()
+        finally:
+            conn.close()

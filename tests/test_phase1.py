@@ -195,6 +195,12 @@ def test_api_endpoints(tmp_path, monkeypatch):
     assert approve_response.status_code == 200
     assert approve_response.json()["recommendation"]["actor"] == "reviewer@example.com"
 
+    # The durable latest projection must carry the decision too: on a diskless
+    # deploy the decision would otherwise vanish with the ephemeral log.
+    cached = {rec["store_id"]: rec for rec in main._recommendation_cache.values()}
+    assert cached[1]["approval_id"] == approve_response.json()["recommendation"]["approval_id"]
+    assert cached[1]["decided_at"]
+
     # Idempotent: a repeat decision for an already-decided store returns the
     # existing decision (200), not a 404 - a retried request shouldn't read
     # as "this never happened."

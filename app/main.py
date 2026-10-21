@@ -45,7 +45,7 @@ from app.scheduler import (
     sweep_enabled,
     sweep_interval_seconds,
 )
-from app.state import PendingApprovalStore
+from app.state import PendingApprovalStore, RecommendationCacheStore
 from approvals.identity import (
     TOKENS_ENV as APPROVAL_TOKENS_ENV,
 )
@@ -223,6 +223,24 @@ def _rebuild_pending_approvals() -> dict[int, dict]:
 _pending_approvals = PendingApprovalStore()
 if not _pending_approvals:
     _pending_approvals.seed_from(_rebuild_pending_approvals())
+
+# Durable latest-recommendation projection (app/state.py). The published demo
+# is diskless: the JSONL log is wiped on restart and the pending store holds
+# only gated rows, so a refresh that turns a store into CONTINUE/MONITOR would
+# vanish. Seed once from the log/pending union so an existing deployment is not
+# blank before its first refresh; every evaluate and decision updates it after.
+_recommendation_cache = RecommendationCacheStore()
+if not _recommendation_cache:
+    _cache_seed: dict[int, dict] = {}
+    for _record in read_log():
+        _seed_store_id = _record.get("store_id")
+        if isinstance(_seed_store_id, int):
+            _cache_seed[_seed_store_id] = _record
+    for _record in _pending_approvals.values():
+        _seed_store_id = _record.get("store_id")
+        if isinstance(_seed_store_id, int) and _seed_store_id not in _cache_seed:
+            _cache_seed[_seed_store_id] = _record
+    _recommendation_cache.upsert_many(_cache_seed)
 _phase2_registry = InterventionRegistry()
 
 
@@ -691,6 +709,17 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int]) -> tupl
             newly_logged += 1
         if rec["requires_human_approval"] and rec["store_id"] not in decided_store_ids:
             _pending_approvals[rec["store_id"]] = rec
+    # Durable projection of every evaluated store (gated or not). On a diskless
+    # deploy the append above is ephemeral and a store that is no longer gated
+    # has no pending row; this is what keeps the board complete after restart.
+    _recommendation_cache.upsert_many({rec["store_id"]: rec for rec in results})
+    # A store that recovered out of the gate (CONTINUE/MONITOR) must leave the
+    # approval queue; otherwise the old gated row keeps it "awaiting" and
+    # /pending-approvals still offers an approval the engine no longer requires.
+    for rec in results:
+        if (not rec.get("requires_human_approval") and "decided_at" not in rec
+                and rec["store_id"] not in decided_store_ids):
+            _pending_approvals.pop(rec["store_id"], None)
     return results, newly_logged, batch_check
 
 
@@ -843,6 +872,7 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
         })
     append_decision(rec, "approve", actor, gate, decided_by=principal.label())
     append_log(rec)
+    _recommendation_cache.upsert(rec)
     return {"message": f"Recommendation for store {store_id} approved.", "recommendation": rec}
 
 
@@ -878,6 +908,7 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
         })
     append_decision(rec, "reject", actor, gate, decided_by=principal.label())
     append_log(rec)
+    _recommendation_cache.upsert(rec)
     return {"message": f"Recommendation for store {store_id} rejected.", "recommendation": rec}
 
 
@@ -1805,6 +1836,19 @@ def _readable_records() -> list[dict[str, Any]]:
     """
     log_records = read_log()
     seen = {r.get("store_id") for r in log_records if isinstance(r.get("store_id"), int)}
+    # Durable projection fills what the log cannot on a diskless deploy. It
+    # must come before the pending queue: a refreshed store that recovered out
+    # of the gate is non-gated, so the only copy is here, and it is newer than
+    # the stale gated row still sitting in pending.
+    try:
+        cache_records = _recommendation_cache.values()
+    except Exception:  # storage fail-closed: keep the log/pending surfaces up
+        cache_records = []
+    for rec in cache_records:
+        store_id = rec.get("store_id")
+        if isinstance(store_id, int) and store_id not in seen:
+            log_records.append(dict(rec))
+            seen.add(store_id)
     try:
         pending_records = list(_pending_approvals.values())
     except Exception:  # storage/backend.py fail-closed 503 stays untouched
@@ -1906,21 +1950,27 @@ def _persisted_audit_runs() -> tuple[list[dict[str, Any]], list[int]]:
     return runs, store_ids
 
 
-def _newest_generated_at(records: Sequence[Mapping[str, Any]]) -> datetime | None:
-    newest: datetime | None = None
-    for rec in records:
-        generated_at = _parse_generated_at(rec)
-        if generated_at is not None and (newest is None or generated_at > newest):
-            newest = generated_at
-    return newest
-
-
 def _board_needs_refresh(records: Sequence[Mapping[str, Any]] | None = None) -> bool:
-    """True when the newest recommendation predates today (UTC)."""
-    newest = _newest_generated_at(records if records is not None else _readable_records())
-    if newest is None:
-        return False
-    return newest.date() < datetime.now(timezone.utc).date()
+    """True when any undecided store still carries a pre-today evaluation.
+
+    Checking only the newest stamp hides a partially refreshed cohort: after a
+    refresh that could not persist non-gated rows, 54 records are today and 31
+    are still the old day, so the max date alone says "fresh". Per-store latest
+    plus "any undecided row is old" is the condition the board actually needs.
+    """
+    latest: dict[int, Mapping[str, Any]] = {}
+    for rec in records if records is not None else _readable_records():
+        store_id = rec.get("store_id")
+        if isinstance(store_id, int):
+            latest[store_id] = rec
+    today = datetime.now(timezone.utc).date()
+    for rec in latest.values():
+        if "decided_at" in rec:
+            continue
+        generated_at = _parse_generated_at(rec)
+        if generated_at is not None and generated_at.date() < today:
+            return True
+    return False
 
 
 def _refresh_stale_board() -> None:
