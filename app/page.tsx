@@ -52,7 +52,9 @@ const BUCKET_STATE: Record<string, string> = {
   watch: 'Watch',
 }
 
-const PAGE_SIZE = 8
+// Three stores per open group on the first screen; the rest sit behind
+// "Show all". Eight rows pushed the second group (and the footer) too far down.
+const PAGE_SIZE = 3
 const TOKEN_KEY = 'rdia.approvalToken'
 
 type Row = Record<string, any>
