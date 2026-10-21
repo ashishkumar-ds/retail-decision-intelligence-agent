@@ -28,16 +28,20 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
   (`logs/approval_ledger.jsonl`, `APPROVAL_LEDGER_PATH`) with the operator and
   the gate result.
 - **Failure mode:** gate failure → HTTP 409, the decision is refused, the
-  ledger is never written with an ungated approval. The pending queue entry is
-  dropped so a stale record cannot be retried into approval.
-- **Rebuild invariant:** pending state lives in a durable SQLite store
-  (`app/state.py`, `PENDING_APPROVAL_STATE_PATH`), shared across workers; on a
-  fresh state file it is backfilled at startup from the durable recommendation
-  log (`app/main._rebuild_pending_approvals` → `seed_from`). The ledger is
-  evidence of decisions, never the source of pending state. A decision written
-  to the ledger is always accompanied by the decided record in the
-  recommendation log (both writes happen inside the same request; the
-  ledger write happens first and raises on gate failure).
+  ledger is never written with an ungated approval. The undecided row is kept
+  in the store so a human can inspect or retry it; a successful decision
+  replaces it with the decided record (the queue view filters on
+  `requires_human_approval` and an absent `decided_at`).
+- **Rebuild invariant:** the durable store (`app/state.py`,
+  `PENDING_APPROVAL_STATE_PATH`) holds one latest recommendation per store,
+  gated or not, shared across workers; on a fresh state file it is backfilled
+  at startup from the durable recommendation log
+  (`app/main._rebuild_pending_approvals` → `seed_from`), last record per store
+  wins (so decided rows survive too). The ledger is evidence of decisions,
+  never the source of the store. A decision written to the ledger is always
+  accompanied by the decided record in the recommendation log and the store
+  (both writes happen inside the same request; the ledger write happens first
+  and raises on gate failure).
 
 ## 3. Approval & write authentication
 - **Where:** `app/main.py::_require_approval_auth` (approve/reject), and

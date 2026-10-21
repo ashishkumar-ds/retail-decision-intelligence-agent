@@ -62,7 +62,7 @@ fails if the code reads a variable that is not documented there.
 | `APPROVAL_AUTH_TOKEN` | **required** | Fail-closed gate on every write path. Unset → read-only service (503). Demo-grade bearer token: no rotation/expiry/OIDC — never expose write paths publicly without an additional control layer. |
 | `SWEEP_ENABLED` | `0` in the published demo; `1` once the audit source is owned | Opt-in autonomous sweep. Unset → the daily sweep never runs (the default). It is `0` in the demo on purpose: the store universe comes from Project 2's audit feed, which this repo does not own, so a reset feed makes every tick fail (`/health` shows `sweeps_failed`). The board still self-heals from its own persisted cohort (see `BOARD_SELF_REFRESH`). Turn the sweep on when `CAMPAIGN_AUDIT_API_URL` points at a source you own. |
 | `SWEEP_INTERVAL_SECONDS` | `86400` | Sweep cadence (daily). |
-| `BOARD_SELF_REFRESH` | `1` (default) | On the first `GET /board` whose newest recommendation predates today (UTC), re-evaluate the persisted cohort against the live forecast and serve the new stamp. The campaign start is reconstructed from the board's own append-only records, so an emptied audit feed no longer freezes it. Set `0` to serve the stored snapshot without re-evaluation. |
+| `BOARD_SELF_REFRESH` | `1` (default) | On the first `GET /board` where any undecided store's latest record predates today (UTC), re-evaluate the persisted cohort against the live forecast and serve the new stamp. The campaign start is reconstructed from the board's own append-only records, so an emptied audit feed no longer freezes it. Set `0` to serve the stored snapshot without re-evaluation. |
 | `FORECAST_API_URL` | the forecast service URL | Where actuals/predictions come from; the code default is the deployed Project 1 API. | SLO: single upstream, no ensemble/cache — `ERROR` (feed down) vs `NO_DATA` (business gap) per record on `/board`; outage leaves new stores in `NEEDS_REVIEW`. |
 | `CAMPAIGN_AUDIT_API_URL` | **required for the sweep** | Project 2's read-only audit log, and the source of the store universe. Unset with no `CAMPAIGN_AUDIT_LOG_PATH` file → `POST /recommendations/run` answers 400 "No store_ids found in the audit log" and the daily sweep does nothing. |
 | `RETAIL_STORE_CONTEXT_URL` | optional | P2 `datasets/stores.csv` for the store margin proxy; unset → code default. Unreachable → layer fails open, decisions unchanged. |
@@ -136,13 +136,14 @@ Three honest options:
 `DATABASE_URL` alone does **not** solve this: it makes the pending-approval
 store durable, not the JSONL logs.
 
-### Supabase → Render (pending-approval store on Postgres)
+### Supabase → Render (durable latest-record store on Postgres)
 
-The app needs **zero code changes** for the pending store: `storage/database.py` +
+The app needs **zero code changes** for the durable store: `storage/database.py` +
 `app/state.py` already select Postgres when `DATABASE_URL` is a `postgres://`
 URL and run the versioned migrations on first connect. Reads are diskless-durable
 too: `/board`, `/board/view`, `/recommendations` and the `/why` detail page fall
-back to the durable pending store when the JSONL log is empty (see
+back to the durable latest-record store (one row per store, gated or not; the
+approval queue is a filtered view) when the JSONL log is empty (see
 `_readable_records` in `app/main.py`; log wins when present). One union feeds
 every read surface, so a store the board lists is never unexplainable on its
 detail page. This section is the click-through
