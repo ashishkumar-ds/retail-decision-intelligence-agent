@@ -73,8 +73,9 @@ derive a gated count in the browser.
 `NEEDS_REVIEW` is a review, not a budget approval: its action is "Review the data
 gap" (fallback "Monitor only"), `risk` is `reversible`, and `commitment_label` is
 "No spend — review only". It still counts in `needs_decision` because a human owns
-the review. The gate sentence must name the split — "N of M stores: X decisions,
-Y data reviews" — so a no-data review never reads as an approval to move money.
+the review. The three tiles carry the decision/data-review split; the gate
+sentence says only "N of M stores are waiting on a human review" and must not
+repeat the tile counts.
 
 Print the `*_label` fields. `EXTEND_INTERVENTION`, `cautious` and
 `awaiting_decision` are machine tokens; a stakeholder surface says "Extend the
@@ -152,12 +153,12 @@ client-side fetching from process.env.NEXT_PUBLIC_API_BASE. Two pages:
    a. A compact header (product name, campaign label/timing_window from /board,
       "Data as of {as_of_display}"). NOT a hero: no 50px title, no paragraph
       restating the tiles. The first figure must be above the fold.
-   b. One sentence: "{needs_decision} of {total_stores} stores:
-      {counts.needs_intervention} decisions, {counts.insufficient_data} data
-      reviews." Then three tiles that add up to it: needs_intervention
+   b. One sentence: "{needs_decision} of {total_stores} stores are waiting on a
+      human review." Then three tiles that add up to it: needs_intervention
       ("Need a decision"), insufficient_data ("Needs review (no data)"), and
       working_well+recovering+watch merged ("No action needed", captioned with
-      the per-bucket split). Tiles link to their section.
+      the per-bucket split). The tiles carry the split; do not repeat their
+      counts in the sentence. Tiles link to their section.
    c. One collapsible section per tile group. Each store is a card: its id and
       row.state on one top line with "Why →" at the far right, then the one
       reason sentence, then exactly three numbers (health, recovery_pct,

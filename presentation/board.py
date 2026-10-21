@@ -565,11 +565,10 @@ def render_board_html(board: Mapping[str, Any],
                 for name in BUCKET_ORDER if buckets.get(name)]
     sections.append(_root_causes_html(board))
     # The gate counts every human-owned row, including the no-data reviews.
-    # Name the split so "85 waiting" never reads as 85 budget approvals.
+    # The tiles carry the decision/data-review split; the sentence says only
+    # what the number means.
     gate_line = (f"<strong>{_esc(board.get('needs_decision'))}</strong> of "
-                 f"{_esc(board.get('total_stores'))} stores: "
-                 f"{_esc(counts.get('needs_intervention', 0))} decisions, "
-                 f"{_esc(counts.get('insufficient_data', 0))} data&nbsp;reviews.")
+                 f"{_esc(board.get('total_stores'))} stores are waiting on a human review.")
 
     return (
         "<!doctype html><html><head><meta charset='utf-8'>"

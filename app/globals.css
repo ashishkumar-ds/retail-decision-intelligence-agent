@@ -169,7 +169,26 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 
 .caveat { margin: 6px 0 28px; max-width: 84ch; font-size: 11.5px; line-height: 1.55; color: var(--muted) }
 .notice { margin: 16px 0; padding: 13px 16px; border: 1px solid #edc7b9; border-radius: 12px; background: var(--peach); color: #8e4c40; font-size: 13px }
-.loading { padding: 56px 0; color: var(--muted) }
+
+/* Loading the store feed: a retail-shaped skeleton, not a blank page. */
+.loading-board { padding: 22px 0 8px }
+.loading-intro { display: flex; align-items: flex-start; gap: 15px }
+.loading-mark { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--teal-text); box-shadow: 0 8px 22px rgba(20, 20, 50, .06) }
+.loading-kicker { margin: 1px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--teal-text) }
+.loading-title { margin: 0; font: 700 22px/1.2 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em }
+.loading-copy { margin: 6px 0 0; max-width: 62ch; font-size: 13px; line-height: 1.55; color: var(--muted) }
+.loading-skeleton { display: grid; gap: 14px; margin-top: 24px }
+.skeleton-line, .skeleton-tile, .skeleton-card { display: block; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(90deg, #eef3f1 25%, #f8fbfa 37%, #eef3f1 63%); background-size: 400% 100%; animation: skeleton-shimmer 1.4s ease-in-out infinite }
+.skeleton-line { width: min(430px, 52%); height: 28px; border-radius: 999px }
+.skeleton-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.skeleton-tile { height: 96px }
+.skeleton-card { height: 210px; border-radius: 18px }
+.loading-note { margin: 14px 0 0; font-size: 11.5px; color: var(--muted) }
+@keyframes skeleton-shimmer { 0% { background-position: 100% 0 } 100% { background-position: 0 0 } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line, .skeleton-tile, .skeleton-card { animation: none }
+}
+
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px }
 
 /* --- store detail (/store/[id]) - the "why" page ----------------------- */
@@ -223,6 +242,15 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
   .summary { margin: 18px 0 20px }
+  .loading-board { padding: 16px 0 4px }
+  .loading-intro { gap: 12px }
+  .loading-mark { width: 40px; height: 40px; border-radius: 12px }
+  .loading-title { font-size: 19px }
+  .loading-copy { font-size: 12.5px }
+  .loading-skeleton { gap: 10px; margin-top: 18px }
+  .skeleton-line { height: 24px }
+  .skeleton-tile { height: 74px }
+  .skeleton-card { height: 170px }
 
   /* Three compact tiles instead of three stacked cards: the first store now
      starts on the first screen, not after 500px of summary. */

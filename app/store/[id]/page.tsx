@@ -45,7 +45,27 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
   return <><div className="topline"/><main className="shell"><nav className="nav"><Link href="/" className="brand"><img src="/dunnhumby.svg" alt="dunnhumby" className="brand-logo" width={82} height={19}/><span className="brand-divider" aria-hidden="true"/><span className="brand-product">retail decision intelligence agent</span></Link><div className="navlinks"><Link href="/">Overview</Link><span className="nav-status"><i/>Read-only</span></div></nav>
     <section className="hero"><div><Link href="/" className="back">← Back to board</Link><div className="eyebrow" style={{ marginTop: 24 }}>Store detail</div><h1>Store {display(data?.store_id || id)}</h1><p>What the engine recommends for this store, and the evidence behind it.</p></div>{rec && <div className="hero-meta"><div className="live-dot"><i/>{display(rec.recommendation)}</div><strong>confidence {display(rec.confidence)}</strong>{rec.forecast_status && rec.forecast_status !== 'AVAILABLE' ? <span>forecast {display(rec.forecast_status)}</span> : null}</div>}</section>
     {error && <div className="notice">{error}</div>}
-    {!data && !error ? <div className="loading">Loading store figures…</div> : data && <div className="detail-grid">
+    {!data && !error ? <section className="loading-board" role="status" aria-live="polite" aria-busy="true">
+      <div className="loading-intro">
+        <span className="loading-mark" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+            <path d="M4 9.5V20h16V9.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 9.5l1.4-4.2h15.2L21 9.5H3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
+            <path d="M8 13h8M8 16.5h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+            <path d="M10 20v-4h4v4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"/>
+          </svg>
+        </span>
+        <div>
+          <p className="loading-kicker">Store evidence</p>
+          <h2 className="loading-title">Fetching store evidence from the API</h2>
+          <p className="loading-copy">Pulling the recommendation, its evidence and the verification record for this store.</p>
+        </div>
+      </div>
+      <div className="loading-skeleton" aria-hidden="true">
+        <span className="skeleton-line"/>
+        <span className="skeleton-card"/>
+      </div>
+    </section> : data && <div className="detail-grid">
       <article className="panel">
         <h2 className="section-title">Why this recommendation</h2>
         <p className="narrative">{narrative(data.narrative)}</p>

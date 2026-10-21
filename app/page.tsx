@@ -486,27 +486,60 @@ export default function BoardPage() {
           <h1>Store recovery review</h1>
         </header>
 
-        {(waking || error) && (
-          <div className="notice">{waking ? 'Service starting. Retrying shortly.' : error}</div>
+        {(error || (board && waking)) && (
+          <div className="notice">
+            {error || 'The data service is waking up. Showing the last loaded board; retrying shortly.'}
+          </div>
         )}
 
         {!board && !error ? (
-          <div className="loading">Loading latest figures…</div>
+          <section className="loading-board" role="status" aria-live="polite" aria-busy="true">
+            <div className="loading-intro">
+              <span className="loading-mark" aria-hidden="true">
+                {/* A storefront, not a generic spinner: this is a retail board
+                    waiting on the store feed, and the outline matches the
+                    card/shelf language below. */}
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 9.5V20h16V9.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M3 9.5l1.4-4.2h15.2L21 9.5H3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                  <path d="M8 13h8M8 16.5h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                  <path d="M10 20v-4h4v4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div>
+                <p className="loading-kicker">{waking ? 'API waking up' : 'Live store data'}</p>
+                <h2 className="loading-title">
+                  {waking ? 'Waiting for the data API' : 'Fetching store data from the API'}
+                </h2>
+                <p className="loading-copy">
+                  {waking
+                    ? 'The free-tier API sleeps when idle. This can take up to 30 seconds; the board retries automatically.'
+                    : 'Pulling the latest forecasts, recovery signals and approval status for the campaign cohort.'}
+                </p>
+              </div>
+            </div>
+            <div className="loading-skeleton" aria-hidden="true">
+              <span className="skeleton-line" />
+              <div className="skeleton-tiles">
+                <span className="skeleton-tile" />
+                <span className="skeleton-tile" />
+                <span className="skeleton-tile" />
+              </div>
+              <span className="skeleton-card" />
+            </div>
+            <p className="loading-note">The board opens as soon as the data lands.</p>
+          </section>
         ) : board && (
           <>
             <section className="summary">
-              {/* The one number is the human workload; the split names the two
-                  kinds of work so no-data reviews never read as budget
-                  approvals. The tiles below use the same three counts. */}
+              {/* One number for the human workload. The tiles below carry the
+                  decision/data-review split; repeating it here would print the
+                  same counts twice. */}
               <p className="gate-line">
                 <strong>{display(board.needs_decision)}</strong>
                 {/* The flex gap is visual only; keep a real space in the text
                     so a screen reader does not say "85of 85". */}
-                <span>
-                  {' '}of {display(board.total_stores)} stores:{' '}
-                  {display(countFor(board, 'needs_intervention'))} decisions,{' '}
-                  {display(countFor(board, 'insufficient_data'))}{' data\u00A0reviews.'}
-                </span>
+                <span>{' '}of {display(board.total_stores)} stores are waiting on a human review.</span>
               </p>
               <div className="tiles">
                 {GROUPS.map(group => (

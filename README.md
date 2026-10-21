@@ -27,7 +27,7 @@ No keys, no services — one command runs the whole loop on recorded data:
 bash scripts/seed_demo.sh
 ```
 
-![Retail Decision Board — live stakeholder view: 85 stores, split into 38 decisions and 47 data reviews, with the first store card showing its recommended action, alternative and commitment](docs/images/board-snapshot.png)
+![Retail Decision Board — live stakeholder view: 85 stores waiting on a human review, with 38 needing a decision and 47 needing a data review, and the first store card showing its recommended action, alternative and commitment](docs/images/board-snapshot.png)
 
 Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full walkthrough: [DEMO.md](DEMO.md).
 
