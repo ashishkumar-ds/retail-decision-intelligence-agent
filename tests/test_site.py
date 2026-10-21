@@ -69,6 +69,20 @@ def test_approvals_page_lists_pending_with_decision_forms(client, monkeypatch):
     assert f"/ui/approve/{store_id}" in response.text and f"/ui/reject/{store_id}" in response.text
 
 
+def test_approvals_page_has_a_form_for_every_gated_store():
+    # No 50-row cap: a stakeholder must be able to act on every gated store.
+    from presentation.site import render_approvals
+
+    pending = [
+        {"store_id": store_id, "recommendation": "EXTEND_INTERVENTION",
+         "requires_human_approval": True}
+        for store_id in range(1, 56)
+    ]
+    html = render_approvals(pending)
+    assert html.count("/ui/approve/") == 55
+    assert html.count("/ui/reject/") == 55
+
+
 def test_ui_approve_with_valid_token_records_decision(client, monkeypatch):
     store_id = _seed_pending(client, monkeypatch)
     response = client.post(f"/ui/approve/{store_id}",

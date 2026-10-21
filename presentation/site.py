@@ -410,7 +410,7 @@ def render_approvals(pending: Sequence[Mapping], banner: str | None = None) -> s
         f"<input type='password' name='token' placeholder='token' required>"
         f"<input type='hidden' name='actor' value='operator-site'>"
         f"<button>Reject</button></form></td></tr>"
-        for r in pending[:50]
+        for r in pending
     )
     table = (f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
              f'<th>Confidence</th><th></th><th>Decision (bearer token)</th></tr>{rows}</table>'
