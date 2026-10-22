@@ -157,8 +157,6 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
 
-Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, off-path Groq/Anthropic LLM layer, Prometheus, Next.js board on Vercel.
-
 ## Limitations
 
 - **No OIDC federation**: short-lived HMAC tokens cover service-to-operator auth; enterprise SSO still needs an identity provider.
