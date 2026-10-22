@@ -4,14 +4,14 @@
 
 > **Part 3 of the Dunnhumby series** — [Part 1: Store Performance Analysis](https://github.com/ashishkumar-ds/data-science-projects/tree/main/dunnhumby-retail-performance-analysis) proved what works · [Part 2: Campaign Automation](https://github.com/ashishkumar-ds/retail-campaign-automation-with-n8n) scaled it across 85 stores · **this project decides what's next per store.**
 
-**A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. An optional Groq-hosted LLM layer rephrases the evidence and drafts human-gated triage notes; it never decides.**
+**A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. An integrated, off-path Groq LLM layer (enabled in the hosted demo) rephrases the evidence and drafts human-gated triage notes; it never decides.**
 
 [Live demo](#demo) · [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![LLM: optional · Groq](https://img.shields.io/badge/LLM-optional%20%C2%B7%20Groq-F55036?logo=groq&logoColor=white)](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings)
+[![LLM: off-path · Groq](https://img.shields.io/badge/LLM-off--path%20%C2%B7%20Groq-F55036?logo=groq&logoColor=white)](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings)
 [![Live demo](https://img.shields.io/badge/live_demo-vercel-black)](https://retail-decision-intelligence-agent.vercel.app/)
 [![API on Render](https://img.shields.io/badge/api-render-46e3b7?logo=render&logoColor=white)](https://retail-decision-intelligence-agent.onrender.com/health)
 [![Store on Supabase](https://img.shields.io/badge/store-supabase-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
@@ -28,7 +28,7 @@
 bash scripts/seed_demo.sh
 ```
 
-The hosted demo enables the optional Groq layer with per-IP and daily caps.
+The hosted demo enables the off-path Groq layer with per-IP and daily caps.
 
 ![Retail Decision Board — live stakeholder view: 54 stores waiting on a human review (7 need a decision, 47 need a data review), 31 stores need no action, and the first store card shows its recommended action, alternative and commitment](docs/images/board-snapshot.png)
 
@@ -91,16 +91,16 @@ flowchart LR
     Log --> Board["/board — stakeholder view"]
 ```
 
-The optional LLM layer sits off-path. It has two jobs: rephrase grounded, cited evidence for `/why/{store_id}`, and draft a human-gated triage suggestion for `/advisory/{store_id}`. The decision path itself is pure code with no model calls.
+The off-path LLM layer has two jobs: rephrase grounded, cited evidence for `/why/{store_id}`, and draft a human-gated triage suggestion for `/advisory/{store_id}`. The decision path itself is pure code with no model calls.
 
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
-*Pure-code decision path → human gate → append-only log; the optional LLM sits off-path (rephrase + advisory only). Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
+*Pure-code decision path → human gate → append-only log; the off-path LLM only rephrases evidence and drafts advisory notes. Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
 Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
-### The optional LLM layer
+### The off-path LLM layer
 
-`/why/{store_id}` rephrases grounded, cited evidence; `/advisory/{store_id}` drafts a triage note from the engine's own closed vocabulary. Both are off-path, fail closed to the deterministic template, and are capped per caller per hour and per account per day. The published demo uses Groq through the OpenAI-compatible adapter (`qwen/qwen3.8-27b`); set `LLM_PROVIDER=anthropic` for Claude. Groq needs no extra SDK — `httpx` is already a runtime dependency.
+`/why/{store_id}` rephrases grounded, cited evidence; `/advisory/{store_id}` drafts a triage note from the engine's own closed vocabulary. Both are off-path and optional at runtime: without a key or with the flags off, they serve the deterministic template, and every failure degrades there too. Calls are capped per caller per hour and per account per day. The published demo uses Groq through the OpenAI-compatible adapter (`qwen/qwen3.8-27b`); set `LLM_PROVIDER=anthropic` for Claude. Groq needs no extra SDK — `httpx` is already a runtime dependency.
 
 ## API surface
 
@@ -138,7 +138,7 @@ All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a
 | `CAMPAIGN_AUDIT_API_URL` | unset | Project 2 read-only audit log (store universe source) |
 | `DATABASE_URL` | unset (SQLite) | `postgres://` URL selects Postgres (Supabase session pooler + `?sslmode=require`) for the pending-approval store — durable, multi-instance safe. JSONL audit logs still need the disk |
 | `SWEEP_ENABLED` / `SWEEP_INTERVAL_SECONDS` | off / `86400` | Opt-in background sweep scheduler |
-| `LLM_ADVISORY_ENABLED` / `LLM_EXPLANATIONS_ENABLED` | off / off (on in the published demo) | Opt-in off-path LLM layers; every failure falls back to the deterministic template |
+| `LLM_ADVISORY_ENABLED` / `LLM_EXPLANATIONS_ENABLED` | off / off (on in the published demo) | Off-path LLM layers; optional at runtime — without a key or with the flags off, both endpoints serve the deterministic template |
 | `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `anthropic` / — / `claude-sonnet-4-5` / unset | Provider for the off-path LLM. For Groq: `openai_compat` + `https://api.groq.com/openai/v1` + a Groq key. No key → deterministic template. `LLM_API_KEY` is a secret. |
 | `LLM_PER_IP_HOURLY_LIMIT` / `LLM_DAILY_CALL_BUDGET` | `20` / `250` | Spend caps for the two public LLM endpoints (`/why/{store_id}`, `/advisory/{store_id}`); `0` = unlimited |
 | `PORT` | `8001` | FastAPI listen port |
@@ -158,7 +158,7 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
 
-Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, optional Groq/Anthropic LLM layer, Prometheus, Next.js board on Vercel.
+Stack: FastAPI + pure-Python decision engine, SQLite/Postgres, off-path Groq/Anthropic LLM layer, Prometheus, Next.js board on Vercel.
 
 ## Limitations
 
