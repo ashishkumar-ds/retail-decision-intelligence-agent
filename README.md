@@ -10,7 +10,6 @@
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![LLM: Groq](https://img.shields.io/badge/LLM-Groq-F55036?logo=groq&logoColor=white)](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings)
 [![Live demo](https://img.shields.io/badge/live_demo-vercel-black)](https://retail-decision-intelligence-agent.vercel.app/)
 [![API on Render](https://img.shields.io/badge/api-render-46e3b7?logo=render&logoColor=white)](https://retail-decision-intelligence-agent.onrender.com/health)
@@ -154,7 +153,7 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 - [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
 - [Deployment](docs/DEPLOYMENT.md) — Render + Supabase setup, durable-storage trade-offs
 - [Frontend contract](docs/FRONTEND_CONTRACT.md) — board spec for the Vercel surface (reads plus one token-gated approve)
-- Off-path classifiers ([classifier.dev](https://classifier.dev), Jev) — keep-biased RAG pre-filter + root-cause tags, keyless; numbers redacted before egress, failures degrade safe ([ADR-0005](docs/adr/0005-redact-numbers-before-egress.md))
+- [Off-path classifiers — classifier.dev / Jev](https://classifier.dev) — keep-biased RAG pre-filter + root-cause tags, keyless; numbers redacted before egress, failures degrade safe ([ADR-0005](docs/adr/0005-redact-numbers-before-egress.md))
 
 Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
 
