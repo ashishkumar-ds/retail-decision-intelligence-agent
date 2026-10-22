@@ -123,10 +123,8 @@ def _third_party_imports() -> set[str]:
 
 def _declared_runtime_deps() -> set[str]:
     """Top-level runtime dependencies, as pip would install them in the image."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:  # Python < 3.11 fallback (CI runs 3.10+)
-        import tomli as tomllib  # type: ignore[no-redef]
+    import tomllib
+
     declared = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     names: set[str] = set()
     for requirement in declared["project"]["dependencies"]:

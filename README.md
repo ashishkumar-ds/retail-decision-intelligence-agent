@@ -9,7 +9,7 @@
 [Live demo](#demo) · [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
-[![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org)
+[![Python 3.15](https://img.shields.io/badge/python-3.15-blue)](https://www.python.org)
 [![LLM: Groq](https://img.shields.io/badge/LLM-Groq-F55036?logo=groq&logoColor=white)](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings)
 [![Live demo](https://img.shields.io/badge/live_demo-vercel-black)](https://retail-decision-intelligence-agent.vercel.app/)
 [![API on Render](https://img.shields.io/badge/api-render-46e3b7?logo=render&logoColor=white)](https://retail-decision-intelligence-agent.onrender.com/health)
@@ -51,7 +51,7 @@ A deterministic retail decision agent for underperforming stores. The brain is p
 
 ## Quickstart
 
-Requires Python 3.11+ (CI tests 3.11 and 3.12).
+Requires Python 3.15 (the version CI tests).
 
 ```bash
 git clone https://github.com/ashishkumar-ds/retail-decision-intelligence-agent.git

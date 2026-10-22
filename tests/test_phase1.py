@@ -163,7 +163,7 @@ def test_forecast_tool_success_and_failures(monkeypatch):
 def test_api_endpoints(tmp_path, monkeypatch):
     pytest.importorskip(
         "fastapi",
-        reason="FastAPI endpoint tests require FastAPI/Pydantic; unavailable in this Android Python 3.14 environment.",
+        reason="FastAPI endpoint tests require FastAPI/Pydantic; unavailable in this Android Python environment.",
     )
     from fastapi.testclient import TestClient
 
@@ -401,7 +401,7 @@ def test_forecast_tool_retries_and_exponential_backoff(monkeypatch):
 def test_api_forecast_statuses_and_error_review_behavior(tmp_path, monkeypatch):
     pytest.importorskip(
         "fastapi",
-        reason="FastAPI endpoint tests require FastAPI/Pydantic; unavailable in this Android Python 3.14 environment.",
+        reason="FastAPI endpoint tests require FastAPI/Pydantic; unavailable in this Android Python environment.",
     )
     from fastapi.testclient import TestClient
 
