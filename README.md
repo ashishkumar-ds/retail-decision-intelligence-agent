@@ -95,7 +95,6 @@ The off-path LLM layer has two jobs: rephrase grounded, cited evidence for `/why
 ![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
 *Pure-code decision path → human gate → append-only log; the off-path LLM only rephrases evidence and drafts advisory notes. Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
-Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 ### The off-path LLM layer
 
