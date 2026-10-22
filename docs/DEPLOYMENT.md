@@ -1,6 +1,6 @@
 # Deployment
 
-The image is standard and boring: `python:3.12-slim`, non-root user, deps
+The image is standard and boring: `python:3.15-slim`, non-root user, deps
 pinned, one uvicorn process bound to `0.0.0.0:$PORT`. `docker compose up -d
 --build` is the same thing locally.
 
