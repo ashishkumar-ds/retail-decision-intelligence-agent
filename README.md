@@ -4,14 +4,14 @@
 
 > **Part 3 of the Dunnhumby series** — [Part 1: Store Performance Analysis](https://github.com/ashishkumar-ds/data-science-projects/tree/main/dunnhumby-retail-performance-analysis) proved what works · [Part 2: Campaign Automation](https://github.com/ashishkumar-ds/retail-campaign-automation-with-n8n) scaled it across 85 stores · **this project decides what's next per store.**
 
-**A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. An integrated, off-path Groq LLM layer (enabled in the hosted demo) rephrases the evidence and drafts human-gated triage notes; it never decides.**
+**A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. A Groq LLM layer explains the evidence; it never decides.**
 
 [Live demo](#demo) · [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![LLM: off-path · Groq](https://img.shields.io/badge/LLM-off--path%20%C2%B7%20Groq-F55036?logo=groq&logoColor=white)](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings)
+[![LLM: Groq](https://img.shields.io/badge/LLM-Groq-F55036?logo=groq&logoColor=white)](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings)
 [![Live demo](https://img.shields.io/badge/live_demo-vercel-black)](https://retail-decision-intelligence-agent.vercel.app/)
 [![API on Render](https://img.shields.io/badge/api-render-46e3b7?logo=render&logoColor=white)](https://retail-decision-intelligence-agent.onrender.com/health)
 [![Store on Supabase](https://img.shields.io/badge/store-supabase-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
