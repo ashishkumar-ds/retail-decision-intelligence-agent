@@ -132,6 +132,7 @@ from tools.campaign_tool import (
 from tools.forecast_tool import (
     ForecastResponseError,
     get_actuals,
+    get_all_stores_info,
     get_control_comparison,
     get_evaluation_window_forecast,
     get_prediction,
@@ -380,7 +381,14 @@ def _outcome_evidence_by_store() -> dict[int, dict]:
     return evidence
 
 
-def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
+def build_store_signal(store_id: int, audit_runs: list,
+                       stores_by_id: Mapping[int, dict[str, Any]] | None = None) -> StoreSignal | None:
+    """Build one store's forecast signal.
+
+    ``stores_by_id`` is the batch lookup a refresh fetches once from
+    ``GET /stores``. When omitted, the single-store fallback keeps the
+    original per-store call (used by tests and one-off callers).
+    """
     first_run = first_run_for_store(store_id, audit_runs)
     if first_run is None:
         return None
@@ -402,7 +410,10 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
     days_remaining = max(RECOVERY_WINDOW_DAYS - days_elapsed, 0)
 
     try:
-        store_info = get_store_info(store_id)
+        # One /stores call per refresh instead of one per store: a flaky
+        # upstream used to turn 85 identical lookups into 85 retry storms.
+        store_info = (stores_by_id.get(store_id) if stores_by_id is not None
+                      else get_store_info(store_id))
         if store_info is None:
             # Genuine business no-data, not a technical failure.
             log_run_step(store_id, "forecast_fetch", "no_data",
@@ -444,8 +455,9 @@ def build_store_signal(store_id: int, audit_runs: list) -> StoreSignal | None:
 _decision_engine = DecisionEngine()
 
 
-def evaluate_store(store_id: int, audit_runs: list, outcome_evidence: dict | None = None) -> dict | None:
-    signal = build_store_signal(store_id, audit_runs)
+def evaluate_store(store_id: int, audit_runs: list, outcome_evidence: dict | None = None,
+                   stores_by_id: Mapping[int, dict[str, Any]] | None = None) -> dict | None:
+    signal = build_store_signal(store_id, audit_runs, stores_by_id=stores_by_id)
     if signal is None:
         return None
 
@@ -658,7 +670,20 @@ def _fetch_audit_store_ids() -> list[int]:
     return audit_runs, all_store_ids
 
 
-def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int]) -> tuple[list[dict], int, dict]:
+def _no_usable_forecast(records: Sequence[Mapping[str, Any]]) -> bool:
+    """A cohort with no usable forecast and at least one technical error.
+
+    All ``NO_DATA`` is a legitimate coverage gap (the upstream answered, it
+    just has no history for those stores), so it is still persisted. ``ERROR``
+    means the fetch itself failed; a cohort with only errors is an outage.
+    """
+    statuses = [str(rec.get("forecast_status") or "") for rec in records]
+    return "ERROR" in statuses and "AVAILABLE" not in statuses
+
+
+def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int],
+                                 stores_by_id: Mapping[int, dict[str, Any]] | None = None
+                                 ) -> tuple[list[dict], int, dict]:
     """Shared evaluate -> verify -> persist core for /recommendations and sweeps.
 
     Outcome evidence from evaluated Phase 2 interventions feeds back into
@@ -666,11 +691,15 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int]) -> tupl
     persistence: a failed batch check never leaves partial state in the
     append-only log. Idempotent: unchanged recommendations keep their
     deterministic id; already-decided stores are not re-queued.
+
+    ``stores_by_id`` lets a batch caller fetch ``GET /stores`` once and share
+    it across every store; omitted, each store keeps its own lookup.
     """
     outcome_evidence_map = _outcome_evidence_by_store()
     with ThreadPoolExecutor(max_workers=8) as pool:
         evaluated = list(pool.map(
-            lambda sid: evaluate_store(sid, audit_runs, outcome_evidence_map.get(sid)),
+            lambda sid: evaluate_store(sid, audit_runs, outcome_evidence_map.get(sid),
+                                       stores_by_id=stores_by_id),
             store_ids,
         ))
 
@@ -698,6 +727,17 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int]) -> tupl
     # recovered out of the gate (CONTINUE/MONITOR) would otherwise have no
     # durable row; the board would keep serving its old gated record.
     stored = {r.get("store_id"): r for r in _pending_approvals.values()}
+    if _no_usable_forecast(results) and (log_records or stored):
+        # A total upstream outage must not replace the last good snapshot with
+        # one ERROR row per store: latest-per-store is what the board reads,
+        # and the append-only history is never the display source. Keep the
+        # previous board and let the next stale/outage read retry.
+        logger.warning(
+            "[FORECAST OUTAGE] no store produced a usable forecast; keeping the "
+            "persisted snapshot (%d evaluated stores)", len(results),
+        )
+        batch_check["persistence_skipped"] = "no_usable_forecast_signal"
+        return results, 0, batch_check
     decided_store_ids |= {sid for sid, r in stored.items() if "decided_at" in r}
     newly_logged = 0
     for rec in results:
@@ -1960,26 +2000,29 @@ def _persisted_audit_runs() -> tuple[list[dict[str, Any]], list[int]]:
 
 
 def _board_needs_refresh(records: Sequence[Mapping[str, Any]] | None = None) -> bool:
-    """True when any undecided store still carries a pre-today evaluation.
+    """True when the persisted board should be re-evaluated against forecast.
 
-    Checking only the newest stamp hides a partially refreshed cohort: after a
-    refresh that could not persist non-gated rows, 54 records are today and 31
-    are still the old day, so the max date alone says "fresh". Per-store latest
-    plus "any undecided row is old" is the condition the board actually needs.
+    Two triggers:
+    - any undecided store still carries a pre-today evaluation. Checking only
+      the newest stamp hides a partially refreshed cohort: after a refresh that
+      could not persist non-gated rows, 54 records are today and 31 are still
+      the old day, so the max date alone says "fresh".
+    - every latest undecided record is a technical ERROR with no usable signal.
+      A failed refresh stamps all of them today, so the date check alone would
+      treat the outage as a fresh board and never retry until tomorrow.
     """
     latest: dict[int, Mapping[str, Any]] = {}
     for rec in records if records is not None else _readable_records():
         store_id = rec.get("store_id")
         if isinstance(store_id, int):
             latest[store_id] = rec
+    undecided = [rec for rec in latest.values() if "decided_at" not in rec]
     today = datetime.now(timezone.utc).date()
-    for rec in latest.values():
-        if "decided_at" in rec:
-            continue
+    for rec in undecided:
         generated_at = _parse_generated_at(rec)
         if generated_at is not None and generated_at.date() < today:
             return True
-    return False
+    return _no_usable_forecast(undecided)
 
 
 def _refresh_stale_board() -> None:
@@ -2007,8 +2050,18 @@ def _refresh_stale_board() -> None:
         audit_runs, store_ids = _persisted_audit_runs()
         if not store_ids:
             return
+        try:
+            stores_by_id = get_all_stores_info()
+        except Exception as error:
+            # No store universe means no evaluation can succeed; leave the
+            # last good snapshot untouched and let the cooldown retry later.
+            logger.warning(
+                "[BOARD REFRESH] forecast /stores unavailable, keeping persisted board: %s: %s",
+                type(error).__name__, error,
+            )
+            return
         logger.info("[BOARD REFRESH] re-evaluating %d persisted stores", len(store_ids))
-        _evaluate_and_persist_stores(audit_runs, store_ids)
+        _evaluate_and_persist_stores(audit_runs, store_ids, stores_by_id=stores_by_id)
         logger.info("[BOARD REFRESH] persisted fresh recommendations for %d stores", len(store_ids))
     except Exception as error:
         logger.warning("[BOARD REFRESH] failed, keeping persisted board: %s: %s",
