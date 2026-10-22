@@ -43,10 +43,11 @@ services:
         sync: false
       - key: DATABASE_URL
         sync: false # Supabase session-pooler URL must end with ?sslmode=require (Render is IPv4-only; pooler enforces TLS)
-      # Off-path LLM: it re-words evidence the deterministic engine already
-      # decided on, and any doubt degrades to the template. Both call sites are
-      # PUBLIC and unauthenticated, so the key stays in the dashboard (never in
-      # git, never in a blueprint) and two ceilings bound the spend:
+      # Off-path LLM: it rephrases evidence the deterministic engine already
+      # decided on and drafts a human-gated advisory suggestion; any doubt
+      # degrades to the template. Both call sites are PUBLIC and unauthenticated,
+      # so the key stays in the dashboard (never in git, never in a blueprint)
+      # and two ceilings bound the spend:
       # LLM_DAILY_CALL_BUDGET is account-wide (spent -> templates, still 200) and
       # LLM_PER_IP_HOURLY_LIMIT is per caller (spent -> 429 + Retry-After).
       # See docs/DEPLOYMENT.md ("Hosted LLM: the two ceilings").
