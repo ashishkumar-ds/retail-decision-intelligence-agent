@@ -92,7 +92,7 @@ flowchart LR
 
 The off-path LLM layer has two jobs: rephrase grounded, cited evidence for `/why/{store_id}`, and draft a human-gated triage suggestion for `/advisory/{store_id}`. The decision path itself is pure code with no model calls.
 
-![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
+![System architecture — deterministic, human-gated decision flow](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/blob/main/docs/images/architecture.png)
 *Pure-code decision path → human gate → append-only log; the off-path LLM only rephrases evidence and drafts advisory notes. Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
 
