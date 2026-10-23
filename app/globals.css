@@ -6,16 +6,16 @@
    #f6faf9 - the teal that reads fine as a 6px bar does not read fine as 10px
    uppercase text, so --teal stays brand and --teal-text carries words. */
 :root {
-  --teal: #38b2ab;      /* brand: bar, markers, dots (non-text) */
-  --teal-text: #17645f; /* 6.4:1 on mint - labels, links, eyebrows */
-  --mint: #edf8f5;
-  --indigo: #26245c;
+  --teal: #2aa79f;      /* brand: bar, markers, dots (non-text) */
+  --teal-text: #12625d; /* 6.4:1 on mint - labels, links, eyebrows */
+  --mint: #f1f7f4;
+  --indigo: #25235b;
   --ink: #202044;
-  --muted: #4f6069;     /* 6.0:1 on mint */
-  --line: #d7e5e1;
+  --muted: #52636b;     /* 6.0:1 on mint */
+  --line: #d5e3df;
   --surface: #fff;
-  --panel: #f6faf9;
-  --peach: #f9e8dc;
+  --panel: #f7fbfa;
+  --peach: #fae9df;
   --red-ink: #a1432c;
   --green: #d9f0e8;
   --yellow: #f5e9b8;
@@ -23,7 +23,7 @@
 }
 * { box-sizing: border-box }
 html { -webkit-text-size-adjust: 100% }
-body { margin: 0; background: var(--mint); color: var(--ink); font-family: 'Roboto', system-ui, sans-serif; -webkit-font-smoothing: antialiased }
+body { margin: 0; background: radial-gradient(circle at 88% 0%, rgba(42, 167, 159, .10), transparent 28rem), var(--mint); color: var(--ink); font-family: 'Roboto', system-ui, sans-serif; -webkit-font-smoothing: antialiased }
 a { color: inherit; text-decoration: none }
 button { font: inherit; color: inherit }
 img { max-width: 100% }
@@ -37,7 +37,7 @@ img { max-width: 100% }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
 /* --- chrome ------------------------------------------------------------- */
-.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 0 16px }
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 18px; margin: 14px 0 18px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 16px; background: rgba(255, 255, 255, .72); box-shadow: 0 10px 30px rgba(20, 20, 50, .045); backdrop-filter: blur(12px) }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
 img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .brand-divider { width: 1px; height: 22px; background: var(--line); flex: none }
@@ -49,7 +49,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 /* Header: series context, the page name and freshness. The numbers come next,
    so this is a header, not a hero - a 52px title pushed the first figure below
    the fold. Freshness rides the identity line beside the title. */
-.board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
+.board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 8px 0 22px; border-bottom: 1px solid var(--line) }
 .board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
 /* Freshness qualifies every number below it, so it rides the identity line
    rather than the footer. Eyebrow weight keeps it quiet; stated once. */
@@ -57,12 +57,12 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text); text-wrap: balance }
 
 /* --- summary: the gate sentence, then three counts that add up to it ----- */
-.summary { margin: 24px 0 26px }
+.summary { margin: 26px 0 30px; padding: 20px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 20px; background: rgba(255, 255, 255, .5) }
 .gate-line { display: flex; align-items: baseline; gap: 9px; margin: 0 0 16px; font-size: 16px; line-height: 1.45 }
 .gate-line strong { flex: none; font: 700 27px/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.05em; color: var(--indigo) }
 .gate-line span { min-width: 0 }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch }
-.tile { display: flex; flex-direction: column; gap: 4px; min-height: 96px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: inherit }
+.tile { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: inherit }
 .tile:hover { border-color: var(--teal) }
 .tile:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .tile-count { font: 700 34px/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.06em }
