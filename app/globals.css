@@ -309,3 +309,45 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   .decision-grid > div:nth-child(3) { grid-column: auto }
   .tile-label { font-size: 10px }
 }
+
+/* --- interaction polish -------------------------------------------------
+   The board is intentionally quiet: depth comes from consistent surfaces and
+   motion only clarifies a state change. */
+:root { color-scheme: light; }
+
+:where(a, button, input, summary):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--teal) 72%, white);
+  outline-offset: 3px;
+}
+
+.tile, .bucket-head, .store-row, .panel {
+  box-shadow: 0 1px 1px rgba(20, 20, 50, .025), 0 8px 24px rgba(20, 20, 50, .035);
+}
+
+.tile, .bucket-head, .store-row, .panel, .approve-button, .button-primary, .button-ghost, .show-toggle {
+  transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.tile:hover, .bucket-head:hover, .store-row:hover, .panel:hover {
+  box-shadow: 0 2px 2px rgba(20, 20, 50, .035), 0 12px 28px rgba(20, 20, 50, .06);
+}
+
+.tile:active, .bucket-head:active, .show-toggle:active, .button-ghost:active {
+  transform: translateY(1px);
+}
+
+.approve-button:hover, .button-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(38, 36, 92, .18);
+}
+
+button:disabled { cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
