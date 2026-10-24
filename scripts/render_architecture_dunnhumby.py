@@ -5,7 +5,7 @@
 render step, so the two can drift: a JSON/label change without a re-render once
 shipped a stale image (the node still read "22 golden scenarios" after the count
 became 23). This helper does both steps and writes
-`docs/diagrams/architecture-dunnhumby.png.sha256` = sha256 of the JSON the PNG
+`docs/images/architecture.png.sha256` = sha256 of the JSON the PNG
 was rendered from. `scripts/check.py` compares that stamp to the committed
 JSON, so a stale PNG fails the build instead of shipping.
 
@@ -30,9 +30,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from generate_architecture_dunnhumby import main as generate  # noqa: E402
 
-JSON_PATH = ROOT / "docs" / "diagrams" / "architecture-dunnhumby.json"
-PNG_PATH = ROOT / "docs" / "diagrams" / "architecture-dunnhumby.png"
-STAMP_PATH = ROOT / "docs" / "diagrams" / "architecture-dunnhumby.png.sha256"
+JSON_PATH = ROOT / "docs" / "images" / "architecture-dunnhumby.json"
+PNG_PATH = ROOT / "docs" / "images" / "architecture.png"
+STAMP_PATH = ROOT / "docs" / "images" / "architecture.png.sha256"
 
 
 def _render(chromium_path: str | None) -> None:
