@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Generic storefront mark in the board's brand teal. Deliberately NOT the
+       dunnhumby logo, which is licensed and stays on the nav bar only. -->
+  <rect width="32" height="32" rx="7" fill="#38b2ab"/>
+  <path d="M7 13.5v10.5h18V13.5" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M6 13.5l2-6.5h16l2 6.5z" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M12 24v-3h8v3" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+</svg>

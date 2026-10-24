@@ -64,7 +64,8 @@ def test_webhook_apply_posts_intent_and_journals_remote_handle(_captured_posts):
     assert execution["connector_handle"] == "webhook:remote-7"
     assert _captured_posts[0]["type"] == "apply"
     assert _captured_posts[0]["store_id"] == 7
-    assert len(journal.read_events()) == 1
+    # intent (before the POST) + completed execution (after it)
+    assert [e["event"] for e in journal.read_events()] == ["execution_status", "execution"]
 
 
 def test_webhook_reverse_posts_cancellation(_captured_posts):
@@ -74,7 +75,8 @@ def test_webhook_reverse_posts_cancellation(_captured_posts):
     assert updated["reversed_at"] is not None
     assert _captured_posts[-1] == {"type": "reverse", "handle": "webhook:remote-7"}
     events = journal.read_events()
-    assert [e["event"] for e in events] == ["execution", "reversal"]
+    assert [e["event"] for e in events] == [
+        "execution_status", "execution", "execution_status", "reversal"]
 
 
 def test_webhook_idempotent_on_retry(_captured_posts):
@@ -96,7 +98,13 @@ def test_webhook_failure_journals_nothing(monkeypatch):
     connector = WebhookConnector(url="https://pos.example/hooks/apply")
     with pytest.raises(Exception):
         execute_recommendation(APPROVED, connector=connector)
-    assert journal.read_events() == []
+    # The failed attempt is not silent: the "applying" intent is a trace in the
+    # journal, but no completed execution state exists (the fold ignores it).
+    events = journal.read_events()
+    assert [e["event"] for e in events] == ["execution_status"]
+    assert events[0]["status"] == "applying" and events[0]["connector"] == "webhook"
+    from execution.connector import execution_state as _state
+    assert _state() == {}
 
 
 # --- operator selection ------------------------------------------------------

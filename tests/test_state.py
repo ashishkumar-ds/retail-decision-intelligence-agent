@@ -59,3 +59,32 @@ def test_durable_across_reopened_store(tmp_path):
     assert 7 in reopened
     assert reopened[7] == {"store_id": 7}
     assert len(reopened) == 1
+
+
+def test_setitem_never_lets_a_fresh_undecided_record_replace_a_decision(tmp_path):
+    """The sweep-overwrite race, closed at the store layer.
+
+    A fresh sweep evaluation (no ``decided_at``) must never replace a row that
+    carries a human decision, even when the sweep's decided-rows snapshot has
+    already gone stale (the approve landed between the snapshot and the
+    write). Decided-to-decided and undecided-to-decided writes apply.
+    """
+    from app.state import PendingApprovalStore
+
+    store = PendingApprovalStore(path=tmp_path / "s5.db")
+    store.clear()
+    store[9] = {"store_id": 9, "requires_human_approval": True, "recommendation_id": "r1"}
+    decided = {
+        "store_id": 9, "requires_human_approval": True, "recommendation_id": "r1",
+        "decided_at": "2026-10-24T00:00:00+00:00", "approved": True,
+        "decided_by": "user:alice",
+    }
+    store[9] = decided  # approval lands (undecided -> decided: applies)
+    # A sweep mid-loop writes its fresh undecided evaluation...
+    store[9] = {"store_id": 9, "requires_human_approval": True, "recommendation_id": "r2"}
+    assert store[9]["decided_at"] == "2026-10-24T00:00:00+00:00"  # decision survives
+    assert store[9]["recommendation_id"] == "r1"
+    # Decisions change only through the approve path's atomic pop + reinsert,
+    # never by an in-place upsert over a decided row:
+    store[9] = {**decided, "decided_by": "user:bob"}
+    assert store[9]["decided_by"] == "user:alice"

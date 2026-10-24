@@ -325,8 +325,11 @@ _attribution = f"© {_lic.group(1)} {_lic.group(2).strip()}" if _lic else ""
 _surfaces = {
     "diagram": _committed_json.decode("utf-8", "replace"),
     "ui footer": _ui_footer,
-    "frontend:board": (ROOT / "app" / "page.tsx").read_text(encoding="utf-8"),
-    "frontend:store": (ROOT / "app" / "store" / "[id]" / "page.tsx").read_text(encoding="utf-8"),
+    # Both frontend surfaces render their footer through the shared AppChrome,
+    # so the credit is carried there; scanning both names against it keeps the
+    # "every surface carries the attribution" intent hold after extraction.
+    "frontend:board": (ROOT / "app" / "_components" / "chrome.tsx").read_text(encoding="utf-8"),
+    "frontend:store": (ROOT / "app" / "_components" / "chrome.tsx").read_text(encoding="utf-8"),
 }
 _uncredited = [n for n, t in _surfaces.items() if _attribution and _attribution not in t]
 _miscredited = [n for n, t in _surfaces.items()

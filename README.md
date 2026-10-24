@@ -122,7 +122,7 @@ Intervention lifecycle (Phase 2) / analytics / ops:
 | `/phase2/interventions/*`, `/phase2/portfolio/evaluate` | GET/POST | Intervention lifecycle + portfolio evaluation (auth on writes) |
 | `/analytics/decision-quality` | GET | Acceptance, causal confirmation, margin per intervention (auth) |
 | `/metrics` | GET | Prometheus metrics (auth; see ops/observability/) |
-| `/log` | GET | Append-only recommendation log |
+| `/log` | GET | Append-only recommendation log + decision ledger (auth; raw audit trail, not the stakeholder view) |
 
 All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a named `APPROVAL_TOKENS` entry). Unset token → 503, fail closed.
 
@@ -174,6 +174,7 @@ must update the pinned golden cases in the same commit, with the rationale
 stated. Run `ruff check .`, `pytest`,
 `python scripts/check.py` and `python evaluation/run_evals.py`
 before opening a PR — CI runs all of them plus a Docker build smoke test.
+The default suite is offline: live smoke tests run only via `pytest -m live_api`, so a regular `pytest` never calls the deployed APIs.
 
 ## License
 

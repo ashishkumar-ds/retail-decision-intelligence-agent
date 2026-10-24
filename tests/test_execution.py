@@ -57,7 +57,11 @@ def test_executes_and_journals():
     assert execution["connector_handle"].startswith("dry-run:")
     assert execution["reversed_at"] is None
     events = journal.read_events()
-    assert len(events) == 1 and events[0]["event"] == "execution"
+    # Intent is journaled BEFORE the external call (crash-witness); the
+    # completed execution row follows the connector round-trip.
+    assert [e["event"] for e in events] == ["execution_status", "execution"]
+    assert events[0]["status"] == "applying"
+    assert events[1]["event"] == "execution"
 
 
 def test_idempotent_repeat_appends_nothing():
@@ -65,7 +69,7 @@ def test_idempotent_repeat_appends_nothing():
     second, created_second = execute_recommendation(APPROVED)
     assert created_first is True and created_second is False
     assert first["execution_id"] == second["execution_id"]
-    assert len(journal.read_events()) == 1  # no second apply, no second line
+    assert len(journal.read_events()) == 2  # intent + execution, one pair only
 
 
 def test_reversal_marks_state_and_is_terminal():
@@ -73,7 +77,9 @@ def test_reversal_marks_state_and_is_terminal():
     reversed_execution = reverse_execution(execution["execution_id"], actor="user:bob")
     assert reversed_execution["reversed_at"] is not None
     assert reversed_execution["reversal_id"].startswith("rev-")
-    assert len(journal.read_events()) == 2  # execution + reversal, appended
+    # execution: intent + completion; reversal: intent + reversal event.
+    assert [e["event"] for e in journal.read_events()] == [
+        "execution_status", "execution", "execution_status", "reversal"]
     with pytest.raises(ExecutionAlreadyReversed):
         reverse_execution(execution["execution_id"])
 
@@ -135,7 +141,27 @@ def test_journal_is_append_only_and_skips_malformed_lines():
         handle.write(json.dumps({"event": "execution", "execution_id": "exec-manual"}) + "\n")
     events = journal.read_events()
     assert events[-1].get("execution_id") == "exec-manual"
-    assert len(events) == 2  # malformed line ignored, never repaired or removed
+    assert len(events) == 3  # intent + execution + manual; malformed line ignored, never repaired
+
+
+def test_failed_connector_leaves_a_crash_witness():
+    """A connector failure after the intent event still leaves a trace."""
+    class BoomConnector:
+        name = "boom"
+
+        def apply(self, intent):
+            raise RuntimeError("connection refused")
+
+        def reverse(self, handle):
+            return None
+
+    with pytest.raises(RuntimeError):
+        execute_recommendation(APPROVED, connector=BoomConnector())
+    events = journal.read_events()
+    assert [e["event"] for e in events] == ["execution_status"]
+    assert events[0]["status"] == "applying"
+    # And the state fold must NOT expose a half-applied execution from intent.
+    assert execution_state() == {}
 
 
 def test_idempotency_key_is_stable_and_approval_specific():

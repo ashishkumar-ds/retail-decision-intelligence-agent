@@ -228,17 +228,36 @@ def execute_recommendation(record: Mapping[str, Any],
         if existing is not None:
             return existing, False
 
-        handle = connector.apply({
+        execution_id = f"exec-{uuid.uuid4().hex}"
+        intent = {
             "store_id": record.get("store_id"),
             "recommendation_id": record.get("recommendation_id"),
             "recommendation": record.get("recommendation"),
             "approval_id": record.get("approval_id"),
             "idempotency_key": key,
             "connector": connector.name,
+        }
+        # Crash-witness BEFORE the external call: the journal already shows the
+        # action was about to happen even if the process dies mid-webhook (a
+        # failed attempt leaves an ``execution_status: applying`` line with no
+        # completed ``execution`` row - visible trace, no fake state, because
+        # ``execution_state`` only folds completed events). The journal fold
+        # ignores status events, so dry-run and real connectors behave the same.
+        append_event({
+            "event": "execution_status",
+            "status": "applying",
+            "execution_id": execution_id,
+            "connector": connector.name,
+            "actor": actor,
+            "recorded_at": utcnow_iso(),
+            **intent,
         })
+        handle = connector.apply(intent)
+        # The completed ``execution`` event is the completion record: it lands
+        # only after the connector round-trip returns.
         execution = {
             "event": "execution",
-            "execution_id": f"exec-{uuid.uuid4().hex}",
+            "execution_id": execution_id,
             "idempotency_key": key,
             "connector": connector.name,
             "connector_handle": handle,
@@ -258,21 +277,36 @@ def execute_recommendation(record: Mapping[str, Any],
 def reverse_execution(execution_id: str,
                       connector: ExecutionConnector | None = None,
                       actor: str | None = None) -> dict[str, Any]:
-    """Undo an execution; returns the updated execution state."""
-    connector = connector or DryRunConnector()
-    current = execution_state().get(execution_id)
-    if current is None:
-        raise ExecutionNotFound(execution_id)
-    if current.get("reversed_at"):
-        raise ExecutionAlreadyReversed(execution_id)
+    """Undo an execution; returns the updated execution state.
 
-    connector.reverse(str(current.get("connector_handle") or ""))
-    append_event({
-        "event": "reversal",
-        "reversal_id": f"rev-{uuid.uuid4().hex}",
-        "execution_id": execution_id,
-        "connector": current.get("connector"),
-        "actor": actor,
-        "reversed_at": utcnow_iso(),
-    })
-    return execution_state()[execution_id]
+    Takes the same cross-process lock as execution: check (not already
+    reversed) and the external reverse call must not race a second reverser.
+    """
+    connector = connector or DryRunConnector()
+    with _execution_lock():
+        current = execution_state().get(execution_id)
+        if current is None:
+            raise ExecutionNotFound(execution_id)
+        if current.get("reversed_at"):
+            raise ExecutionAlreadyReversed(execution_id)
+
+        # Same crash-witness discipline as apply: the intent lands before the
+        # external call, the ``reversal`` event only after it succeeded.
+        append_event({
+            "event": "execution_status",
+            "status": "reversing",
+            "execution_id": execution_id,
+            "connector": current.get("connector"),
+            "actor": actor,
+            "recorded_at": utcnow_iso(),
+        })
+        connector.reverse(str(current.get("connector_handle") or ""))
+        append_event({
+            "event": "reversal",
+            "reversal_id": f"rev-{uuid.uuid4().hex}",
+            "execution_id": execution_id,
+            "connector": current.get("connector"),
+            "actor": actor,
+            "reversed_at": utcnow_iso(),
+        })
+        return execution_state()[execution_id]

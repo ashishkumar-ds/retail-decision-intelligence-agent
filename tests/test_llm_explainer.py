@@ -300,8 +300,35 @@ def test_why_degrades_to_template_when_llm_unavailable(monkeypatch):
     monkeypatch.setenv("LLM_EXPLANATIONS_ENABLED", "true")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setitem(sys.modules, "anthropic", None)
+    # A grounded store (updated for the validate-before-spend reorder: a store
+    # with no record never reaches the LLM layer at all, so the missing-label
+    # degradation must be exercised on a store that is actually on record).
+    monkeypatch.setattr(app_main, "read_log", lambda: [{
+        "store_id": 999999, "recommendation": "CONTINUE", "confidence": 0.9,
+        "reason": "on track", "store_health_score": 80.0, "recovery_pct": 10.0,
+        "days_remaining": 30, "recommendation_id": "recommendation-degrade",
+        "generated_at": "2026-10-20T00:00:00+00:00",
+    }])
     client = TestClient(app_main.app)
     response = client.get("/why/999999")
     assert response.status_code == 200
     body = response.json()
     assert "guard" in body and body["guard"]["llm"].startswith("llm-unavailable")
+
+
+def test_why_never_charges_budget_for_an_ungrounded_store(monkeypatch):
+    """Validation before spend: a store with no record gets the template and
+    costs nothing - the deterministic answer is the only possible answer."""
+    from rag import llm_budget
+
+    llm_budget.reset()
+    try:
+        monkeypatch.setenv("LLM_EXPLANATIONS_ENABLED", "true")
+        client = TestClient(app_main.app)
+        response = client.get("/why/987654")
+        assert response.status_code == 200
+        assert "no grounded evidence" in response.json()["guard"]["llm"]
+        # the decisive assertion: nothing was charged to either bucket
+        assert llm_budget.daily_used() == 0
+    finally:
+        llm_budget.reset()
