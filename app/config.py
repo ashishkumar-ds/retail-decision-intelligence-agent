@@ -87,7 +87,28 @@ FEATURE_FLAGS = {
 # a deployment snapshots one config object instead of scattering env reads.
 # The module-level flag functions above stay for backward compatibility and
 # remain the per-call read path (tests flip them per-test).
+#
+# Wired consumers: ``max_sweep_workers`` sizes the sweep evaluation thread
+# pool (``app.main._evaluate_and_persist_stores``) and
+# ``max_stores_per_portfolio_eval`` caps ``POST /phase2/portfolio/evaluate``.
+# ``max_question_chars`` stays a documented snapshot of the cap whose single
+# source of truth is ``rag.question_guard.MAX_QUESTION_CHARS``.
 from dataclasses import dataclass  # noqa: E402
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    """Parse an operator knob; unparseable/absent/non-positive -> default.
+
+    A limit that silently disables itself on a typo would not be a limit.
+    """
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
 
 
 @dataclass(frozen=True)
@@ -133,6 +154,10 @@ class DecisionAgentConfig:
 
 def load_config() -> DecisionAgentConfig:
     """Snapshot the environment into a frozen DecisionAgentConfig."""
+    # Local import: the question cap's single source is rag/question_guard
+    # (MAX_QUESTION_CHARS); this only mirrors it into the snapshot.
+    from rag.question_guard import MAX_QUESTION_CHARS
+
     return DecisionAgentConfig(
         enable_rag=rag_enabled(),
         enable_phase2=phase2_enabled(),
@@ -140,4 +165,7 @@ def load_config() -> DecisionAgentConfig:
         enable_llm_explanations=llm_explanations_enabled(),
         enable_llm_advisory=llm_advisory_enabled(),
         approval_token_required=_flag("APPROVAL_AUTH_TOKEN_REQUIRED"),
+        max_question_chars=MAX_QUESTION_CHARS,
+        max_sweep_workers=_positive_int_env("MAX_SWEEP_WORKERS", 8),
+        max_stores_per_portfolio_eval=_positive_int_env("PHASE2_MAX_STORES_PER_EVAL", 50),
     )

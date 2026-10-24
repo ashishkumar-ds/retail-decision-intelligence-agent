@@ -216,6 +216,56 @@ def test_refresh_observed_baselines_fails_open(tmp_path, monkeypatch):
     main._observed_baselines.clear()
 
 
+def test_metrics_label_escaping_never_breaks_the_exposition():
+    """Interpolating decided_by must not corrupt or forge the /metrics text.
+
+    Backslash, double quote and newline are the characters that terminate or
+    re-open a label value; they are escaped, nothing else is invented.
+    """
+    import app.main as main
+
+    decisions = [{
+        "decision": "approve",
+        "decided_by": 'user:al"i\\ce\nPRINCIPAL="evil"',
+    }]
+    formatted = [line for line in main._ledger_metric_lines(decisions)
+                 if line.startswith("retail_decisions_by_principal")]
+    assert formatted == [
+        'retail_decisions_by_principal{principal="user:al\\"i\\\\ce\\nPRINCIPAL=\\"evil\\""} 1']
+
+
+def test_pending_store_runs_schema_migrations_once_per_engine(tmp_path):
+    """The store completes schema setup on first connection, then skips it.
+
+    Re-running migrations on every connection was pure overhead; the cache
+    must key per engine, so re-pointed storage (tests, deploy config) still
+    migrates its own target on first use.
+    """
+    import app.state as state_module
+    from app.state import PendingApprovalStore
+
+    calls = {"sqlite": 0}
+
+    real_run_migrations = state_module.run_migrations
+
+    def counting_run_migrations(conn, dialect):
+        calls[dialect] = calls.get(dialect, 0) + 1
+        return real_run_migrations(conn, dialect)
+
+    monkeypatch_run = counting_run_migrations
+    state_module.run_migrations = monkeypatch_run
+    try:
+        path = tmp_path / "s6.db"
+        store = PendingApprovalStore(path=path)
+        store.clear()
+        store[1] = {"store_id": 1}
+        for _ in range(5):
+            assert store[1] == {"store_id": 1}
+        assert calls["sqlite"] == 1  # first connection only
+    finally:
+        state_module.run_migrations = real_run_migrations
+
+
 def test_cors_origins_parsing_fail_closed(monkeypatch):
     import app.main as main
 

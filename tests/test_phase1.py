@@ -208,7 +208,10 @@ def test_api_endpoints(tmp_path, monkeypatch):
     assert repeat_response.status_code == 200
     assert repeat_response.json()["recommendation"]["approval_id"] == approve_response.json()["recommendation"]["approval_id"]
 
-    assert client.get("/log").json()["total_entries"] == 2
+    # /log (the raw audit trail) reads records incl. named principals, so it is
+    # token-gated like /metrics: missing header -> 401, with the token -> 200.
+    assert client.get("/log").status_code == 401
+    assert client.get("/log", headers=auth_headers).json()["total_entries"] == 2
     response = client.get("/recommendations")
     assert response.status_code == 200
     assert client.post("/reject/1", headers=auth_headers).status_code == 200

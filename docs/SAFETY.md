@@ -40,19 +40,26 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
   wins (so decided rows survive too). The ledger is evidence of decisions,
   never the source of the store. A decision written to the ledger is always
   accompanied by the decided record in the recommendation log and the store
-  (both writes happen inside the same request; the ledger write happens first
-  and raises on gate failure).
+  (both writes happen inside the same request; the recommendation-log write
+  happens first, then the ledger entry - which still raises on gate failure -
+  so a ledger entry is never without its decided record).
 
 ## 3. Approval & write authentication
 - **Where:** `app/main.py::_require_approval_auth` (approve/reject), and
   `app/main.py::_require_phase2_write_auth` (all Phase-2 state-mutating
   endpoints: intervention define/events/checkpoints/outcome, plus portfolio
-  evaluation) and `POST /recommendations/run` / `POST /monitor/sweep`.
+  evaluation), `POST /recommendations/run` / `POST /monitor/sweep`, and the
+  raw audit trail `GET /log` (same bearer gate as `/metrics`). The write
+  gates additionally enforce the decision (approver) role: a `viewer` token
+  is read-only and gets 403 on `POST /recommendations/run`, `POST
+  /monitor/sweep` and every Phase-2 write (`_require_write_auth`).
 - **Rule:** Bearer token (`APPROVAL_AUTH_TOKEN`). Without a configured token all
   of these fail closed (503) rather than allowing unauthenticated decisions,
   intervention writes, or external forecast spend. Read-only endpoints
-  (`GET /recommendations`, `/board`, `/log`, `/pending-approvals`) are
-  unauthenticated and never mutate state.
+  (`GET /recommendations`, `/board`, `/pending-approvals`) are unauthenticated
+  and never mutate state; the raw audit trail (`GET /log`) and `/metrics` are
+  also read-only but token-gated because they expose unaggregated records and
+  named principals.
 
 ## 4. Deterministic decision core
 - **Where:** `decision_engine/` (router → planner → scorer → verifier).

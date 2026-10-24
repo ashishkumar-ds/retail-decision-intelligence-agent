@@ -9,6 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
+try:
+    import fcntl
+except ImportError:  # Windows has no POSIX locks; locked appends degrade
+    fcntl = None  # to plain (single-process-safe) appends, same file format
+
 from tools.campaign_tool import (
     canonical_timing_window,
     first_run_for_store,
@@ -59,11 +64,43 @@ class InterventionRegistry:
         self.path = Path(path or os.getenv("PHASE_2_INTERVENTION_LOG_PATH", str(DEFAULT_REGISTRY_PATH)))
 
     def append_event(self, event: InterventionEvent) -> None:
-        if any(existing.event_id == event.event_id for existing in self.read_events()):
-            raise ValueError(f"duplicate event_id {event.event_id}")
+        """Append one event under an exclusive file lock (flock + fsync).
+
+        Same discipline as ``memory/history.append_log``: multi-worker appends
+        cannot interleave partial lines, and the bytes survive a process crash
+        (flush + fsync before the lock releases). Without ``fcntl`` the append
+        degrades to a plain single-process-safe write, same file format.
+
+        The duplicate-``event_id`` check runs inside the write lock by
+        scanning the existing file in the one pass we are already doing — no
+        separate unlocked re-read that a concurrent appender could invalidate
+        (a full registry read here used to double-read and race check-vs-
+        append). Malformed lines have no event_id, so they cannot shadow a
+        duplicate. Scanning constructs nothing but dicts: the id comes straight
+        off the raw JSON record, which is cheaper than ``read_events()``.
+        """
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(event.to_record(), default=str, ensure_ascii=False) + "\n")
+        line = json.dumps(event.to_record(), default=str, ensure_ascii=False) + "\n"
+        with self.path.open("a+", encoding="utf-8") as handle:
+            if fcntl is not None:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            try:
+                handle.seek(0)
+                for existing_line in handle:
+                    if not existing_line.strip():
+                        continue
+                    try:
+                        record = json.loads(existing_line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(record, dict) and record.get("event_id") == event.event_id:
+                        raise ValueError(f"duplicate event_id {event.event_id}")
+                handle.write(line)
+                handle.flush()
+                os.fsync(handle.fileno())
+            finally:
+                if fcntl is not None:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
     def read_events(self) -> list[InterventionEvent]:
         events, _ = self._read_events_with_diagnostics()

@@ -36,14 +36,19 @@ renders what the API says and computes nothing.
 - Backend: Render service, e.g. `https://retail-decision-intelligence-agent.onrender.com`
 - Render → Environment → add `CORS_ALLOW_ORIGINS=https://your-board.vercel.app` → save
   (unset = the API refuses cross-origin reads by default; same-origin `/ui` unaffected)
-- Vercel → Environment variable `NEXT_PUBLIC_API_BASE` = the Render URL
+- Vercel → Environment variable `API_BASE` = the Render URL. Server-side only:
+  the proxy (`app/api/[...path]/route.ts`) reads it directly and the browser
+  only sees the same-origin `/api` proxy, never the upstream hostname
 - Poll every **60 s**; on `502`/`504` (Render free-tier cold start) show
   "service waking up…" and retry **once after 30 s** before showing an error.
 
 ## Endpoints (all JSON, all unauthenticated)
 
 ### `GET /health`
-`{"status": "ok", "scheduler": {...}, "execution_connector": "dry-run", "features": {...}}` — footer "connection OK" probe.
+`{"status": "ok", "scheduler": {...}, "execution_connector": "dry-run", "features": {...}}` —
+footer connection probe: after the board's first successful load the footer
+calls it **once** (no polling loop) and quietly states `API live`, or `API
+waking` on a cold start/failure. Fail-silent — the footer never shows an error.
 
 ### `GET /board` — the main page
 ```jsonc

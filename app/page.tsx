@@ -3,6 +3,10 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { AppChrome, LoadingCard } from './_components/chrome'
+import { actionLabel, api, display } from './_lib/api'
+import type { Board, BoardRow } from './types'
+
 // Stakeholder view. The backend's five buckets are unchanged - this is display
 // grouping only, so a non-technical reviewer gets one answer per store: decide
 // now, cannot evaluate, or nothing to do. Grouped rows still print their own
@@ -57,31 +61,12 @@ const BUCKET_STATE: Record<string, string> = {
 const PAGE_SIZE = 3
 const TOKEN_KEY = 'rdia.approvalToken'
 
-type Row = Record<string, any>
-type Board = {
-  total_stores?: any
-  needs_decision?: any
-  as_of?: any
-  as_of_display?: any
-  counts?: Record<string, any>
-  buckets?: Record<string, Row[]>
-  campaign?: { label?: string; timing_window?: string }
-}
-
-function api(path: string) {
-  return `/api${path}`
-}
-
-function display(value: any) {
-  return value === null || value === undefined || value === '' ? '—' : String(value)
-}
-
-function rowsFor(board: Board | null, group: string): Row[] {
+function rowsFor(board: Board | null, group: string): BoardRow[] {
   if (group !== 'no_action') return [...(board?.buckets?.[group] || [])]
   return NO_ACTION_BUCKETS.flatMap(bucket => board?.buckets?.[bucket] || [])
 }
 
-function countFor(board: Board | null, group: string): any {
+function countFor(board: Board | null, group: string): number | undefined {
   if (group !== 'no_action') return board?.counts?.[group]
   return NO_ACTION_BUCKETS.reduce((total, bucket) => total + (board?.counts?.[bucket] || 0), 0)
 }
@@ -94,8 +79,8 @@ function captionFor(board: Board | null, group: string): string {
     .join(' · ')
 }
 
-function stateOf(row: Row): string {
-  return String(row.state || BUCKET_STATE[row.bucket] || '')
+function stateOf(row: BoardRow): string {
+  return String(row.state || BUCKET_STATE[row.bucket || ''] || '')
 }
 
 // The series context a first-time visitor needs: which campaign and the plan's
@@ -116,18 +101,20 @@ function contextLine(board: Board | null): string {
 
 // The one action on the board is gated: a record is approvable only when the
 // API says the human gate holds it and it has not been decided already.
-function isPending(row: Row): boolean {
+function isPending(row: BoardRow): boolean {
   if (row.requires_human_approval !== true) return false
   return row.decision_status !== 'approved' && row.decision_status !== 'rejected'
 }
 
 // A no-data row is a review, not a budget approval. The same per-store write
 // records both, but the action should say what the human is actually doing.
-function isReview(row: Row): boolean {
+function isReview(row: BoardRow): boolean {
   return row.bucket === 'insufficient_data' || row.default_action === 'NEEDS_REVIEW'
 }
 
-function actionLabel(row: Row): string {
+// Accessible name for the per-store action button, said in full so a card's
+// single "Approve" is never ambiguous in a screen-reader button list.
+function decisionActionLabel(row: BoardRow): string {
   return isReview(row)
     ? `Mark store ${row.store_id} reviewed`
     : `Approve store ${row.store_id}`
@@ -141,12 +128,14 @@ function actionLabel(row: Row): string {
 // forecast_status stays a first-class signal: a delayed feed is never rendered
 // as zero, and a missing forecast outside the no-data group still says so.
 // AVAILABLE is the default case and carries no chip - 37 identical "Forecast
-// available" badges were pure noise.
-function FeedChip({ status, quiet = false }: { status: any; quiet?: boolean }) {
+// available" badges were pure noise. Unknown machine tokens get the neutral
+// chip, not a class that implies a verdict the API did not make.
+function FeedChip({ status, quiet = false }: { status?: BoardRow['forecast_status']; quiet?: boolean }) {
   const value = String(status || 'NO_DATA').toUpperCase()
   if (value === 'AVAILABLE' || (quiet && value === 'NO_DATA')) return null
+  const tone = value === 'ERROR' ? 'error' : value === 'NO_DATA' ? 'no_data' : 'other'
   return (
-    <span className={`status ${value.toLowerCase()}`}>
+    <span className={`status ${tone}`}>
       {value === 'ERROR' ? 'Feed delayed' : 'No forecast signal'}
     </span>
   )
@@ -157,7 +146,7 @@ function FeedChip({ status, quiet = false }: { status: any; quiet?: boolean }) {
 // is served pre-labelled as *_label fields so both board surfaces say the same
 // sentence. A row the engine re-decided after a human ruling says so, instead
 // of asking for the same decision twice.
-function Decision({ row }: { row: Row }) {
+function Decision({ row }: { row: BoardRow }) {
   if (!row.default_action) return null
   const decided = row.decision_status === 'approved' || row.decision_status === 'rejected'
   return (
@@ -168,11 +157,11 @@ function Decision({ row }: { row: Row }) {
       <div className="decision-grid">
         <div>
           <span>Recommended</span>
-          <strong>{display(row.default_action_label || row.default_action)}</strong>
+          <strong>{display(row.default_action_label || actionLabel(row.default_action))}</strong>
         </div>
         <div>
           <span>Alternative</span>
-          <strong>{display(row.fallback_action_label || row.fallback_action)}</strong>
+          <strong>{display(row.fallback_action_label || actionLabel(row.fallback_action))}</strong>
         </div>
         <div>
           <span>Commitment</span>
@@ -197,9 +186,9 @@ function StoreRow({
   quietFeed = false,
   onApprove,
 }: {
-  row: Row
+  row: BoardRow
   quietFeed?: boolean
-  onApprove: (row: Row) => void
+  onApprove: (row: BoardRow) => void
 }) {
   const days = row.days_remaining
   const decided = row.decision_status === 'approved' || row.decision_status === 'rejected'
@@ -239,7 +228,12 @@ function StoreRow({
         {isPending(row) ? (
           <>
             <span className="approve-hint">Token-gated</span>
-            <button type="button" className="approve-button" onClick={() => onApprove(row)}>
+            <button
+              type="button"
+              className="approve-button"
+              aria-label={decisionActionLabel(row)}
+              onClick={() => onApprove(row)}
+            >
               Approve
             </button>
           </>
@@ -260,7 +254,7 @@ function ApproveDialog({
   onClose,
   onApproved,
 }: {
-  target: Row
+  target: BoardRow
   onClose: () => void
   onApproved: () => void
 }) {
@@ -294,7 +288,7 @@ function ApproveDialog({
     }
   }
 
-  async function submit(event: any) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const value = token.trim()
     if (!value || busy) return
@@ -335,7 +329,7 @@ function ApproveDialog({
     }
   }
 
-  const fallback = target.fallback_action_label || target.fallback_action
+  const fallback = target.fallback_action_label || actionLabel(target.fallback_action)
   const review = isReview(target)
   const verb = review ? 'Mark store' : 'Approve store'
 
@@ -372,7 +366,7 @@ function ApproveDialog({
                 : 'This records the recommended action against your approval token.'}
             </p>
             <p className="dialog-recommend">
-              <strong>{display(target.default_action_label || target.default_action)}</strong>
+              <strong>{display(target.default_action_label || actionLabel(target.default_action))}</strong>
               {fallback ? <> instead of {display(fallback)}</> : null}
             </p>
             {remembered ? (
@@ -397,7 +391,9 @@ function ApproveDialog({
                 />
               </>
             )}
-            {error ? <p className="dialog-error">{error}</p> : null}
+            {/* Announced the moment it renders, so a refused approval is not
+                silent: the re-run verdict is the decision's whole outcome. */}
+            {error ? <p className="dialog-error" role="alert">{error}</p> : null}
             <p className="dialog-note">
               Kept in this tab only. The backend re-runs the guardrails and verifier before it records anything.
             </p>
@@ -422,34 +418,56 @@ export default function BoardPage() {
   const [waking, setWaking] = useState(false)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ needs_intervention: true })
   const [showAll, setShowAll] = useState<Record<string, boolean>>({})
-  const [target, setTarget] = useState<Row | null>(null)
+  const [target, setTarget] = useState<BoardRow | null>(null)
 
-  // Render free services sleep after ~15 min idle: on a cold start, wait 30s
-  // and retry once before showing an error (docs/FRONTEND_CONTRACT.md).
+  // The 60s poll and the 30s cold-start retry can race, so every fetch gets
+  // its own AbortController and an attempt counter: only the newest response
+  // is allowed to set state, and the retry timer is cleared on unmount.
+  const attemptRef = useRef(0)
+  const controllerRef = useRef<AbortController | null>(null)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cold start: free-tier services sleep after ~15 min idle, so on 502/504
+  // wait 30s and retry once before showing an error
+  // (docs/FRONTEND_CONTRACT.md "Poll").
   const load = useCallback(async () => {
+    controllerRef.current?.abort()
+    const controller = new AbortController()
+    controllerRef.current = controller
+    const attempt = ++attemptRef.current
+    const stale = () => attempt !== attemptRef.current || controller.signal.aborted
+
     try {
-      const response = await fetch(api('/board'), { cache: 'no-store' })
+      const response = await fetch(api('/board'), { cache: 'no-store', signal: controller.signal })
       if (response.status === 502 || response.status === 504) {
+        if (stale()) return
         setWaking(true)
-        setTimeout(async () => {
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+        retryTimerRef.current = setTimeout(async () => {
+          if (stale()) return
           try {
-            const retry = await fetch(api('/board'), { cache: 'no-store' })
+            const retry = await fetch(api('/board'), { cache: 'no-store', signal: controller.signal })
+            if (stale()) return
             if (!retry.ok) throw new Error()
             setBoard(await retry.json())
             setError('')
             setWaking(false)
           } catch {
+            if (stale()) return
             setError('The data service may still be starting.')
             setWaking(false)
           }
         }, 30000)
         return
       }
-      if (!response.ok) throw new Error()
-      setBoard(await response.json())
+      if (!response.ok) throw new Error(String(response.status))
+      const payload = (await response.json()) as Board
+      if (stale()) return
+      setBoard(payload)
       setError('')
       setWaking(false)
     } catch {
+      if (stale()) return
       setError("Couldn't load the latest figures. Please try again in a moment.")
       setWaking(false)
     }
@@ -458,7 +476,11 @@ export default function BoardPage() {
   useEffect(() => {
     load()
     const timer = setInterval(load, 60000)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+      controllerRef.current?.abort()
+    }
   }, [load])
 
   const buckets = board?.buckets || {}
@@ -468,19 +490,7 @@ export default function BoardPage() {
   const loading = !board && !error
 
   return (
-    <>
-      <div className={`topline${loading ? ' is-loading' : ''}`} />
-      <main className="shell">
-        <nav className="nav">
-          <Link href="/" className="brand">
-            <img src="/dunnhumby.svg" alt="dunnhumby" className="brand-logo" width={82} height={19} />
-            <span className="brand-divider" aria-hidden="true" />
-            <span className="brand-product">retail decision intelligence agent</span>
-          </Link>
-          <div className="navlinks">
-            <span className="nav-status"><i aria-hidden="true" />Live board</span>
-          </div>
-        </nav>
+    <AppChrome loading={loading} probe={Boolean(board)} footerExtra="Decisions are token-gated">
 
         {/* Identity. Not a marketing hero: series context, the page name, and
             the data's freshness on the same line. Stated here only - never
@@ -492,57 +502,48 @@ export default function BoardPage() {
             <h1>Store recovery review</h1>
           </div>
           {board ? (
-            <time className="board-asof" dateTime={board.as_of || undefined}>
-              {board.as_of_display
-                ? `Data as of ${board.as_of_display}`
-                : 'Data freshness unavailable'}
-            </time>
+            board.as_of ? (
+              <time className="board-asof" dateTime={board.as_of}>
+                {board.as_of_display
+                  ? `Data as of ${board.as_of_display}`
+                  : 'Data freshness unavailable'}
+              </time>
+            ) : (
+              // No datetime attribute when the API served no timestamp:
+              // <time datetime> must carry a parsable machine value.
+              <span className="board-asof">
+                {board.as_of_display
+                  ? `Data as of ${board.as_of_display}`
+                  : 'Data freshness unavailable'}
+              </span>
+            )
           ) : null}
         </header>
 
-        {(error || (board && waking)) && (
+        {error ? (
           <div className="notice">
-            {error || 'The data service is waking up. Showing the last loaded board; retrying shortly.'}
+            {error}
+            {' '}
+            <button type="button" className="link-button" onClick={() => load()}>
+              Retry now
+            </button>
           </div>
-        )}
+        ) : board && waking ? (
+          <div className="notice">
+            The data service is waking up. Showing the last loaded board; retrying shortly.
+          </div>
+        ) : null}
 
         {loading ? (
-          <section className="loading-board" role="status" aria-live="polite" aria-busy="true">
-            <div className="loading-intro">
-              <span className="loading-mark" aria-hidden="true">
-                {/* A storefront, not a generic spinner: this is a retail board
-                    waiting on the store feed, and the outline matches the
-                    card/shelf language below. */}
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 9.5V20h16V9.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M3 9.5l1.4-4.2h15.2L21 9.5H3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-                  <path d="M8 13h8M8 16.5h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-                  <path d="M10 20v-4h4v4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <div>
-                <p className="loading-kicker">{waking ? 'API waking up' : 'Live store data'}</p>
-                <h2 className="loading-title">
-                  {waking ? 'Waiting for the data API' : 'Fetching store data from the API'}
-                </h2>
-                <p className="loading-copy">
-                  {waking
-                    ? 'The free-tier API sleeps when idle. This can take up to 30 seconds; the board retries automatically.'
-                    : 'Pulling the latest forecasts, recovery signals and approval status for the campaign cohort.'}
-                </p>
-              </div>
-            </div>
-            <div className="loading-skeleton" aria-hidden="true">
-              <span className="skeleton-line" />
-              <div className="skeleton-tiles">
-                <span className="skeleton-tile" />
-                <span className="skeleton-tile" />
-                <span className="skeleton-tile" />
-              </div>
-              <span className="skeleton-card" />
-            </div>
-            <p className="loading-note">The board opens as soon as the data lands.</p>
-          </section>
+          <LoadingCard
+            kicker={waking ? 'API waking up' : 'Live store data'}
+            title={waking ? 'Waiting for the data API' : 'Fetching store data from the API'}
+            copy={waking
+              ? 'The free-tier API sleeps when idle. This can take up to 30 seconds; the board retries automatically.'
+              : 'Pulling the latest forecasts, recovery signals and approval status for the campaign cohort.'}
+            note="The board opens as soon as the data lands."
+            tiles
+          />
         ) : board && (
           <>
             <section className="summary">
@@ -584,30 +585,35 @@ export default function BoardPage() {
                 && rows.every(row => row.default_action)
               return (
                 <section className={`section ${GROUP_TONES[group]}`} id={group} key={group}>
-                  <button
-                    className="bucket-head"
-                    onClick={() => setExpanded(state => ({ ...state, [group]: !open }))}
-                    aria-expanded={open}
-                  >
-                    <div className="bucket-marker" aria-hidden="true" />
-                    <div>
-                      <h2>{GROUP_LABELS[group]}</h2>
-                      <span className="bucket-count">
-                        {rows.length} {rows.length === 1 ? 'store' : 'stores'}
+                  {/* Valid HTML: a <button> must not contain a heading, so the
+                      h2 carries the toggle (heading-with-button pattern). All
+                      boxed styling stays on the button via .bucket-head. */}
+                  <h2 className="bucket-heading">
+                    <button
+                      className="bucket-head"
+                      onClick={() => setExpanded(state => ({ ...state, [group]: !open }))}
+                      aria-expanded={open}
+                    >
+                      <span className="bucket-marker" aria-hidden="true" />
+                      <span className="bucket-head-label">
+                        <span className="bucket-title">{GROUP_LABELS[group]}</span>
+                        <span className="bucket-count">
+                          {rows.length} {rows.length === 1 ? 'store' : 'stores'}
+                        </span>
                       </span>
-                    </div>
-                    <span className={`bucket-toggle ${open ? 'open' : ''}`} aria-hidden="true">
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                        <path
-                          d="M4 6l4 4 4-4"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                  </button>
+                      <span className={`bucket-toggle ${open ? 'open' : ''}`} aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                          <path
+                            d="M4 6l4 4 4-4"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                  </h2>
 
                   {open && rows.length === 0 ? <div className="empty">No stores here.</div> : null}
 
@@ -628,7 +634,9 @@ export default function BoardPage() {
                           <Link
                             href={`/store/${row.store_id}`}
                             className="id-chip"
-                            title={display(row.reason)}
+                            // Name the link in full: the visible label is only
+                            // the bare id.
+                            aria-label={`Why store ${row.store_id}: ${display(row.reason)}`}
                           >
                             {display(row.store_id)}
                           </Link>
@@ -636,8 +644,7 @@ export default function BoardPage() {
                             <button
                               type="button"
                               className="chip-approve"
-                              aria-label={actionLabel(row)}
-                              title={actionLabel(row)}
+                              aria-label={decisionActionLabel(row)}
                               onClick={() => setTarget(row)}
                             >
                               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -685,21 +692,7 @@ export default function BoardPage() {
             ) : null}
           </>
         )}
-
-        <footer className="footer">
-          <span>© 2026 Ashish Kumar · data: dunnhumby</span>
-          <span>Decisions are token-gated</span>
-        </footer>
-      </main>
-
-      {target ? (
-        <ApproveDialog
-          target={target}
-          onClose={() => setTarget(null)}
-          onApproved={() => load()}
-        />
-      ) : null}
-    </>
+    </AppChrome>
   )
 }
 

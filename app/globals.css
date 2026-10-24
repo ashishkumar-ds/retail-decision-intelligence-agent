@@ -1,5 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-/* Body is Roboto, the same face dunnhumby.com serves (OFL). Display stays Space Grotesk: dunnhumby's display face TESCOModern is proprietary with no public license, so this is the closest neutral grotesk fallback. */
+/* Body is Roboto, the same face dunnhumby.com serves (OFL). Display stays Space Grotesk: dunnhumby's display face TESCOModern is proprietary with no public license, so this is the closest neutral grotesk fallback.
+   Both faces are self-hosted by next/font (app/layout.tsx), so no
+   render-blocking Google @import reaches the browser; the families arrive as
+   the CSS variables --font-roboto / --font-space-grotesk. */
 /* impeccable-disable overused-font: Space Grotesk is the documented brand fallback, not a default pick */
 /* One stylesheet for both pages: the board (/), the "why" page (/store/[id]).
    Small-text tokens are chosen to clear WCAG AA (4.5:1) on mint, white and
@@ -23,7 +25,7 @@
 }
 * { box-sizing: border-box }
 html { -webkit-text-size-adjust: 100% }
-body { margin: 0; background: var(--mint); color: var(--ink); font-family: 'Roboto', system-ui, sans-serif; -webkit-font-smoothing: antialiased }
+body { margin: 0; background: var(--mint); color: var(--ink); font-family: var(--font-roboto), system-ui, sans-serif; -webkit-font-smoothing: antialiased }
 a { color: inherit; text-decoration: none }
 button { font: inherit; color: inherit }
 img { max-width: 100% }
@@ -41,7 +43,7 @@ img { max-width: 100% }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
 img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .brand-divider { width: 1px; height: 22px; background: var(--line); flex: none }
-.brand-product { font: 600 14px 'Roboto', Arial, sans-serif; color: var(--muted); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.brand-product { font: 600 14px var(--font-roboto), Arial, sans-serif; color: var(--muted); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .navlinks { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px; white-space: nowrap }
 .nav-status { display: flex; align-items: center; gap: 7px }
 .nav-status i, .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; flex: none }
@@ -50,7 +52,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
    so this is a header, not a hero - a 52px title pushed the first figure below
    the fold. Freshness rides the identity line beside the title. */
 .board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 6px 0 18px; border-bottom: 1px solid var(--line) }
-.board-head h1 { font: 700 30px/1.05 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
+.board-head h1 { font: 700 30px/1.05 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
 /* Freshness qualifies every number below it, so it rides the identity line
    rather than the footer. Eyebrow weight keeps it quiet; stated once. */
 .board-asof { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--teal-text); white-space: nowrap }
@@ -59,13 +61,13 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 /* --- summary: the gate sentence, then three counts that add up to it ----- */
 .summary { margin: 24px 0 26px }
 .gate-line { display: flex; align-items: baseline; gap: 9px; margin: 0 0 16px; font-size: 16px; line-height: 1.45 }
-.gate-line strong { flex: none; font: 700 27px/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.05em; color: var(--indigo) }
+.gate-line strong { flex: none; font: 700 27px/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.05em; color: var(--indigo) }
 .gate-line span { min-width: 0 }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch }
 .tile { display: flex; flex-direction: column; gap: 4px; min-height: 96px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: inherit }
 .tile:hover { border-color: var(--teal) }
 .tile:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
-.tile-count { font: 700 34px/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.06em }
+.tile-count { font: 700 34px/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.06em }
 .tile-label { font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--muted); text-wrap: balance }
 .tiles-note { margin: 8px 2px 0; font-size: 11.5px; line-height: 1.45; color: var(--muted) }
 .tile.attention { border-color: #e3b4a6; background: #fdf4f0 }
@@ -82,8 +84,12 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .bucket-head:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .section.attention .bucket-head { border-color: #e3b4a6; background: #fdf4f0 }
 .section.review .bucket-head { background: var(--panel) }
-.bucket-head > div:nth-child(2) { min-width: 0; flex: 1 }
-.bucket-head h2 { font: 600 19px/1.2 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em; margin: 0 }
+/* The h2 carries the toggle button (a button must not contain a heading), so
+   the heading itself stays margin-less and unboxed - the section box remains
+   the button. */
+.bucket-heading { margin: 0 }
+.bucket-head-label { display: flex; flex-direction: column; min-width: 0; flex: 1 }
+.bucket-title { font: 600 19px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em }
 .bucket-count { display: block; margin-top: 3px; font-size: 12px; color: var(--muted) }
 .bucket-marker { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--teal) }
 .section.attention .bucket-marker { background: #e7886e }
@@ -96,7 +102,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .bucket-note, .caveat, .narrative, .hero p, .dialog-sub, .dialog-note { text-wrap: pretty }
 .bucket-note { margin: 10px 18px 0; max-width: 84ch; font-size: 12.5px; line-height: 1.55; color: var(--muted) }
 .shared-decision { margin-top: 10px }
-.show-toggle { display: block; margin: 12px auto 2px; padding: 7px 18px; border: 1px solid var(--line); border-radius: 999px; background: none; font: 600 12px 'Roboto', sans-serif; color: var(--indigo); cursor: pointer }
+.show-toggle { display: block; margin: 12px auto 2px; padding: 7px 18px; border: 1px solid var(--line); border-radius: 999px; background: none; font: 600 12px var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
 .show-toggle:hover { border-color: var(--teal) }
 .show-toggle:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .empty { padding: 6px 0 10px; color: var(--muted); font-size: 13px }
@@ -108,7 +114,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .store-row { margin-top: 10px; padding: 15px 18px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface) }
 .store-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px }
 .store-leading { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap }
-.store-id { font: 700 17px/1.2 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em; color: var(--indigo) }
+.store-id { font: 700 17px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; color: var(--indigo) }
 .store-id:hover { text-decoration: underline }
 .state { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap }
 .row-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 11px }
@@ -118,13 +124,15 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; margin: 0; padding: 11px 0 0; border-top: 1px solid var(--line) }
 .fact { margin: 0; min-width: 0 }
 .fact-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
-.fact-value { margin: 3px 0 0; font: 600 15px/1.3 'Roboto', sans-serif; color: var(--indigo) }
+.fact-value { margin: 3px 0 0; font: 600 15px/1.3 var(--font-roboto), sans-serif; color: var(--indigo) }
 .detail-link { flex: none; font-size: 12px; font-weight: 700; color: var(--teal-text); white-space: nowrap }
 .detail-link:hover { text-decoration: underline }
 .status { border-radius: 99px; padding: 5px 10px; font-size: 10px; font-weight: 700; white-space: nowrap }
-.status.available { background: var(--green); color: var(--teal-text) }
+/* One chip per forecast state, plus a neutral default: an unrecognized
+   forecast_status token must not borrow a class that implies a verdict. */
 .status.error { background: var(--peach); color: var(--red-ink) }
 .status.no_data { background: #eef1f0; color: var(--muted) }
+.status.other { background: #eef1f0; color: var(--muted) }
 
 /* --- the decision block ------------------------------------------------ */
 .decision { margin-top: 12px; padding: 12px 14px; border-left: 3px solid var(--teal); border-radius: 10px; background: var(--panel) }
@@ -158,12 +166,12 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .approve-dialog::backdrop { background: rgba(18, 22, 38, .45) }
 .dialog-body { padding: 22px 22px 18px }
 .dialog-eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10px; font-weight: 700; color: var(--teal-text) }
-.dialog-title { font: 700 21px/1.2 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em; margin: 6px 0 4px }
+.dialog-title { font: 700 21px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; margin: 6px 0 4px }
 .dialog-sub { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--muted) }
 .dialog-recommend { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 13px; line-height: 1.5 }
 .dialog-recommend strong { color: var(--indigo) }
 .dialog-label { display: block; margin-bottom: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
-.dialog-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: 400 14px 'Roboto', sans-serif; color: var(--ink) }
+.dialog-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: 400 14px var(--font-roboto), sans-serif; color: var(--ink) }
 .dialog-input:focus { outline: 2px solid var(--teal-text); outline-offset: 1px; border-color: transparent }
 .dialog-note { margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
 .dialog-error { margin: 12px 0 0; padding: 9px 11px; border: 1px solid #edc7b9; border-radius: 9px; background: #fdf4f0; color: #8e4c40; font-size: 12px; line-height: 1.45 }
@@ -184,7 +192,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .loading-intro { display: flex; align-items: flex-start; gap: 15px }
 .loading-mark { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--teal-text); box-shadow: 0 8px 22px rgba(20, 20, 50, .06) }
 .loading-kicker { margin: 1px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--teal-text) }
-.loading-title { margin: 0; font: 700 22px/1.2 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.03em }
+.loading-title { margin: 0; font: 700 22px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em }
 .loading-copy { margin: 6px 0 0; max-width: 62ch; font-size: 13px; line-height: 1.55; color: var(--muted) }
 .loading-skeleton { display: grid; gap: 14px; margin-top: 24px }
 .skeleton-line, .skeleton-tile, .skeleton-card { display: block; border: 1px solid var(--line); border-radius: 14px; background: var(--panel) }
@@ -194,29 +202,38 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .skeleton-card { height: 210px; border-radius: 18px }
 .loading-note { margin: 14px 0 0; font-size: 11.5px; color: var(--muted) }
 @media (prefers-reduced-motion: reduce) {
-  .topline.is-loading::after { animation: none; transform: translateX(180%) }
+  /* Motion off: hide the sweeping wedge entirely instead of parking it
+     mid-bar, so the loading bar reads as flat matte teal, and let the
+     bucket toggle's open/close rotate snap without transition. */
+  .topline.is-loading::after { animation: none; opacity: 0; transition: none }
+  .bucket-toggle { transition: none }
 }
 
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px }
 
 /* --- store detail (/store/[id]) - the "why" page ----------------------- */
 .hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 34px 0 30px }
-.hero h1 { font: 700 clamp(30px, 4.5vw, 46px)/1 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.06em; margin: 13px 0 18px }
+.hero h1 { font: 700 clamp(30px, 4.5vw, 46px)/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.06em; margin: 13px 0 18px }
 .hero p { max-width: 540px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55 }
 .hero-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--muted); font-size: 12px; text-align: right }
 .hero-meta strong { color: var(--indigo); font-size: 13px }
 .live-dot { display: flex; align-items: center; gap: 8px; color: var(--teal-text); font-weight: 700; margin-bottom: 2px }
 .back { display: inline-block; font-weight: 700; font-size: 13px; color: var(--teal-text) }
 .back:hover { text-decoration: underline }
+/* Shared keyboard focus treatment: every interactive link that had no
+   focus style of its own (brand wordmark, store ids, id chips, the Why
+   arrows, the Back-for-board link). */
+.store-id:focus-visible,
+.id-chip:focus-visible,
+.detail-link:focus-visible,
+.brand:focus-visible,
+.back:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .detail-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; padding-bottom: 40px }
 .panel { padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0 }
-.section-title { font: 700 15px 'Space Grotesk', 'Roboto', sans-serif; letter-spacing: -.01em; color: var(--indigo); margin: 0 0 14px }
+.section-title { font: 700 15px var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.01em; color: var(--indigo); margin: 0 0 14px }
 .narrative { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 }
 .grounding { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--teal-text) }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px }
-.chip { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; row-gap: 2px; padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12px; color: var(--indigo) }
-.chip b { color: var(--teal-text); font-weight: 700 }
-.chip code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px }
 .chips .badge { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--panel); font-size: 12px; color: var(--indigo) }
 .chips .badge.ok { border-color: var(--teal); background: var(--green); color: var(--teal-text) }
 .chips .badge.warn { border-color: #e8d79a; background: var(--yellow); color: var(--amber-ink) }
@@ -224,13 +241,14 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .kv:last-child { border-bottom: 0 }
 .kv span { color: var(--muted); flex: none }
 .kv strong { color: var(--indigo); text-align: right; max-width: 62%; overflow-wrap: anywhere }
-.kv code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px }
-details.raw { margin: 18px 0 0 }
-details.raw summary { cursor: pointer; font-size: 12px; color: var(--muted) }
-details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 11px; overflow: auto; max-height: 320px }
 .directional-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); font-style: italic }
 
 /* --- narrow screens ---------------------------------------------------- */
+/* Breakpoints, smallest last so later rules win: ≤900px stacks the detail
+   grid; ≤640px is the phone tier (compact tiles/cards, product name drops
+   out); ≤380px is the small-phone tier (one-column decision grid). 375px
+   devices are covered by 640 + 380 together — there is no separate 375px
+   tier. */
 /* "retail decision intelligence agent" cannot sit beside the wordmark below
    600px, so the product name and its divider drop out - the wordmark alone
    identifies the page, and the divider would dangle with nothing on its right. */
@@ -270,7 +288,7 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   .tile-label { font-size: 10.5px; letter-spacing: 0 }
 
   .bucket-head { padding: 13px 14px; gap: 10px }
-  .bucket-head h2 { font-size: 17px }
+  .bucket-title { font-size: 17px }
   .bucket-note { margin: 9px 14px 0; font-size: 12px }
   .store-row { padding: 13px 14px 14px; border-radius: 12px }
   .reason { font-size: 14px }
@@ -299,7 +317,7 @@ details.raw pre { padding: 12px; border: 1px solid var(--line); border-radius: 1
   /* Citation and guard pills become full-width rows: a 300px pill cannot keep
      "type · id · detail" on one line, and the wrapped version read as rubble. */
   .chips { flex-direction: column; align-items: stretch }
-  .chips .chip, .chips .badge { width: 100%; border-radius: 10px }
+  .chips .badge { width: 100%; border-radius: 10px }
   .approve-dialog { position: fixed; inset: auto 0 0 0; width: 100%; max-width: 100%; margin: 0; border-radius: 18px 18px 0 0 }
   .dialog-body { padding: 20px 18px 18px }
 }

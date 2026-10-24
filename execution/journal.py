@@ -7,11 +7,14 @@ unlock, never rewritten. Malformed lines are skipped on read and left in place.
 
 Entry kinds:
 
-- ``execution``  one applied (or dry-run) action, carrying the idempotency key
-- ``reversal``   the undo of an earlier execution, referencing its id
+- ``execution``        one applied (or dry-run) action, carrying the idempotency key
+- ``reversal``         the undo of an earlier execution, referencing its id
+- ``execution_status`` crash-witness intent recorded before the external write
+  (``applying``/``reversing``); ignored by the state fold, it only shows what
+  was attempted if the process died between the call and the completion event
 
-The current state of an execution is derived by folding the two kinds in file
-order (:func:`execution_state`), so the journal stays a pure event log.
+The current state of an execution is derived by folding the two first kinds in
+file order (:func:`execution_state`), so the journal stays a pure event log.
 """
 from __future__ import annotations
 

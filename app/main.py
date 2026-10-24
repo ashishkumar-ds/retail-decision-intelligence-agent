@@ -20,7 +20,7 @@ except ImportError:  # Windows has no POSIX locks; the run log degrades
     fcntl = None  # to plain (single-process-safe) appends, same file format
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, Sequence
 
@@ -29,10 +29,13 @@ from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Resp
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from app._time import iso_day as _iso_day
+from app._time import parse_moment as _parse_moment
 from app.config import (
     actuals_feedback_enabled,
     llm_advisory_enabled,
     llm_explanations_enabled,
+    load_config,
     phase2_enabled,
     rag_enabled,
     root_cause_tagging_enabled,
@@ -119,7 +122,7 @@ from rag.advisor import maybe_advisory_triage
 from rag.corpus import load_corpus
 from rag.explainer import explain_store
 from rag.llm_telemetry import summarise as summarise_llm_telemetry
-from rag.question_guard import sanitize_question
+from rag.question_guard import MAX_QUESTION_CHARS, sanitize_question
 from tools.campaign_tool import (
     CampaignAuditResponseError,
     first_run_for_store,
@@ -300,18 +303,34 @@ def _decision_principal(token: str):
         raise HTTPException(status_code=403, detail=str(error)) from error
 
 
+def _require_write_auth(authorization: str | None = Header(default=None)) -> str:
+    """Bearer-token guard for state-mutating / spend-triggering writes.
+
+    Same fail-closed contract as ``_require_approval_auth`` (503 unset, 401
+    missing header, 403 unknown token) and additionally enforces the decision
+    (approver) role: a ``viewer`` token is read-only, so it must not be able
+    to trigger external forecast spend, resort persistence, or mutate state
+    (``POST /recommendations/run``, ``POST /monitor/sweep`` and every
+    Phase-2 write). Approve/reject enforce the same role inside the handler
+    via ``_decision_principal``.
+    """
+    provided = _require_approval_auth(authorization)
+    _decision_principal(provided)
+    return provided
+
+
 def _require_phase2_write_auth(authorization: str | None = Header(default=None)) -> str:
     """Auth for Phase-2 state-mutating endpoints (writes, portfolio evaluation).
 
     Enforces the feature switch first (a disabled capability still refuses with
     its switch named - same contract as ``_require_phase2_enabled``), then the
-    same bearer-token gate that protects approve/reject. Without this, anyone
-    who could reach the port could inject intervention events or spend
+    decision-role bearer gate that protects approve/reject. Without this,
+    anyone who could reach the port could inject intervention events or spend
     forecast-API budget via the portfolio/outcome handlers. Fails closed: if
     no server token is configured the endpoints refuse to serve (503).
     """
     _require_phase2_enabled()
-    return _require_approval_auth(authorization)
+    return _require_write_auth(authorization)
 
 
 
@@ -338,11 +357,17 @@ def _recommendation_id(rec: dict) -> str:
     """Deterministic id from decision content (wall-clock fields excluded).
 
     Same inputs -> same id, so re-running /recommendations with unchanged
-    evidence does not grow the append-only log with duplicate records.
+    evidence does not grow the append-only log with duplicate records. Every
+    decision-relevant enrichment belongs in the hash: two records with the
+    same action but different confidence, outcome evidence, retail context,
+    recovery velocity or diversification are different decisions and must not
+    collapse onto one id (the id is the log's dedupe key).
     """
     payload = "|".join(str(rec.get(k)) for k in (
         "store_id", "recommendation", "store_health_score",
         "recovery_pct", "days_remaining", "forecast_status",
+        "confidence", "outcome_evidence", "retail_context",
+        "recovery_velocity", "diversification",
     ))
     return f"recommendation-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
 
@@ -650,8 +675,12 @@ def _refresh_observed_baselines() -> None:
                         sid, type(error).__name__, error)
 
 
-def _fetch_audit_store_ids() -> list[int]:
-    """Shared audit fetch for /recommendations and the sweep (HTTP errors -> 502/400)."""
+def _fetch_audit_store_ids() -> tuple[list, list[int]]:
+    """Shared audit fetch for /recommendations and the sweep (HTTP errors -> 502/400).
+
+    Returns ``(audit_runs, store_ids)``: the parsed audit runs (fed into every
+    store's signal build) plus the store universe to evaluate.
+    """
     try:
         audit_runs = get_audit_log()
     except httpx.HTTPError as error:
@@ -696,7 +725,7 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int],
     it across every store; omitted, each store keeps its own lookup.
     """
     outcome_evidence_map = _outcome_evidence_by_store()
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=load_config().max_sweep_workers) as pool:
         evaluated = list(pool.map(
             lambda sid: evaluate_store(sid, audit_runs, outcome_evidence_map.get(sid),
                                        stores_by_id=stores_by_id),
@@ -747,10 +776,23 @@ def _evaluate_and_persist_stores(audit_runs: list, store_ids: list[int],
             rec.setdefault("actor", "system:sweep")
             append_log(rec)
             newly_logged += 1
-        if rec["store_id"] not in decided_store_ids:
-            # A human decision is never overwritten by the next evaluation; the
-            # approval queue filters this row out via requires_human_approval.
-            _pending_approvals[rec["store_id"]] = rec
+        sid = rec["store_id"]
+        if sid in decided_store_ids:
+            continue
+        # Re-check at write time: the decided-rows snapshot above could have
+        # gone stale mid-loop (an approve landing while this loop runs). The
+        # store's upsert also refuses to replace a decided row with an
+        # undecided one (app/state.py __setitem__), so the two layers close
+        # the same race from both sides.
+        try:
+            stored_record = _pending_approvals[sid]
+        except KeyError:
+            stored_record = None
+        if stored_record is not None and "decided_at" in stored_record:
+            continue
+        # A human decision is never overwritten by the next evaluation; the
+        # approval queue filters this row out via requires_human_approval.
+        _pending_approvals[sid] = rec
     return results, newly_logged, batch_check
 
 
@@ -772,7 +814,7 @@ def get_recommendations():
 
 
 @app.post("/recommendations/run")
-def run_recommendations(_auth: str = Depends(_require_approval_auth)):
+def run_recommendations(_auth: str = Depends(_require_write_auth)):
     """Evaluate every store, persist new recommendations, and refresh the
     pending-approval queue. This is the side-effecting path that used to live
     on ``GET /recommendations``; it is now an explicit, authenticated write.
@@ -807,7 +849,7 @@ def get_attention_queue():
 
 
 @app.post("/monitor/sweep")
-def monitor_sweep(_auth: str = Depends(_require_approval_auth)):
+def monitor_sweep(_auth: str = Depends(_require_write_auth)):
     """
     Store Recovery Agent sweep — monitors is campaign working for all stores
     and refreshes the attention queue in one call.
@@ -816,8 +858,16 @@ def monitor_sweep(_auth: str = Depends(_require_approval_auth)):
     (same path as POST /recommendations/run) and returns the ranked queue.
     Idempotent; the scheduler calls the same core on its interval.
     """
-    warm_up()  # absorb a Render cold start once, instead of in every store's first call
+    # Warm-up runs on a dedicated worker thread instead of pinning THIS
+    # threadpool worker inside the poll loop: while the ping loop waits, the
+    # handler overlaps it with the audit fetch (which hits the campaign API,
+    # not the forecast upstream). Ordering is preserved — the sweep itself
+    # joins the warm-up first, so the store evaluations still run against a
+    # warm upstream.
+    warm = threading.Thread(target=warm_up, name="sweep-warmup", daemon=True)
+    warm.start()
     audit_runs, all_store_ids = _fetch_audit_store_ids()
+    warm.join()
     results, newly_logged, batch_check = _evaluate_and_persist_stores(audit_runs, all_store_ids)
     ranked = ranked_attention_queue(_gated_pending_records())
     return {
@@ -919,8 +969,12 @@ def approve_recommendation(store_id: int, payload: dict = Body(default={}), _aut
             "message": "Decision-time gate failed; approval refused.",
             "checks": gate["checks"],
         })
-    append_decision(rec, "approve", actor, gate, decided_by=principal.label())
     append_log(rec)
+    # Ledger after the log: the decided record must land BEFORE the ledger
+    # entry, so a ledger decision is never alone - a crash between the two
+    # writes leaves a decided record with no gate audit, not a ledger entry
+    # whose record never existed (see approvals/ledger.py's rebuild invariant).
+    append_decision(rec, "approve", actor, gate, decided_by=principal.label())
     # Keep the decision durably: on a diskless deploy the log append above is
     # ephemeral, and the store is the only copy the board can rebuild from.
     _pending_approvals[store_id] = rec
@@ -968,8 +1022,8 @@ def reject_recommendation(store_id: int, payload: dict = Body(default={}), _auth
             "message": "Decision-time gate failed; rejection not recorded.",
             "checks": gate["checks"],
         })
+    append_log(rec)  # the decided record first; the ledger entry follows
     append_decision(rec, "reject", actor, gate, decided_by=principal.label())
-    append_log(rec)
     _pending_approvals[store_id] = rec
     return {"message": f"Recommendation for store {store_id} rejected.", "recommendation": rec}
 
@@ -1022,6 +1076,11 @@ def decision_quality_analytics(_auth: str = Depends(_require_approval_auth)):
     ))
 
 
+def _prom_label(value: Any) -> str:
+    """Escape a value for use inside a Prometheus label (backslash, quote, \\n)."""
+    return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
 def _ledger_metric_lines(decisions: list[dict]) -> list[str]:
     """Decision-ledger families: audit totals and per-principal counts."""
     approvals = sum(1 for d in decisions if d.get("decision") == "approve")
@@ -1043,7 +1102,9 @@ def _ledger_metric_lines(decisions: list[dict]) -> list[str]:
         label = str(entry.get("decided_by") or "unknown")
         by_actor[label] = by_actor.get(label, 0) + 1
     for label, count in sorted(by_actor.items()):
-        lines.append(f'retail_decisions_by_principal{{principal="{label}"}} {count}')
+        # decided_by is caller-influenced identity text; an unescaped quote,
+        # backslash or newline would corrupt or forge the exposition format.
+        lines.append(f'retail_decisions_by_principal{{principal="{_prom_label(label)}"}} {count}')
     latencies = _approval_latencies_seconds(decisions)
     if latencies:
         lines += [
@@ -1287,6 +1348,38 @@ def _phase2_as_of_or_now(payload: dict) -> datetime:
     return _parse_phase2_timestamp(payload["as_of"], "as_of") if payload.get("as_of") else datetime.now(timezone.utc)
 
 
+# Client-supplied occurred_at may only drift this far ahead of the server
+# clock: reconciliations sort events by occurred_at, so a timestamp that is
+# meaningfully in the future is either a broken client clock or a forged order.
+_OCCURRED_AT_MAX_SKEW = timedelta(minutes=5)
+
+
+def _validate_lifecycle_occurred_at(occurred_at: datetime, snapshot: InterventionSnapshot) -> None:
+    """Reject client-supplied event times that would corrupt event ordering.
+
+    Two bounds, both 400 (bad request data, not a conflict):
+    - not more than a 5-minute skew into the future (the reconstruction sort
+      trusts occurred_at, so a future stamp can forge an ordering the server
+      never observed);
+    - not earlier than the previous event for THIS intervention (the
+      snapshot folds in occurred_at order, so ``updated_at`` is the newest
+      accepted event time — a client stamp that moves an event before it)
+      would replay an already-consumed transition out of causal order.
+    """
+    now = datetime.now(timezone.utc)
+    if occurred_at > now + _OCCURRED_AT_MAX_SKEW:
+        raise HTTPException(
+            status_code=400,
+            detail="occurred_at must not be more than 5 minutes in the future",
+        )
+    previous = snapshot.updated_at
+    if previous is not None and occurred_at < previous.astimezone(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="occurred_at must not precede the previous event for this intervention",
+        )
+
+
 def _phase2_key(payload: dict, store_id: int) -> InterventionKey:
     raw_key = payload.get("intervention_key")
     if not isinstance(raw_key, dict):
@@ -1384,6 +1477,7 @@ def append_phase2_lifecycle_event(intervention_id: str, payload: dict = Body(def
     if event_type not in {"start", "pause", "resume", "complete", "fail", "cancel"}:
         raise HTTPException(status_code=400, detail="unsupported public lifecycle event")
     occurred_at = _parse_phase2_timestamp(payload.get("occurred_at", utcnow_iso()), "occurred_at")
+    _validate_lifecycle_occurred_at(occurred_at, snapshot)
     event = InterventionEvent(
         event_id=f"event-{uuid.uuid4().hex}", intervention_id=intervention_id, event_type=event_type,
         occurred_at=occurred_at, key=snapshot.key, campaign_id=snapshot.campaign_id,
@@ -1562,20 +1656,23 @@ def _causal_evidence_for_intervention(store_id: int, started_day: int) -> dict:
 
 
 def _outcome_observations_from_payload(
-    payload: dict, snapshot: InterventionSnapshot,
+    body: OutcomeRequestBody, snapshot: InterventionSnapshot,
 ) -> tuple[tuple[OutcomeObservation, ...], dict | None]:
     """Resolve exactly one observation source: replay-mode actuals or
     client-posted observations. Mixing the two is rejected so evidence
-    provenance stays unambiguous."""
-    raw_observations = payload.get("observations", [])
-    started_day = payload.get("started_day")
+    provenance stays unambiguous.
+
+    ``body`` is the already-validated ``OutcomeRequestBody`` (the endpoint
+    rejects the request before reaching here if a known field is wrongly
+    typed) - fields are read from the model, never re-parsed by hand.
+    """
+    raw_observations = body.observations
+    started_day = body.started_day
     if started_day is not None:
         # Replay mode: derive observations from observed sales actuals
         # served by the forecast API instead of client-posted values.
         if raw_observations:
             raise ValueError("provide either 'observations' or 'started_day', not both")
-        if not isinstance(started_day, int) or isinstance(started_day, bool):
-            raise ValueError("started_day must be an integer")
         if snapshot.started_at is None:
             raise ValueError("intervention has no valid start timestamp")
         return _observations_from_actuals(
@@ -1631,9 +1728,10 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
     _require_phase2_enabled()
     try:
         # Pydantic gate on the request body: strict types for known fields,
-        # unknown fields allowed (forward compatible). The original payload
-        # dict remains the data source so evaluation semantics are unchanged.
-        OutcomeRequestBody.model_validate(payload)
+        # unknown fields allowed (forward compatible). The validated model is
+        # what the observation resolution below consumes; fields the evaluator
+        # uses opaquely (as_of, forecast hooks) stay on the original dict.
+        body = OutcomeRequestBody.model_validate(payload)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=f"invalid outcome input: {error}") from error
     snapshot = _snapshot_or_404(intervention_id)
@@ -1650,7 +1748,7 @@ def evaluate_phase2_outcome(intervention_id: str, payload: dict = Body(default={
         snapshot = _snapshot_or_404(intervention_id)
     auto_actuals_meta = None
     try:
-        observations, auto_actuals_meta = _outcome_observations_from_payload(payload, snapshot)
+        observations, auto_actuals_meta = _outcome_observations_from_payload(body, snapshot)
         forecast_reference_value, forecast_status = _auto_forecast_reference(
             payload, snapshot.key.store_id, payload.get("forecast_status"),
         )
@@ -1756,14 +1854,31 @@ def explain_recommendation(store_id: int, request: Request, question: str = ""):
             status_code=503,
             detail="RAG knowledge layer is disabled: set RAG_ENABLED=true to enable it.",
         )
-    if question and len(question) > 500:
-        raise HTTPException(status_code=400, detail="question must be at most 500 characters")
+    # Fail fast on request validation BEFORE any budget bucket is charged:
+    # question length (MAX_QUESTION_CHARS comes from rag/question_guard - the
+    # single source for that cap) and store groundability (no record -> no
+    # grounded evidence -> the template is the answer either way; an unknown
+    # store must not spend the account's quota computing one).
+    if question and len(question) > MAX_QUESTION_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"question must be at most {MAX_QUESTION_CHARS} characters",
+        )
     question = sanitize_question(question)
-    llm_on, llm_skip = _llm_admission(request) if llm_explanations_enabled() else (False, "")
+    records = _readable_records()
+    store_grounded = (store_id in {r.get("store_id") for r in records
+                                   if isinstance(r, Mapping)})
+    if llm_explanations_enabled():
+        if store_grounded:
+            llm_on, llm_skip = _llm_admission(request)
+        else:
+            llm_on, llm_skip = False, "no grounded evidence for this store; budget not charged"
+    else:
+        llm_on, llm_skip = False, ""
     try:
         result = explain_store(
             store_id,
-            recommendation_records=_readable_records(),
+            recommendation_records=records,
             event_records=[e.to_record() for e in _phase2_registry.read_events()],
             corpus=load_corpus(),
             question=question,
@@ -1798,10 +1913,24 @@ def advisory_triage(store_id: int, request: Request, question: str = ""):
             status_code=503,
             detail="RAG knowledge layer is disabled: set RAG_ENABLED=true to enable it.",
         )
-    if question and len(question) > 500:
-        raise HTTPException(status_code=400, detail="question must be at most 500 characters")
+    # Same validation-before-spend ordering as /why: question length and store
+    # groundability are checked before any LLM budget bucket is charged.
+    if question and len(question) > MAX_QUESTION_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"question must be at most {MAX_QUESTION_CHARS} characters",
+        )
     question = sanitize_question(question)
-    adv_on, adv_skip = _llm_admission(request) if llm_advisory_enabled() else (False, "")
+    records = _readable_records()
+    store_grounded = (store_id in {r.get("store_id") for r in records
+                                   if isinstance(r, Mapping)})
+    if llm_advisory_enabled():
+        if store_grounded:
+            adv_on, adv_skip = _llm_admission(request)
+        else:
+            adv_on, adv_skip = False, "no grounded evidence for this store; budget not charged"
+    else:
+        adv_on, adv_skip = False, ""
     corpus = load_corpus()
     # Deterministic base: the TEMPLATE narrative (LLM off here), so the
     # advisory is grounded against the engine's own text, not an already-
@@ -1809,7 +1938,7 @@ def advisory_triage(store_id: int, request: Request, question: str = ""):
     try:
         grounded = explain_store(
             store_id,
-            recommendation_records=_readable_records(),
+            recommendation_records=records,
             event_records=[e.to_record() for e in _phase2_registry.read_events()],
             corpus=corpus,
             question=question,
@@ -1869,6 +1998,17 @@ def evaluate_phase2_portfolio(payload: dict = Body(default={}),
     for sid in store_ids:
         if isinstance(sid, bool) or not isinstance(sid, int):
             raise HTTPException(status_code=400, detail="Each store_id must be an integer")
+    # Documented portfolio cap (DecisionAgentConfig.max_stores_per_portfolio_eval,
+    # operator-tunable via PHASE2_MAX_STORES_PER_EVAL): an unbounded request
+    # means unbounded forecast-API spend and an unbounded evaluation window.
+    # Reject rather than truncate - a silently halved portfolio would look like
+    # a partial answer.
+    max_stores = load_config().max_stores_per_portfolio_eval
+    if len(store_ids) > max_stores:
+        raise HTTPException(
+            status_code=422,
+            detail=f"'store_ids' exceeds the portfolio evaluation cap ({len(store_ids)} > {max_stores})",
+        )
 
     report = evaluate_store_portfolio(
         store_ids=store_ids,
@@ -1938,17 +2078,6 @@ def _board_self_refresh_enabled() -> bool:
     return os.getenv("BOARD_SELF_REFRESH", "1") != "0"
 
 
-def _parse_generated_at(rec: Mapping[str, Any]) -> datetime | None:
-    raw = rec.get("generated_at")
-    if not raw:
-        return None
-    try:
-        parsed = datetime.fromisoformat(str(raw))
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
-
-
 def _persisted_audit_runs() -> tuple[list[dict[str, Any]], list[int]]:
     """Rebuild the audit universe from the board's own persisted records.
 
@@ -1973,7 +2102,7 @@ def _persisted_audit_runs() -> tuple[list[dict[str, Any]], list[int]]:
         if not isinstance(store_id, int):
             continue
         latest[store_id] = rec
-        generated_at = _parse_generated_at(rec)
+        generated_at = _parse_moment(rec.get("generated_at"))
         elapsed = rec.get("days_elapsed")
         if generated_at is None or elapsed is None:
             continue
@@ -2019,7 +2148,7 @@ def _board_needs_refresh(records: Sequence[Mapping[str, Any]] | None = None) -> 
     undecided = [rec for rec in latest.values() if "decided_at" not in rec]
     today = datetime.now(timezone.utc).date()
     for rec in undecided:
-        generated_at = _parse_generated_at(rec)
+        generated_at = _parse_moment(rec.get("generated_at"))
         if generated_at is not None and generated_at.date() < today:
             return True
     return _no_usable_forecast(undecided)
@@ -2235,8 +2364,16 @@ def compare_store_actions(
 
 
 @app.get("/log")
-def get_recommendation_log():
+def get_recommendation_log(_auth: str = Depends(_require_approval_auth)):
+    """Audit trail (token-gated like /metrics).
 
+    Reads are token-gated even though the endpoint is read-only: the entries
+    are the full append-only recommendation log plus the decision ledger,
+    which name principals and carry sensitive business signal. The rendered
+    HTML surfaces (/ui, /board/view) stay public on purpose - those are the
+    stakeholder views; this is the raw API. Fail-closed: no configured token
+    -> 503, missing header -> 401.
+    """
     log = read_log()
     return {
         "total_entries": len(log),
@@ -2260,30 +2397,6 @@ def root() -> RedirectResponse:
     service with the repo for deploy drift.
     """
     return RedirectResponse(url="/ui")
-
-
-def _iso_day(value: Any) -> date | None:
-    """Calendar day of an ISO timestamp, or None when absent/malformed."""
-    if not isinstance(value, str):
-        return None
-    try:
-        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return None
-    return moment.date()
-
-
-def _parse_moment(value: Any) -> datetime | None:
-    """Aware datetime of an ISO timestamp, or None when absent/malformed."""
-    if not isinstance(value, str):
-        return None
-    try:
-        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except (ValueError, TypeError):
-        return None
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    return moment
 
 
 def _latest_activity_moment(records: Sequence[Mapping[str, Any]],
