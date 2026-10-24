@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/diagrams/architecture-dunnhumby.json - the architecture
+"""Generate docs/images/architecture-dunnhumby.json - the architecture
 diagram restyled to replicate the theme of dunnhumby's official
 "The Complete Journey" user guide (source PDF removed from the repo;
 theme values below were extracted from it and are inlined).
@@ -22,8 +22,8 @@ Design language replicated:
       copyright, dunnhumby is credited only as the data source)
 
 Render:
-    eraser-diagrams render docs/diagrams/architecture-dunnhumby.json \\
-        --chromium-path <chrome> --scale 2 -o docs/diagrams/architecture-dunnhumby.png
+    eraser-diagrams render docs/images/architecture-dunnhumby.json \\
+        --chromium-path <chrome> --scale 2 -o docs/images/architecture.png
 """
 from __future__ import annotations
 
@@ -163,7 +163,7 @@ def build_document() -> dict:
 
 def main() -> None:
     document = build_document()
-    out = Path(__file__).resolve().parents[1] / "docs" / "diagrams" / "architecture-dunnhumby.json"
+    out = Path(__file__).resolve().parents[1] / "docs" / "images" / "architecture-dunnhumby.json"
     out.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out} ({len(document['entities'])} entities, {len(document['connections'])} connections)")
 

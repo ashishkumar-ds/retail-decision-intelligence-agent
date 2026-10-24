@@ -213,13 +213,15 @@ check("choice: fallback actions are themselves valid recommendations",
 #     produces, and the rendered PNG was stamped from that JSON - so the image
 #     can never go stale (it once read "22 golden scenarios" long after the
 #     count had become 23). Re-run scripts/render_architecture_dunnhumby.py.
+#     The rendered PNG is committed as docs/images/architecture.png, the name
+#     the README serves.
 sys.path.insert(0, str(ROOT / "scripts"))
 from generate_architecture_dunnhumby import build_document as _build_arch_diagram  # noqa: E402
 
-_diagrams = ROOT / "docs" / "diagrams"
+_diagrams = ROOT / "docs" / "images"
 _arch_json = _diagrams / "architecture-dunnhumby.json"
-_arch_png = _diagrams / "architecture-dunnhumby.png"
-_arch_stamp = _diagrams / "architecture-dunnhumby.png.sha256"
+_arch_png = _diagrams / "architecture.png"
+_arch_stamp = _diagrams / "architecture.png.sha256"
 
 _rebuilt_json = (json.dumps(_build_arch_diagram(), indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 _committed_json = _arch_json.read_bytes() if _arch_json.exists() else b""

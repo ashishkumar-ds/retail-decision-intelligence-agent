@@ -29,7 +29,7 @@ bash scripts/seed_demo.sh
 
 The hosted demo enables the off-path Groq layer with per-IP and daily caps.
 
-![Retail Decision Board — live stakeholder view: 54 stores waiting on a human review (7 need a decision, 47 need a data review), 31 stores need no action, and the first store card shows its recommended action, alternative and commitment](docs/images/board-snapshot.png)
+![Retail Decision Board — live stakeholder view: 54 stores waiting on a human review (7 need a decision, 47 need a data review), 31 stores need no action, and the first store card shows its recommended action, alternative and commitment](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/blob/main/docs/images/decision%20board%20snapshot.png)
 
 Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full walkthrough: [DEMO.md](DEMO.md).
 
@@ -92,10 +92,9 @@ flowchart LR
 
 The off-path LLM layer has two jobs: rephrase grounded, cited evidence for `/why/{store_id}`, and draft a human-gated triage suggestion for `/advisory/{store_id}`. The decision path itself is pure code with no model calls.
 
-![System architecture — deterministic, human-gated decision flow](docs/diagrams/architecture-dunnhumby.png)
+![System architecture — deterministic, human-gated decision flow](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/blob/main/docs/images/architecture.png)
 *Pure-code decision path → human gate → append-only log; the off-path LLM only rephrases evidence and drafts advisory notes. Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
 
-Component map: [project blueprint](docs/PROJECT_BLUEPRINT.md).
 
 ### The off-path LLM layer
 
