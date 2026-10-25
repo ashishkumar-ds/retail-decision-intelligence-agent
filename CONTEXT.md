@@ -157,3 +157,12 @@ _Avoid_: side feature, auxiliary
 The 23 pinned scenarios that gate the decision behavior in CI; behavior
 changes require recalibrating them in the same commit.
 _Avoid_: test fixtures, snapshots
+
+**Reliability (score)**:
+How well the recorded scores rank stores in the direction later measurements
+confirm — Spearman ρ of health/confidence against the same store's first
+*measured* outcome at least one lag later. Time-lagged on purpose:
+`outcome_evidence` is an input to scoring, so a same-record join would be
+tautological ("non_circular" pairing). Directional agreement, not
+probability calibration; the paired-outcome count gates the verdict.
+_Avoid_: calibration (until a proper probability output exists), accuracy
