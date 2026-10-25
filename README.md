@@ -70,6 +70,7 @@ Same gates CI runs:
 ruff check .
 python scripts/check.py
 python evaluation/run_evals.py  # 23 golden business scenarios
+python evaluation/reliability_report.py  # health/confidence reliability, offline (not a CI gate)
 ```
 
 Deploy with Docker: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (always-on host + persistent disk; unset variables keep silent defaults, sweep stays off unless enabled).
@@ -119,7 +120,7 @@ Intervention lifecycle (Phase 2) / analytics / ops:
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
 | `/phase2/interventions/*`, `/phase2/portfolio/evaluate` | GET/POST | Intervention lifecycle + portfolio evaluation (auth on writes) |
-| `/analytics/decision-quality` | GET | Acceptance, causal confirmation, margin per intervention (auth) |
+| `/analytics/decision-quality` | GET | Acceptance, causal confirmation, margin per intervention, health/confidence reliability (auth) |
 | `/metrics` | GET | Prometheus metrics (auth; see ops/observability/) |
 | `/log` | GET | Append-only recommendation log + decision ledger (auth; raw audit trail, not the stakeholder view) |
 

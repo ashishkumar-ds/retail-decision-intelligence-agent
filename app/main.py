@@ -1058,8 +1058,9 @@ def decision_quality_analytics(_auth: str = Depends(_require_approval_auth)):
     from execution.journal import read_events
 
     store_margins: dict[int, float] = {}
+    recommendations = read_log()
     try:
-        for record in read_log():
+        for record in recommendations:
             sid = record.get("store_id")
             if not isinstance(sid, int) or isinstance(sid, bool) or sid in store_margins:
                 continue
@@ -1071,9 +1072,29 @@ def decision_quality_analytics(_auth: str = Depends(_require_approval_auth)):
                 store_margins[sid] = block["margin_rate"]
     except Exception as error:
         logger.warning("[DECISION QUALITY] margin lookup failed: %s", type(error).__name__)
-    return jsonable_encoder(compute_decision_quality(
-        read_log(), read_decisions(), read_events(), store_margins=store_margins,
-    ))
+    response = compute_decision_quality(
+        recommendations, read_decisions(), read_events(), store_margins=store_margins,
+    )
+
+    # Health/confidence reliability: same system of record, different question -
+    # do the scores rank stores the way later measurements confirm? Time-lagged
+    # pairing only (same-record outcome_evidence is an input to scoring, so a
+    # same-record join would be tautological). Lag is env-tunable: the offline
+    # demo recordings span 21 days, under the default 28-day half-cycle.
+    from analytics.reliability import compute_health_reliability
+
+    try:
+        min_lag_days = float(os.getenv("RELIABILITY_MIN_LAG_DAYS", "28"))
+    except ValueError:
+        min_lag_days = 28.0
+    try:
+        outcome_records = [event.to_record() for event in _phase2_registry.read_events()]
+        response["health_reliability"] = compute_health_reliability(
+            recommendations, outcome_records, min_lag_days=min_lag_days,
+        )
+    except Exception as error:
+        logger.warning("[DECISION QUALITY] reliability lookup failed: %s", type(error).__name__)
+    return jsonable_encoder(response)
 
 
 def _prom_label(value: Any) -> str:
