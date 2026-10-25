@@ -39,10 +39,11 @@ img { max-width: 100% }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
 /* --- chrome ------------------------------------------------------------- */
-/* Glass pill, sized to its content: 10px of breathing room around the 19px
-   wordmark and the 13px links - 16px vertical padding read as an inflated bar
-   for the small type inside it. Border radius stays 14px (fits the cards). */
-.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 16px; margin: 12px 0 18px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 14px; background: rgba(255, 255, 255, .74); box-shadow: 0 6px 20px rgba(20, 20, 50, .04); backdrop-filter: blur(10px) }
+/* Glass pill, sized to its content: 13px of breathing room reads level with
+   the 30px header row below (the hero title has baseline + padding 6px +
+   border) - 16px vertical padding read as an inflated bar for the 13px links,
+   10px read as smaller than everything under it. 14px radius fits the cards. */
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 13px 16px; margin: 12px 0 18px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 14px; background: rgba(255, 255, 255, .74); box-shadow: 0 6px 20px rgba(20, 20, 50, .04); backdrop-filter: blur(10px) }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
 img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .brand-divider { width: 1px; height: 22px; background: var(--line); flex: none }
@@ -267,8 +268,9 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 @media (max-width: 640px) {
   .brand-product, .brand-divider { display: none }
   /* Horizontal padding stays INSIDE the pill: zeroing it puts the wordmark
-     and status dot flush against the rounded glass corners. */
-  .nav { padding: 10px 12px; margin: 10px 0 14px }
+     and status dot flush against the rounded glass corners. Height mirrors
+     the desktop tier (13px) so the bar keeps its presence beside 27px h1. */
+  .nav { padding: 13px 12px; margin: 10px 0 14px }
   .board-head h1 { font-size: 27px }
   /* Drop to its own left-aligned line; allow a break at 320px. */
   .board-asof { white-space: normal; letter-spacing: .12em; flex-basis: 100% }
