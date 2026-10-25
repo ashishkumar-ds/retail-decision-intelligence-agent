@@ -42,8 +42,13 @@ img { max-width: 100% }
 /* Glass pill, sized to its content: 13px of breathing room reads level with
    the 30px header row below (the hero title has baseline + padding 6px +
    border) - 16px vertical padding read as an inflated bar for the 13px links,
-   10px read as smaller than everything under it. 14px radius fits the cards. */
-.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 13px 16px; margin: 12px 0 18px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 14px; background: rgba(255, 255, 255, .74); box-shadow: 0 6px 20px rgba(20, 20, 50, .04); backdrop-filter: blur(10px) }
+   10px read as smaller than everything under it. 14px radius fits the cards.
+   The negative inline margins push the glass out by the bar's own inner inset
+   (1px border + 16px padding) so the wordmark and links sit EXACTLY on the
+   text column edge, aligned with the h1, summary and footer below - the
+   content mass was 17px narrower than the column it sits over. The bar also
+   reads a touch longer, meeting the column frame deliberately. */
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 13px 16px; margin: 12px calc(-1 * (16px + 1px)) 18px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 14px; background: rgba(255, 255, 255, .74); box-shadow: 0 6px 20px rgba(20, 20, 50, .04); backdrop-filter: blur(10px) }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
 img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .brand-divider { width: 1px; height: 22px; background: var(--line); flex: none }
@@ -269,8 +274,11 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
   .brand-product, .brand-divider { display: none }
   /* Horizontal padding stays INSIDE the pill: zeroing it puts the wordmark
      and status dot flush against the rounded glass corners. Height mirrors
-     the desktop tier (13px) so the bar keeps its presence beside 27px h1. */
-  .nav { padding: 13px 12px; margin: 10px 0 14px }
+     the desktop tier (13px) so the bar keeps its presence beside 27px h1.
+     Same edge alignment as desktop: the glass slides out by the bar's own
+     inner inset (1px border + 12px padding) so the wordmark and links sit on
+     the 20px column edge the headers below use. */
+  .nav { padding: 13px 12px; margin: 10px calc(-1 * (12px + 1px)) 14px }
   .board-head h1 { font-size: 27px }
   /* Drop to its own left-aligned line; allow a break at 320px. */
   .board-asof { white-space: normal; letter-spacing: .12em; flex-basis: 100% }
