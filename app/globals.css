@@ -172,6 +172,11 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 
 /* --- approve dialog ---------------------------------------------------- */
 .approve-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(20, 20, 50, .18) }
+/* Native <dialog> showModal() traps FOCUS behind the backdrop, but wheel and
+   touch could still scroll the board underneath - a reviewer could scroll the
+   record they are approving out of the viewport mid-decision. Lock the page
+   for as long as the sheet is open (:has() is baseline CSS, no JS state). */
+body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .approve-dialog::backdrop { background: rgba(18, 22, 38, .45) }
 .dialog-body { padding: 22px 22px 18px }
 .dialog-eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10px; font-weight: 700; color: var(--teal-text) }
