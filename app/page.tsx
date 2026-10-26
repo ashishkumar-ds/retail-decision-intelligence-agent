@@ -490,7 +490,8 @@ export default function BoardPage() {
   const loading = !board && !error
 
   return (
-    <AppChrome loading={loading} probe={Boolean(board)} footerExtra="Decisions are token-gated">
+    <>
+      <AppChrome loading={loading} probe={Boolean(board)} footerExtra="Decisions are token-gated">
 
         {/* Identity. Not a marketing hero: series context, the page name, and
             the data's freshness on the same line. Stated here only - never
@@ -692,7 +693,19 @@ export default function BoardPage() {
             ) : null}
           </>
         )}
-    </AppChrome>
+      </AppChrome>
+      {/* The dialog that makes the Approve buttons real: per-card reviews set
+          `target`, and this mount renders the token sheet. Reconciliation with
+          the card rebuild dropped this render while keeping the buttons - the
+          source-grep guard in tests/test_approve_dialog.py pins it now. */}
+      {target ? (
+        <ApproveDialog
+          target={target}
+          onClose={() => setTarget(null)}
+          onApproved={load}
+        />
+      ) : null}
+    </>
   )
 }
 
