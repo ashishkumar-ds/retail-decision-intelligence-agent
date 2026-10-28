@@ -207,7 +207,12 @@ function StoreRow({
     <article className="store-row">
       <div className="store-top">
         <div className="store-leading">
-          <Link href={`/store/${row.store_id}`} className="store-id">{display(row.store_id)}</Link>
+          {/* The why page must name itself: since the single-link collapse
+              the bare id was the only signal, and a bold number doesn't read
+              as clickable (found live, 2026-10-29). */}
+          <Link href={`/store/${row.store_id}`} className="store-id">
+            <span className="why-lead">Why store</span> {display(row.store_id)}
+          </Link>
           <span className={`state${stateTone(row)}`}>{display(stateOf(row))}</span>
         </div>
       </div>
@@ -784,6 +789,7 @@ export default function BoardPage() {
                           </span>
                         ))}
                       </div>
+                      <p className="id-hint">An id opens that store&apos;s why page.</p>
                       {pendingRows.length > 1 ? (
                         <button
                           type="button"

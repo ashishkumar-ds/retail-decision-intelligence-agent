@@ -35,6 +35,20 @@ def test_the_proxy_allowlists_the_advisory_read():
     )
 
 
+def test_the_board_card_names_the_why_link():
+    # Found live, 2026-10-29: after the single-link collapse the card's only
+    # why-page affordance was a bare bold id - no hover on touch, nothing
+    # suggesting navigation. The link must name its destination.
+    page = (ROOT / "app" / "page.tsx").read_text(encoding="utf-8")
+    assert 'why-lead">Why store</span>' in page, (
+        "The board card's store link must carry the visible 'Why store' lead "
+        "- a bare id does not read as a link to the why page."
+    )
+    assert 'id-hint' in page, (
+        "The shared-decision id list must say that an id opens the why page."
+    )
+
+
 def test_the_suggestion_is_labelled_a_suggestion():
     assert "Suggestion - not a decision, records nothing" in DETAIL, (
         "The advisory result must render under the permanent honesty line - "
