@@ -15,7 +15,11 @@
 [![API on Render](https://img.shields.io/badge/api-render-46e3b7?logo=render&logoColor=white)](https://retail-decision-intelligence-agent.onrender.com/health)
 [![Store on Supabase](https://img.shields.io/badge/store-supabase-3ecf8e?logo=supabase&logoColor=white)](https://supabase.com)
 
-**Live:** [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/) (Vercel) · [API](https://retail-decision-intelligence-agent.onrender.com/health) (Render — `/health`, `/docs`, `/openapi.json`). Writes need a bearer token, else 503.
+**Live:** [stakeholder board](https://retail-decision-intelligence-agent.vercel.app/) (Vercel) · [API](https://retail-decision-intelligence-agent.onrender.com/health) (Render — `/health`, `/docs`, `/openapi.json`). Writes need a bearer token, else 503. Render's free tier sleeps: the first load wakes it (~30–60s; the footer shows "API waking") — cold start, not downtime.
+
+**Reviewer's path (about 5 minutes):** [`decision_engine/scorer.py`](decision_engine/scorer.py) — the recommendation you can recompute by hand → [the approval-and-write gates in `app/main.py`](app/main.py) → [`analytics/decision_quality.py`](analytics/decision_quality.py) — what the recorded decisions returned → [the six ADRs](docs/adr/): pure-code path, append-only records, asymmetric failures, golden cases, egress redaction, off-path LLM measurement.
+
+> **Non-negotiables** (enforced in CI, not aspirations): decisions are pure code, recomputable and citable; budget moves only behind human approval; missing evidence fails closed; the LLM stays off the decision path.
 
 </div>
 
