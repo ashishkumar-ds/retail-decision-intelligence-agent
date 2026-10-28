@@ -90,16 +90,27 @@ Print the `*_label` fields. `EXTEND_INTERVENTION`, `cautious` and
 `awaiting_decision` are machine tokens; a stakeholder surface says "Extend the
 intervention", "Commits this cycle's budget", "Awaiting a decision" — and a row
 whose `decision_status` is already `approved`/`rejected` says so instead of
-asking for the same decision again. Approve actions live on gated rows only
-(`requires_human_approval === true` and not already decided) and call
-`POST /api/approve/{id}`; see "Approval" below. For `insufficient_data` rows label
-the same write "Mark reviewed", not "Approve".
+asking for the same decision again. The UI is copy-honest about the fork:
+`fallback_action` is labelled **Fallback** with its real role stated once
+("runs only if the guards refuse the recommended action at decision time") —
+the surface never implies the stakeholder can choose it. Remove-scope copy
+applies the same rule: the approval hint reads "Needs your approval", not
+"Token-gated"; the footer states the closure ("Approvals are recorded, never
+automatic") rather than repeating the gating word a third time. Approve actions
+live on gated rows only (`requires_human_approval === true` and not already
+decided) and call `POST /api/approve/{id}`; see "Approval" below. For
+`insufficient_data` rows label the same write "Mark reviewed", not "Approve".
 
 ### What belongs on a row, and what does not
 
 A row carries the three numbers a decision needs (`store_health_score`,
-`recovery_pct`, `days_remaining`) and one reason sentence. `confidence`,
-`recovery_velocity`, `recovery_direction`, `baseline_forecast`/`current_forecast`,
+`recovery_pct`, `days_remaining`) and one reason sentence. `days_remaining`
+renders on the reason line it qualifies (`"43 days left"`), not as a fact
+column — the two fact columns are Health and Recovery. The state chip follows
+the tile captions: a moving state (`recovering`/`working_well`) earns the quiet
+green chip, `watch` stays neutral. The card links to the store detail once
+(the id); a second same-URL link per row is noise.
+`confidence`, `recovery_velocity`, `recovery_direction`, `baseline_forecast`/`current_forecast`,
 `days_elapsed`, `uplift_pct`, `did_uplift_pct`, `causal_state` and `evidence_state`
 are evidence for `/store/[id]`. Measured uplift is empty on every row until an
 evaluation window closes: it is a caveat, stated once, not eight columns of `—`.
@@ -119,7 +130,10 @@ retail_context?, trajectory?`.
 rewrite the sentences. **Never print a citation id, the raw `rec/event/src`
 token, a methodology chunk or a source list** on this page: `citations` and
 `methodology` are provenance for the operator `/ui/why` and the raw payload,
-not stakeholder evidence.
+not stakeholder evidence. One deliberate exception: the served
+`recommendation_id` prints as a quiet provenance line at the bottom of the
+evidence panel — the product's citable-verdict claim (PRODUCT.md) made visible,
+still outside the narrative layer.
 
 ### `GET /pending-approvals`
 `{"count": 2, "pending": [ /* records awaiting a human */ ]}` — read-only count.
@@ -135,6 +149,13 @@ credential and allows no other POST path.
   — the guardrails/verifier re-run refused; **nothing was recorded**
 - `503` no approval token configured server-side (fail closed)
 - `404` store is not in the pending queue; it may already be decided
+
+The bulk review pass changes nothing server-side: it is the client walking the
+visible no-data stores through per-store POSTs in sequence, one token. A
+refused/decided store is skip-and-continue (there is nothing partial about the
+stores already recorded); a `401`/`403`/`503` stops the pass, because the next
+write would be refused for the same reason. API `detail.message` strings stay
+off the surface — error copy is the client's own.
 
 The dialog must: collect the token (password field), keep it in `sessionStorage`
 for the tab only, show the served error, and refresh `/board` after a `200` so

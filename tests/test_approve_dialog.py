@@ -20,7 +20,7 @@ def test_the_dialog_mount_survives_rewrites():
         "call setTarget(row), but without this mount the click sets state "
         "nothing consumes - a dead button on the live board."
     )
-    assert "onClose={() => setTarget(null)}" in PAGE and "onApproved={load}" in PAGE, (
+    assert "onClose={closeDialog}" in PAGE and "onApproved={load}" in PAGE, (
         "The ApproveDialog mount lost its close/refresh wiring."
     )
 
@@ -39,4 +39,21 @@ def test_every_approve_affordance_feeds_the_dialog():
     assert "className=\"approve-dialog\"" in PAGE, (
         "The dialog element itself (className approve-dialog) is missing from "
         "page.tsx."
+    )
+
+
+def test_the_bulk_review_affordance_feeds_the_dialog():
+    # The no-data group's bulk pass sets the queue and opens the same dialog
+    # on its first pending store - one token, one sequential pass, each write
+    # re-gated server-side. It must not open a second approval path.
+    assert "setQueue(pendingRows)" in PAGE and "setTarget(pendingRows[0])" in PAGE, (
+        "The bulk-review button must route through setQueue + setTarget into "
+        "the one shared ApproveDialog."
+    )
+    assert "queue={queue ?? undefined}" in PAGE, (
+        "The ApproveDialog mount must receive the bulk queue."
+    )
+    assert "closeDialog = useCallback" in PAGE and "setQueue(null)" in PAGE, (
+        "Closing the sheet must drop both the single target and the queue, "
+        "or a stale bulk pass persists past its dialog."
     )

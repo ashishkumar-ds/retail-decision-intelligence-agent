@@ -88,6 +88,9 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 /* The header is the only boxed part of a closed group; open groups hang
    store cards under it. Nothing nests a bordered card inside another. */
 .section { margin: 0 0 16px }
+/* Programmatic focus target for tile navigation: quiet on purpose - the
+   section heading is the landmark the eye is already at. */
+.section:focus { outline: none }
 .bucket-head { display: flex; width: 100%; align-items: center; gap: 12px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font: inherit; color: inherit; text-align: left; cursor: pointer }
 .bucket-head:hover { border-color: var(--teal) }
 .bucket-head:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
@@ -126,16 +129,21 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .store-id { font: 700 17px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; color: var(--indigo) }
 .store-id:hover { text-decoration: underline }
 .state { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap }
+/* "On track" and "Watch" differ: the moving states get the quiet green chip,
+   the flat one stays neutral - same rule the tile caption follows. */
+.state.state-ok { background: var(--green); border-color: rgba(18, 98, 93, .25); color: var(--teal-text) }
+.state.state-watch { background: #eef1f0 }
 .row-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 11px }
+/* The window rides the reason line, right-aligned with the feed chip. */
+.row-meta { display: inline-flex; align-items: center; gap: 8px; flex: none }
+.window-note { font-size: 12px; font-weight: 600; color: var(--indigo); white-space: nowrap }
 /* The reason is the card's headline: it is the only text that explains why the
    store is here, and it is recorded evidence rather than our summary of it. */
 .reason { margin: 0; font-size: 14.5px; line-height: 1.55; max-width: 80ch; text-wrap: pretty }
-.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; margin: 0; padding: 11px 0 0; border-top: 1px solid var(--line) }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 0; padding: 11px 0 0; border-top: 1px solid var(--line) }
 .fact { margin: 0; min-width: 0 }
 .fact-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
 .fact-value { margin: 3px 0 0; font: 600 15px/1.3 var(--font-roboto), sans-serif; color: var(--indigo) }
-.detail-link { flex: none; font-size: 12px; font-weight: 700; color: var(--teal-text); white-space: nowrap }
-.detail-link:hover { text-decoration: underline }
 .status { border-radius: 99px; padding: 5px 10px; font-size: 10px; font-weight: 700; white-space: nowrap }
 /* One chip per forecast state, plus a neutral default: an unrecognized
    forecast_status token must not borrow a class that implies a verdict. */
@@ -144,11 +152,15 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .status.other { background: #eef1f0; color: var(--muted) }
 
 /* --- the decision block ------------------------------------------------ */
+/* The verdict owns the card: the Recommended action is the biggest type on
+   the card (after the store id); Fallback and Commitment run at the smaller
+   companion size. */
 .decision { margin-top: 12px; padding: 12px 14px; border-left: 3px solid var(--teal); border-radius: 10px; background: var(--panel) }
 .decision-kicker { display: block; margin-bottom: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--teal-text) }
 .decision-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
 .decision-grid span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
 .decision-grid strong { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.4; color: var(--indigo) }
+.decision-grid > div:first-child strong { font: 700 17px/1.25 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.025em }
 .decision p { margin: 10px 0 0; font-size: 13px; line-height: 1.5 }
 .decision-note { display: block; margin-top: 8px; font-size: 11.5px; line-height: 1.45; color: var(--muted) }
 
@@ -160,15 +172,21 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .approve-button:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .approved-note { font-size: 12px; font-weight: 700; color: var(--teal-text) }
 
-/* Compact per-store approval for the no-signal list: the id stays a link,
-   the check beside it approves that one store. */
+/* Compact per-store review for the no-signal list: the id stays a link and
+   the "Review" button beside it records that one store. The check glyph was
+   dropped: a ✓ reads "already done", and this button is an action. */
 .id-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px }
 .id-item { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); overflow: hidden }
-.id-chip { display: inline-flex; align-items: center; padding: 5px 10px 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--indigo) }
+.id-chip { display: inline-flex; align-items: center; padding: 8px 10px 8px 14px; font-size: 12.5px; font-weight: 600; color: var(--indigo) }
 .id-chip:hover { background: var(--surface) }
-.chip-approve { display: inline-flex; align-items: center; justify-content: center; width: 30px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--teal-text); cursor: pointer }
+.chip-approve { display: inline-flex; align-items: center; justify-content: center; min-width: 47px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--teal-text); font: 700 11px/1.2 var(--font-roboto), sans-serif; letter-spacing: .04em; cursor: pointer }
 .chip-approve:hover { background: var(--green) }
 .chip-approve:focus-visible { outline: 2px solid var(--teal-text); outline-offset: -2px }
+/* One token, one pass over the visible pending stores: the listed chips stay
+   the fine-grained control; this is the wave-rider's accelerator. */
+.bulk-review { display: block; margin: 10px auto 2px; padding: 9px 20px; border: 1px solid var(--line); border-radius: 999px; background: none; font: 600 12.5px var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
+.bulk-review:hover { border-color: var(--teal); color: var(--teal-text) }
+.bulk-review:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 
 /* --- approve dialog ---------------------------------------------------- */
 .approve-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(20, 20, 50, .18) }
@@ -188,6 +206,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .dialog-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: 400 14px var(--font-roboto), sans-serif; color: var(--ink) }
 .dialog-input:focus { outline: 2px solid var(--teal-text); outline-offset: 1px; border-color: transparent }
 .dialog-note { margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
+.dialog-token-intro { margin: 0 0 8px }
 .dialog-error { margin: 12px 0 0; padding: 9px 11px; border: 1px solid #edc7b9; border-radius: 9px; background: #fdf4f0; color: #8e4c40; font-size: 12px; line-height: 1.45 }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px }
 .link-button { border: 0; padding: 0; background: none; color: var(--teal-text); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer }
@@ -200,6 +219,8 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 
 .caveat { margin: 6px 0 28px; max-width: 84ch; font-size: 11.5px; line-height: 1.55; color: var(--muted) }
 .notice { margin: 16px 0; padding: 13px 16px; border: 1px solid #edc7b9; border-radius: 12px; background: var(--peach); color: #8e4c40; font-size: 13px }
+/* Quiet refresh feedback after the 60s poll: stated, then gone. */
+.refresh-note { margin: 6px 0 0; font-size: 11.5px; color: var(--muted) }
 
 /* Loading the store feed: a retail-shaped skeleton, not a blank page. */
 .loading-board { padding: 22px 0 8px }
@@ -239,7 +260,6 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
    arrows, the Back-for-board link). */
 .store-id:focus-visible,
 .id-chip:focus-visible,
-.detail-link:focus-visible,
 .brand:focus-visible,
 .back:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .detail-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; padding-bottom: 40px }
@@ -256,6 +276,10 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .kv span { color: var(--muted); flex: none }
 .kv strong { color: var(--indigo); text-align: right; max-width: 62%; overflow-wrap: anywhere }
 .directional-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); font-style: italic }
+/* The one citable provenance line: the record id a stakeholder can quote
+   back, kept out of the prose and out of the narrative layer. */
+.provenance { margin: 26px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.5; color: var(--muted) }
+.provenance code { font: 600 11px/1.5 var(--font-roboto), monospace; color: var(--teal-text); overflow-wrap: anywhere }
 
 /* --- narrow screens ---------------------------------------------------- */
 /* Breakpoints, smallest last so later rules win: ≤900px stacks the detail
@@ -320,10 +344,13 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .card-actions { margin-top: 11px }
   .approve-hint { display: none }
   .approve-button { width: 100%; min-height: 42px }
-  /* Touch targets: the pill and its check were 27-30px, too small to hit. */
+  /* Touch targets: the pill and its action were 27-30px, too small to hit.
+     The whole item becomes a 44px target at the phone tier. */
   .id-list { gap: 9px }
+  .id-item { min-height: 44px }
   .id-chip { padding: 8px 12px; font-size: 13px }
-  .chip-approve { width: 40px }
+  .chip-approve { min-width: 47px; padding: 0 12px; font-size: 12px }
+  .bulk-review { min-height: 44px }
   .show-toggle { min-height: 40px; padding: 8px 20px; font-size: 12.5px }
   .panel { padding: 18px 16px; border-radius: 14px }
   .hero { padding: 22px 0 22px }
