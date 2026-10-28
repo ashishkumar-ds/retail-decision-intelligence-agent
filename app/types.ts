@@ -85,3 +85,30 @@ export interface WhyPayload {
   }
   guard?: Partial<Record<string, string>>
 }
+
+// `GET /advisory/{store_id}` - the off-path LLM triage suggestion (the store
+// page's "Ask" panel). Structurally inert by contract: `auto_applied` is
+// always false, `requires_human_approval` always true, and the endpoint
+// writes nothing. Every failure degrades to the engine's own recommendation
+// with `advisory_status` naming the outcome - the UI translates it, never
+// prints it raw.
+export interface AdvisoryResponse {
+  store_id?: number | string
+  question?: string
+  engine_recommendation?: string
+  narrative?: string | null
+  citations?: Array<{ type?: string; id?: string; detail?: string }>
+  advisory?: {
+    suggested_action?: string
+    note?: string | null
+    source?: 'deterministic-engine' | 'llm-advisory' | string
+    auto_applied?: boolean
+    requires_human_approval?: boolean
+  } | null
+  advisory_status?: string
+  invariants?: {
+    auto_applied?: boolean
+    requires_human_approval?: boolean
+    writes_nothing?: boolean
+  } | null
+}

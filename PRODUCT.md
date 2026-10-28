@@ -55,6 +55,11 @@ measured off the decision path (never on it).
 
 - Deterministic engine output is the only source of recommendations; the board
   never derives its own verdicts.
+- The store page surfaces the off-path LLM advisory (`GET /advisory`): preset
+  or free-text questions answered as grounded suggestions for a human reviewer
+  — structurally inert (auto-applies nothing, writes nothing), budget-capped,
+  and always labelled a suggestion; the engine's recommendation stays the only
+  decision, and a degraded advisory says exactly why it degraded.
 - Honest-capacity rule: counts and captions must not overstate confidence —
   e.g. inside "No action needed", *recovering* → "building momentum",
   *working well* → "on track", *monitor* → "flat, no action" are three

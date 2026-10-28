@@ -6,16 +6,33 @@
 // layer - the ONE deliberate exception is the served `recommendation_id`,
 // which the product positions as citable provenance (PRODUCT.md) and which
 // rides a quiet footer line under the evidence panel. Every figure is printed
-// as served. No client math, no rewriting, GET only.
+// as served. No client math, no rewriting, GET only - including the "Ask"
+// panel, whose advisory suggestion is an LLM reading of the same evidence,
+// labelled a suggestion and never a decision (rag/advisor.py invariants).
 import { use } from 'react'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { AppChrome, LoadingCard } from '../../_components/chrome'
 import { actionLabel, api, display } from '../../_lib/api'
-import type { Recommendation, WhyPayload } from '../../types'
+import type { AdvisoryResponse, Recommendation, WhyPayload } from '../../types'
 
 const MARKER = /\s*\[(rec|event|src):[^\]]+\]/g
+
+// Budget-friendly by construction: the three questions that cover most of a
+// stakeholder's intent are one click each; the free-text field stays for
+// follow-ups. Every ask is a budget-capped LLM call (per-IP hourly + daily
+// cap), so presets keep the cap spent on real questions, not typos.
+const ASK_PRESETS = [
+  'Why does this store need a decision?',
+  'What should I check before approving?',
+  'What would change this decision?',
+]
+
+// `advisory_status` is served for the audit log, not for stakeholders - it
+// names machine flags ("deterministic", "LLM_ADVISORY_ENABLED") the contract
+// keeps off this page. Translate the known outcomes to human sentences;
+// anything unrecognized still degrades honestly to "engine answer only".
 
 // The markers are citation plumbing, not sentence content. Removing the leading
 // whitespace keeps "0.62 [rec:…]." from becoming "0.62 .".
@@ -55,14 +72,34 @@ type Phase =
   | { kind: 'missing' } // 404: this store id is not on the API
   | { kind: 'error' }   // anything else
 
+type AskState =
+  | { kind: 'idle' }
+  | { kind: 'asking' }
+  | { kind: 'done'; result: AdvisoryResponse }
+  | { kind: 'error'; error: string }
+
+function advisoryStatusLine(status: unknown): string {
+  const text = String(status || '')
+  if (/^llm-advisory/i.test(text)) return "LLM suggestion, grounded against this store's record."
+  if (/no grounded evidence/i.test(text)) return 'Engine answer only - there is no grounded evidence for this store yet.'
+  if (/budget/i.test(text)) return "Engine answer only - today's LLM advisory budget is spent."
+  if (/off/i.test(text)) return 'Engine answer only - the LLM advisory layer is switched off on this deployment.'
+  if (/grounding-failed/i.test(text)) return 'Engine answer only - the LLM suggestion failed its grounding guard and was refused.'
+  if (/unavailable/i.test(text)) return 'Engine answer only - the LLM layer was unreachable.'
+  return 'Engine answer only.'
+}
+
 export default function StoreDetail({ params }: { params: Promise<{ id: string }> }) {
   const id = use(params).id
 
   const [data, setData] = useState<WhyPayload | null>(null)
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
+  const [askState, setAskState] = useState<AskState>({ kind: 'idle' })
+  const [askText, setAskText] = useState('')
 
   const controllerRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const askControllerRef = useRef<AbortController | null>(null)
 
   const fetchStore = useCallback(async (store: string) => {
     controllerRef.current?.abort()
@@ -71,6 +108,11 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
     controllerRef.current = controller
     setPhase({ kind: 'loading' })
     setData(null)
+    // A different store is a different question: any in-flight or rendered
+    // advisory belongs to the previous store and must not leak into this one.
+    askControllerRef.current?.abort()
+    setAskState({ kind: 'idle' })
+    setAskText('')
     try {
       const response = await fetch(api(`/why/${encodeURIComponent(store)}`), {
         cache: 'no-store',
@@ -106,8 +148,49 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
       controllerRef.current?.abort()
+      askControllerRef.current?.abort()
     }
   }, [id, fetchStore])
+
+  const askQuestion = useCallback(async (store: string, question: string) => {
+    const trimmed = question.trim()
+    if (!trimmed) return
+    askControllerRef.current?.abort()
+    const controller = new AbortController()
+    askControllerRef.current = controller
+    setAskState({ kind: 'asking' })
+    try {
+      // GET only, like every call on this surface: the advisory reads the
+      // record and suggests; it never writes (POST stays approve-only).
+      const response = await fetch(
+        api(`/advisory/${encodeURIComponent(store)}?question=${encodeURIComponent(trimmed)}`),
+        { cache: 'no-store', signal: controller.signal },
+      )
+      if (controller.signal.aborted) return
+      if (!response.ok) {
+        let error: string
+        if (response.status === 429) {
+          error = 'The advisory layer is rate-limited right now (a per-client hourly cap on LLM calls). Try again in a few minutes - the recommendation above stays the decision either way.'
+        } else if (response.status === 409) {
+          error = "There isn't grounded evidence to answer that yet. The engine's next sweep refreshes the record; nothing was guessed."
+        } else if (response.status === 503) {
+          error = 'The advisory layer is switched off on this deployment. The recommendation above is unaffected.'
+        } else if (response.status === 400) {
+          error = 'Questions are capped at 500 characters - shorten it and ask again.'
+        } else {
+          error = "Couldn't get an answer just now. Nothing was recorded - this surface only asks."
+        }
+        setAskState({ kind: 'error', error })
+        return
+      }
+      const result = await response.json() as AdvisoryResponse
+      if (controller.signal.aborted) return
+      setAskState({ kind: 'done', result })
+    } catch {
+      if (controller.signal.aborted) return
+      setAskState({ kind: 'error', error: "Couldn't reach the advisory layer. Nothing was recorded - this surface only asks." })
+    }
+  }, [])
 
   const rec: Recommendation | null = data?.evidence?.latest_recommendation ?? null
   const rows: Array<[string, unknown]> = rec
@@ -185,40 +268,111 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
             : 'Pulling the recommendation, its evidence and the verification record for this store.'}
         />
       ) : data && (
-        <div className="detail-grid">
-          <article className="panel">
-            <h2 className="section-title">Why this recommendation</h2>
-            <p className="narrative">{narrative(data.narrative)}</p>
-          </article>
-          <aside className="panel">
-            <h2 className="section-title">Evidence the engine used</h2>
-            {rows.length ? rows.map(([label, value]) => <Field key={label} label={label} value={value} />) : <p className="directional-note">No recommendation on record for this store yet, so there is nothing to explain. Recommendations are produced by the next sweep.</p>}
-            {Object.keys(guard).length ? (
-              <>
-                <h3 className="section-title" style={{ marginTop: 28 }}>Verification</h3>
-                {guardPassed ? <p className="grounding">✓ Figures traced to the record</p> : (
-                  <div className="chips">
-                    {Object.entries(guard).map(([name, value]) => (
-                      <Guard key={name} name={name.replace(/_/g, ' ')} value={value} />
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : null}
-            {/* The raw `evidence` payload is operator provenance
-                (docs/FRONTEND_CONTRACT.md): the ids and internal tokens it
-                carries stay off this page. The human-facing fields above are
-                the whole stakeholder view. */}
-            {rec?.recommendation_id ? (
-              // The one citable affordance: the product's numbers are recomputable,
-              // and this id is what a stakeholder can quote back. Quiet, bottom
-              // of the panel; nothing else on the page cites.
-              <p className="provenance">
-                Provenance for every figure above · <code>{display(rec.recommendation_id)}</code>
+        <>
+          <div className="detail-grid">
+            <article className="panel">
+              <h2 className="section-title">Why this recommendation</h2>
+              <p className="narrative">{narrative(data.narrative)}</p>
+            </article>
+            <aside className="panel">
+              <h2 className="section-title">Evidence the engine used</h2>
+              {rows.length ? rows.map(([label, value]) => <Field key={label} label={label} value={value} />) : <p className="directional-note">No recommendation on record for this store yet, so there is nothing to explain. Recommendations are produced by the next sweep.</p>}
+              {Object.keys(guard).length ? (
+                <>
+                  <h3 className="section-title" style={{ marginTop: 28 }}>Verification</h3>
+                  {guardPassed ? <p className="grounding">✓ Figures traced to the record</p> : (
+                    <div className="chips">
+                      {Object.entries(guard).map(([name, value]) => (
+                        <Guard key={name} name={name.replace(/_/g, ' ')} value={value} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null}
+              {/* The raw `evidence` payload is operator provenance
+                  (docs/FRONTEND_CONTRACT.md): the ids and internal tokens it
+                  carries stay off this page. The human-facing fields above are
+                  the whole stakeholder view. */}
+              {rec?.recommendation_id ? (
+                // The one citable affordance: the product's numbers are recomputable,
+                // and this id is what a stakeholder can quote back. Quiet, bottom
+                // of the panel; nothing else on the page cites.
+                <p className="provenance">
+                  Provenance for every figure above · <code>{display(rec.recommendation_id)}</code>
+                </p>
+              ) : null}
+            </aside>
+          </div>
+          <section className="ask-panel" aria-label="Ask about this store">
+            <h2 className="section-title">Ask about this store</h2>
+            <p className="ask-sub">
+              A grounded suggestion from the off-path LLM layer, for a human reviewer. It reads
+              the same evidence as this page, and it never writes anything - the recommendation
+              above stays the only decision.
+            </p>
+            <div className="ask-presets">
+              {ASK_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className="ask-preset"
+                  disabled={askState.kind === 'asking'}
+                  onClick={() => { setAskText(preset); void askQuestion(id, preset) }}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <form
+              className="ask-form"
+              onSubmit={(event) => { event.preventDefault(); void askQuestion(id, askText) }}
+            >
+              <label className="dialog-label" htmlFor="ask-question">Your question</label>
+              <div className="ask-row">
+                {/* maxLength mirrors the API's 500-char guard (rag/question_guard.py):
+                    the input refuses the bytes the endpoint would refuse. */}
+                <input
+                  id="ask-question"
+                  className="dialog-input"
+                  value={askText}
+                  maxLength={500}
+                  placeholder="e.g. What should I check before approving?"
+                  onChange={(event) => setAskText(event.target.value)}
+                />
+                <button type="submit" className="button-primary" disabled={askState.kind === 'asking' || !askText.trim()}>
+                  {askState.kind === 'asking' ? 'Asking…' : 'Ask'}
+                </button>
+              </div>
+              <p className="ask-budget">
+                The advisory layer is budget-capped; when the cap is spent it serves the engine&apos;s
+                own answer and says so.
               </p>
+            </form>
+            {askState.kind === 'asking' ? (
+              <p className="ask-status" role="status">Reading the grounded evidence for this store…</p>
             ) : null}
-          </aside>
-        </div>
+            {askState.kind === 'error' ? (
+              <p className="dialog-error" role="alert">{askState.error}</p>
+            ) : null}
+            {askState.kind === 'done' && askState.result.advisory ? (
+              <div className="ask-result" role="status">
+                {/* The permanent honesty line: this panel suggests, it never
+                    decides or records (rag/advisor.py invariants, mirrored in
+                    docs/FRONTEND_CONTRACT.md). */}
+                <p className="ask-honesty">Suggestion - not a decision, records nothing</p>
+                <p className="ask-action">
+                  Suggested action: <strong>{display(actionLabel(askState.result.advisory.suggested_action))}</strong>
+                </p>
+                {narrative(askState.result.advisory.note) ? (
+                  <p className="ask-note">{narrative(askState.result.advisory.note)}</p>
+                ) : null}
+                {/* advisory_status is audit-log wording - the human sentence
+                    below is its translation, never the raw string. */}
+                <p className="ask-status">{advisoryStatusLine(askState.result.advisory_status)}</p>
+              </div>
+            ) : null}
+          </section>
+        </>
       )}
     </AppChrome>
   )
