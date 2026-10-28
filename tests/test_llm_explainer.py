@@ -173,6 +173,37 @@ def test_maybe_llm_grounded_failure_serves_template(monkeypatch):
     assert status.startswith("llm-grounding-failed")
 
 
+def test_anthropic_usage_and_cache_read_are_recorded(monkeypatch):
+    """The Anthropic path reports usage too - including the prompt-cache read."""
+    import rag.llm_explainer as llm_mod  # noqa: F401  (documents the seam)
+    from rag import llm_telemetry as telemetry
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    faithful = (
+        "Store 1's latest recommendation is CONTINUE with confidence 1.0 [rec:rec-abc]. "
+        "The health score is 100.0 (recovery 4.0 percent, 30 days remaining) [rec:rec-abc]."
+    )
+    response = types.SimpleNamespace(
+        content=[types.SimpleNamespace(type="text", text=faithful)],
+        usage=types.SimpleNamespace(input_tokens=1282, output_tokens=139,
+                                    cache_read_input_tokens=1024),
+    )
+
+    class FakeMessages:
+        def create(self, **kwargs):
+            return response
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = lambda api_key: types.SimpleNamespace(messages=FakeMessages())
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    _, status = maybe_llm_narrative(1, "", TEMPLATE, EVIDENCE, [CHUNK], [], True)
+    assert status == "llm-grounded"
+    served = [event for event in telemetry.read_events()
+              if event.get("outcome") == telemetry.OUTCOME_SERVED]
+    assert served[-1]["counts"] == {"tokens_in": 1282, "tokens_out": 139, "cache_read": 1024}
+
+
 def test_evidence_block_is_fenced_and_complete():
     block = build_evidence_block(1, "why continue?", TEMPLATE, EVIDENCE, [(CHUNK, 1.0)])
     assert block.startswith("<evidence>") and block.endswith("</evidence>")
@@ -204,6 +235,32 @@ def test_openai_compat_provider_success(monkeypatch):
     assert captured["headers"]["Authorization"] == "Bearer gsk-free-key"
     assert captured["payload"]["model"] == "llama-3.3-70b-versatile"
     assert captured["payload"]["messages"][0]["role"] == "system"
+    # Provider usage must reach the telemetry trail (the spend/cache signal),
+    # normalised off the provider's own field names.
+    from rag import llm_telemetry as telemetry
+    served = [event for event in telemetry.read_events()
+              if event.get("outcome") == telemetry.OUTCOME_SERVED]
+    assert served and served[-1].get("counts") == {"tokens_in": 120, "tokens_out": 30}
+
+
+def test_openai_compat_usage_absent_is_not_counted(monkeypatch):
+    """A provider that reports no usage contributes no figures (no zero-filling)."""
+    import rag.llm_explainer as llm_mod
+    from rag import llm_telemetry as telemetry
+
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compat")
+    monkeypatch.setenv("LLM_API_KEY", "gsk-free-key")
+    monkeypatch.setattr(
+        llm_mod, "_http_post_json",
+        lambda url, headers, payload, timeout=60.0: {
+            "choices": [{"message": {"content": "Store 1 is on track (health 100.0) [rec:rec-abc]."}}],
+        },
+    )
+    _, status = maybe_llm_narrative(1, "", TEMPLATE, EVIDENCE, [CHUNK], [], True)
+    assert status == "llm-grounded"
+    served = [event for event in telemetry.read_events()
+              if event.get("outcome") == telemetry.OUTCOME_SERVED]
+    assert served and "counts" not in served[-1]
 
 
 def test_openai_compat_provider_without_key_degrades(monkeypatch):
@@ -243,8 +300,35 @@ def test_why_degrades_to_template_when_llm_unavailable(monkeypatch):
     monkeypatch.setenv("LLM_EXPLANATIONS_ENABLED", "true")
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setitem(sys.modules, "anthropic", None)
+    # A grounded store (updated for the validate-before-spend reorder: a store
+    # with no record never reaches the LLM layer at all, so the missing-label
+    # degradation must be exercised on a store that is actually on record).
+    monkeypatch.setattr(app_main, "read_log", lambda: [{
+        "store_id": 999999, "recommendation": "CONTINUE", "confidence": 0.9,
+        "reason": "on track", "store_health_score": 80.0, "recovery_pct": 10.0,
+        "days_remaining": 30, "recommendation_id": "recommendation-degrade",
+        "generated_at": "2026-10-20T00:00:00+00:00",
+    }])
     client = TestClient(app_main.app)
     response = client.get("/why/999999")
     assert response.status_code == 200
     body = response.json()
     assert "guard" in body and body["guard"]["llm"].startswith("llm-unavailable")
+
+
+def test_why_never_charges_budget_for_an_ungrounded_store(monkeypatch):
+    """Validation before spend: a store with no record gets the template and
+    costs nothing - the deterministic answer is the only possible answer."""
+    from rag import llm_budget
+
+    llm_budget.reset()
+    try:
+        monkeypatch.setenv("LLM_EXPLANATIONS_ENABLED", "true")
+        client = TestClient(app_main.app)
+        response = client.get("/why/987654")
+        assert response.status_code == 200
+        assert "no grounded evidence" in response.json()["guard"]["llm"]
+        # the decisive assertion: nothing was charged to either bucket
+        assert llm_budget.daily_used() == 0
+    finally:
+        llm_budget.reset()

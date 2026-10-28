@@ -125,6 +125,34 @@ def test_failed_tick_rearms_soon_then_sleeps(monkeypatch):
     assert scheduler.status()["sweeps_completed"] >= 1
 
 
+def test_failed_fast_retry_still_stamps_next_sweep_at(monkeypatch):
+    """Regression: the retry branch used to `continue` without updating
+    next_sweep_at, so /health showed a stale past timestamp while retrying."""
+    from datetime import datetime, timezone
+
+    from app import scheduler as scheduler_module
+
+    scheduler, _ = _make_scheduler([])
+    stop = scheduler._stop_event
+
+    def probe_wait(self, timeout=None):
+        stop.set()  # one loop pass is all this test observes
+        return True
+
+    monkeypatch.setattr(type(stop), "wait", probe_wait)
+    monkeypatch.setattr(scheduler, "_interval", 10 ** 9)
+    scheduler._sweep_fn = lambda: (_ for _ in ()).throw(RuntimeError("transient 429"))
+    scheduler._run_loop()
+
+    status = scheduler.status()
+    assert status["consecutive_failures"] == 1
+    assert status["next_sweep_at"] is not None
+    armed = datetime.fromisoformat(status["next_sweep_at"])
+    # Armed for the near retry interval, not the day-long heartbeat.
+    delta = (armed - datetime.now(timezone.utc)).total_seconds()
+    assert abs(delta - scheduler_module.RETRY_INTERVAL_SECONDS) <= 5
+
+
 def scheduler_modules_interval(scheduler):
     return scheduler._interval
 
@@ -209,20 +237,32 @@ def test_warm_up_treats_connection_errors_as_retryable():
 # --- restart-safe approvals ----------------------------------------------------
 
 
-def test_pending_approvals_survive_log_replay():
-    """The durability contract: rebuilding from the log restores pending
-    approvals and drops decided stores."""
+def test_latest_records_survive_log_replay():
+    """The durability contract: rebuilding from the log restores the latest
+    record per store, including non-gated and already-decided rows, so a
+    diskless board can rebuild without the JSONL file."""
     log_records = [
         {"store_id": 1, "recommendation_id": "r1", "requires_human_approval": True},
         {"store_id": 2, "recommendation_id": "r2", "requires_human_approval": True},
         {"store_id": 3, "recommendation_id": "r3", "requires_human_approval": False},
         {"store_id": 2, "recommendation_id": "r2", "requires_human_approval": True,
          "approved": True, "decided_at": "2026-08-30T00:00:00+00:00"},
-        {"store_id": 1, "recommendation_id": "r1-bad", "not_a_dict_marker": None},
+        {"store_id": 1, "not_a_dict_marker": None},
     ]
     with mock.patch.object(main, "read_log", return_value=log_records):
-        pending = main._rebuild_pending_approvals()
-    assert set(pending.keys()) == {1}
-    assert pending[1]["recommendation_id"] == "r1"
+        latest = main._rebuild_pending_approvals()
+    assert set(latest.keys()) == {1, 2, 3}
+    assert latest[1]["recommendation_id"] == "r1"
+    assert latest[2]["decided_at"] == "2026-08-30T00:00:00+00:00"
+    assert latest[3]["requires_human_approval"] is False
     with mock.patch.object(main, "read_log", return_value=[]):
         assert main._rebuild_pending_approvals() == {}
+
+def test_tick_records_duration_seconds():
+    from app.scheduler import SweepScheduler
+
+    scheduler = SweepScheduler(lambda: {"ok": True}, 86400)
+    assert scheduler.status()["last_sweep_duration_seconds"] is None
+    assert scheduler._tick() is False
+    duration = scheduler.status()["last_sweep_duration_seconds"]
+    assert isinstance(duration, float) and duration >= 0.0

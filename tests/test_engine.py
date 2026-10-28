@@ -59,3 +59,24 @@ def test_injected_verifier_failure_is_recorded_in_trajectory():
     rec = DecisionEngine(verifier=failing_verifier).evaluate(_healthy())
     verify_step = next(s for s in rec["trajectory"]["steps"] if s["step"] == "verify")
     assert verify_step["status"] == "warning"
+
+
+def test_injected_clock_makes_records_byte_identical():
+    """P2: same inputs + same `now` -> same record (engine purity)."""
+    from datetime import datetime, timezone
+
+    now = datetime(2026, 9, 8, 12, 0, tzinfo=timezone.utc)
+    first = DecisionEngine().evaluate(_healthy(), now=now)
+    second = DecisionEngine().evaluate(_healthy(), now=now)
+    assert first == second
+    assert first["generated_at"] == now.isoformat()
+
+
+def test_decision_fields_exclude_wall_clock_from_dedup_id():
+    """Recommendation IDs stay deterministic content hashes (no generated_at)."""
+    import app.main as app_main
+
+    rec = DecisionEngine().evaluate(_healthy())
+    first_id = app_main._recommendation_id(rec)
+    rec["generated_at"] = "2099-01-01T00:00:00+00:00"
+    assert app_main._recommendation_id(rec) == first_id

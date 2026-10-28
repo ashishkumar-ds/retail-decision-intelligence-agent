@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/diagrams/architecture-dunnhumby.json - the architecture
+"""Generate docs/images/architecture-dunnhumby.json - the architecture
 diagram restyled to replicate the theme of dunnhumby's official
 "The Complete Journey" user guide (source PDF removed from the repo;
 theme values below were extracted from it and are inlined).
@@ -12,16 +12,18 @@ Theme extracted from the PDF itself (vector fills + text spans):
     gray   #CCCCCC  footer rule
 
 Design language replicated:
-    - white page, thin teal top rule, black bold title + teal chip (cover style)
+    - white page, thin teal top rule, black title + teal chip (cover style; the
+      diagram schema has no font-weight field, so every label renders regular)
     - one large mint panel (Group container) holding the diagram
     - teal section labels per column ("Data tables" / "Lookup tables" style)
     - flat white node boxes with thin indigo borders, black text (print look)
     - Decision Engine on deep indigo with white title (cover-gradient nod)
-    - gray footer rule + copyright line + wordmark (every page's footer)
+    - gray footer rule + attribution (every page's footer: the author holds the
+      copyright, dunnhumby is credited only as the data source)
 
 Render:
-    eraser-diagrams render docs/diagrams/architecture-dunnhumby.json \\
-        --chromium-path <chrome> --scale 2 -o docs/diagrams/architecture-dunnhumby.png
+    eraser-diagrams render docs/images/architecture-dunnhumby.json \\
+        --chromium-path <chrome> --scale 2 -o docs/images/architecture.png
 """
 from __future__ import annotations
 
@@ -61,7 +63,7 @@ def _rect(eid, x, y, w, h, fill, border=None):
             "texts": [{"text": ""}]}
 
 
-def _label(eid, x, y, text, color, size=13, bold=True, width=GROUP_W, halign="left"):
+def _label(eid, x, y, text, color, size=13, width=GROUP_W, halign="left"):
     return {"tag": "Textbox", "id": eid, "x": x, "y": y, "width": width, "height": 24,
             "text": text, "fontSize": size, "color": color, "hAlign": halign}
 
@@ -100,15 +102,26 @@ def build_document() -> dict:
 
     content_right = max(e["x"] + e["width"] for e in nodes)
     content_bottom = max(e["y"] + e["height"] for e in nodes)
-    panel = {"x": LEFT - 12, "y": 150,
-             "w": content_right + 24 - (LEFT - 12),
+    # Two margins, deliberately: the FURNITURE (rules + panel) bleeds 12pt past the
+    # text on each side so the panel has internal padding, and the CONTENT (title,
+    # chip, column labels, nodes, footer text) all sits on LEFT. Everything that
+    # should share an edge now shares one - the panel used to end 24pt past the
+    # content while starting only 12pt before it, and the rules sat on a third box.
+    FURNITURE_PAD = 12
+    furniture_x = LEFT - FURNITURE_PAD
+    furniture_w = (content_right + FURNITURE_PAD) - furniture_x
+
+    panel = {"x": furniture_x, "y": 150,
+             "w": furniture_w,
              "h": content_bottom + 24 - 150}
 
     header = [
-        _rect("tcj-top-rule", LEFT, 22, content_right + 20 - LEFT, 4, TEAL),
-        {"tag": "Shape", "id": "tcj-title", "x": LEFT, "y": 52, "width": 1100, "height": 44,
-         "bgColor": WHITE, "borderColor": WHITE, "styleMode": "plain",
-         "texts": [{"text": "The Retail Decision Intelligence Agent", "fontSize": 26, "hAlign": "left", "color": BLACK}]},
+        _rect("tcj-top-rule", furniture_x, 22, furniture_w, 4, TEAL),
+        # A Textbox, not a Shape: Shape text is inset by --er-shape-h-inset (7.5% of
+        # the shape's own width), so a 1100-wide title box indented the title 82pt and
+        # it lined up with neither the rule nor the chip. Textbox text has no inset.
+        {"tag": "Textbox", "id": "tcj-title", "x": LEFT, "y": 52, "width": 1100, "height": 40,
+         "text": "The Retail Decision Intelligence Agent", "fontSize": 26, "hAlign": "left", "color": BLACK},
         {"tag": "Shape", "id": "tcj-chip", "x": LEFT, "y": 106, "width": 118, "height": 26,
          "bgColor": TEAL, "borderColor": TEAL, "styleMode": "plain",
          "texts": [{"text": "architecture", "fontSize": 12, "color": WHITE}]},
@@ -126,16 +139,23 @@ def build_document() -> dict:
         lab["containerId"] = "tcj-panel"
 
     footer = [
-        _rect("tcj-footer-rule", LEFT, panel["y"] + panel["h"] + 26, content_right + 20 - LEFT, 2, GRAY),
-        _label("tcj-footer-copy", LEFT, panel["y"] + panel["h"] + 38,
-               "© 2026 retail decision intelligence agent · all rights reserved", FOOTER_GRAY,
-               size=11, bold=False, width=700),
-        _label("tcj-footer-brand", content_right - 240, panel["y"] + panel["h"] + 34, "dunnhumby", BLACK,
-               size=17, width=260, halign="right"),
+        _rect("tcj-footer-rule", furniture_x, panel["y"] + panel["h"] + 26, furniture_w, 2, GRAY),
+        # The author holds the copyright (see LICENSE); dunnhumby is named as the
+        # data source, not as the brand. The page should read as a personal
+        # project built on dunnhumby's public dataset, not as their product.
+        _label("tcj-footer-copy", LEFT, panel["y"] + panel["h"] + 34,
+               "© 2026 Ashish Kumar", FOOTER_GRAY, size=11, width=700),
+        _label("tcj-footer-data", content_right - 360, panel["y"] + panel["h"] + 34,
+               "data: dunnhumby · The Complete Journey", FOOTER_GRAY,
+               size=11, width=360, halign="right"),
     ]
 
     entities = header + [panel_group] + col_labels + nodes + footer
-    unlabeled = {("verifier", "decision-trajectory"), ("verifier", "guardrails")}
+    # Hide only the trajectory edge: the engine records the trajectory, not the
+    # verifier. The verifier -> guardrails rule-gate edge is real (engine.evaluate
+    # applies the guardrail approval gate right after verify) and is kept so the
+    # Guardrails column is not left floating.
+    unlabeled = {("verifier", "decision-trajectory")}
     connections = [{**c, "color": TEAL} for c in build_connections()
                    if (c["from"], c["to"]) not in unlabeled]
     return {"entities": entities, "connections": connections}
@@ -143,7 +163,7 @@ def build_document() -> dict:
 
 def main() -> None:
     document = build_document()
-    out = Path(__file__).resolve().parents[1] / "docs" / "diagrams" / "architecture-dunnhumby.json"
+    out = Path(__file__).resolve().parents[1] / "docs" / "images" / "architecture-dunnhumby.json"
     out.write_text(json.dumps(document, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out} ({len(document['entities'])} entities, {len(document['connections'])} connections)")
 

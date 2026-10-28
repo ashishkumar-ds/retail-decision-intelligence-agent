@@ -12,7 +12,16 @@ Deterministic layout: four left-to-right columns
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+# Derived, never typed: the label below once hardcoded "22 golden scenarios" and
+# stayed wrong after the count became 23 (scripts/render_architecture_dunnhumby.py
+# holds the story). A count that is read from its source cannot go stale.
+from evaluation.golden_cases import GOLDEN_CASES  # noqa: E402
 
 SHAPE_W, SHAPE_H = 260, 60
 PAD = 20            # group inner padding
@@ -28,7 +37,7 @@ GROUP_W = PAD + SHAPE_W + PAD
 HEIGHT_OVERRIDES = {
     "pipeline-orchestrator": 104,
     "sweep-scheduler": 72,
-    "lifecycle-stages": 88,
+    "lifecycle-stages": 112,
     "memory": 88,
     "approval-ledger": 88,
     "evaluation": 72,
@@ -66,7 +75,7 @@ COLUMNS = [
             ("sweep-scheduler", "Sweep Scheduler (daily sweep)", "green", "clock"),
         ]),
         ("node", "memory", "Memory - append-only JSONL (fsynced, never rewritten)", "blue", "archive"),
-        ("node", "evaluation", "Evaluation - 22 golden scenarios, CI-gated", "purple", "target"),
+        ("node", "evaluation", f"Evaluation - {len(GOLDEN_CASES)} golden scenarios, CI-gated", "purple", "target"),
     ],
     [
         ("group", "decision-engine", "Decision Engine - pure code, no LLM", "purple", [
@@ -87,7 +96,7 @@ COLUMNS = [
         ("node", "store-manager", "Store Manager", "blue", "user"),
         ("node", "approval-ledger", "Approval Ledger - double-gated, guardrails re-run at decision time", "red", "file-check"),
         ("group", "lifecycle", "Intervention Lifecycle (phase2)", "red", [
-            ("lifecycle-stages", "define → approve → start → complete → evaluate", "red", "layers"),
+            ("lifecycle-stages", "define → approve → start → complete → outcome_pending → evaluate", "red", "layers"),
         ]),
         ("group", "presentation", "Presentation", "blue", [
             ("executive-board", "Executive Board", "blue", "layout-dashboard"),
@@ -104,7 +113,6 @@ EDGES = [
     ("sales-forecasts", "tools", "typed, fail-closed", "solid"),
     ("vetted-knowledge-sources", "rag-layer", "indexed", "solid"),
     ("tools", "pipeline-orchestrator", "", "solid"),
-    ("rag-layer", "decision-engine", "grounded context", "solid"),
     ("pipeline-orchestrator", "router", "", "solid"),
     ("router", "planner", "", "solid"),
     ("planner", "scoring-rules", "", "solid"),
@@ -113,9 +121,7 @@ EDGES = [
     ("verifier", "guardrails", "rule gates", "dashed"),
     ("pipeline-orchestrator", "memory", "", "solid"),
     ("pipeline-orchestrator", "why-endpoint", "", "solid"),
-    ("verifier", "approval-ledger", "budget-affecting actions", "solid"),
     ("store-manager", "approval-ledger", "approve / reject - fail-closed 503", "solid"),
-    ("approval-ledger", "lifecycle", "event-sourced", "solid"),
     ("why-endpoint", "rag-layer", "citations to evidence", "dashed"),
     ("why-endpoint", "optional-llm-layer", "rephrase only, guarded", "solid"),
     ("optional-llm-layer", "store-manager", "cited answer", "solid"),

@@ -17,7 +17,28 @@ cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
 
 # Optional local secrets (free Groq key etc.). Never printed, never committed.
-if [ -f .env.local ]; then set -a; source .env.local; set +a; fi
+#
+# Read as dotenv data, never `source`d as shell. `.env.example` tells people to
+# copy it to `.env.local`, and dotenv syntax allows spaces around '=' - so a line
+# like "LLM_API_KEY= PASTE_YOUR_KEY_HERE" made bash run PASTE_YOUR_KEY_HERE as a
+# command, and `set -e` aborted the demo before it seeded anything. Parsing
+# mirrors scripts/smoke_llm_live.py (strip, skip blanks/comments, KEY=VALUE),
+# and nothing in the file is executed.
+if [ -f .env.local ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"           # trim leading spaces
+    case "$line" in ''|'#'*) continue ;; esac         # blank or comment
+    case "$line" in export[[:space:]]*) line="${line#export}" ;; esac
+    case "$line" in *=*) ;; *) continue ;; esac       # not KEY=value -> skip
+    name="${line%%=*}" value="${line#*=}"
+    name="$(printf '%s' "$name" | tr -d '[:space:]')" # "KEY =" and "KEY" agree
+    value="${value#"${value%%[![:space:]]*}"}"        # trim spaces around '='
+    value="${value%"${value##*[![:space:]]}"}"
+    case "$value" in \"*\"|\'*\') value="${value:1:${#value}-2}" ;; esac
+    case "$name" in *[!A-Za-z0-9_]*) continue ;; esac  # not a variable name
+    case "$name" in [A-Za-z_]*) export "$name=$value" ;; esac
+  done < .env.local
+fi
 
 export APPROVAL_AUTH_TOKEN="${APPROVAL_AUTH_TOKEN:-demo-token-not-for-production}"
 export PYTHONPATH=.

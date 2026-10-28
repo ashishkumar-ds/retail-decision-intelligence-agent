@@ -43,6 +43,39 @@ def test_confirmed_when_did_meets_target():
     assert out["assessment_state"] == CONFIRMED and out["scale_up_eligible"] is True
 
 
+def test_confirmed_downgraded_when_ci_admits_no_effect():
+    """P2: point +4% clears the bar, but CI [-0.5, 6.2] admits no effect.
+
+    The Part 1 calibration estimate itself (+2.84%, CI [-0.5, 6.2]) lands
+    REVIEW_ZONE under this rule - directionally positive, not proven.
+    """
+    out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0,
+                                  "did_ci95": [-0.5, 6.2]})
+    assert out["assessment_state"] == REVIEW_ZONE and out["scale_up_eligible"] is False
+    assert "downgrade_reason" in out
+
+
+def test_confirmed_stands_when_ci_clears_zero():
+    out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0,
+                                  "did_ci95": [0.5, 7.5]})
+    assert out["assessment_state"] == CONFIRMED and out["scale_up_eligible"] is True
+
+
+def test_confirmed_downgraded_when_below_mde():
+    out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0,
+                                  "mde_pct": 5.0})
+    assert out["assessment_state"] == REVIEW_ZONE and out["scale_up_eligible"] is False
+
+
+def test_malformed_diagnostics_do_not_move_the_point_rule():
+    """Missing/malformed CI or MDE never promote or demote on their own."""
+    for causal in ({"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0, "did_ci95": None},
+                   {"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0, "did_ci95": ["x", "y"]},
+                   {"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0, "mde_pct": True}):
+        out = assess_causal_evidence(causal)
+        assert out["assessment_state"] == CONFIRMED and out["scale_up_eligible"] is True
+
+
 def test_review_zone_when_did_positive_but_below_target():
     out = assess_causal_evidence({"evidence_state": "SUFFICIENT", "did_uplift_pct": 1.2})
     assert out["assessment_state"] == REVIEW_ZONE and out["scale_up_eligible"] is False
@@ -160,3 +193,44 @@ def test_causal_evidence_helper_fails_open_to_insufficient(monkeypatch):
     assert out["evidence_state"] == "SUFFICIENT"
     assert out["control_store_ids"] == [313]
 
+
+
+def test_get_control_comparison_sends_pool_and_validates_it(monkeypatch):
+    seen = {}
+
+    class _Capture(_FakeResponse):
+        pass
+
+    def _capture(method, url, **kwargs):
+        seen.update(kwargs.get("params", {}))
+        return _FakeResponse(_good_envelope())
+
+    import tools.forecast_tool as forecast_tool
+
+    monkeypatch.setattr(forecast_tool, "_request_with_retry",
+                        lambda method, url, **kwargs: _capture(method, url, **kwargs))
+    get_control_comparison(317, 594, 649, 650, 710)
+    assert seen.get("pool") == "all"  # default preserves prior behavior
+    get_control_comparison(317, 594, 649, 650, 710, pool="underperforming")
+    assert seen.get("pool") == "underperforming"
+    with pytest.raises(ValueError):
+        get_control_comparison(317, 594, 649, 650, 710, pool="everything")
+
+
+def test_causal_evidence_helper_carries_diagnostics(monkeypatch):
+    import app.main as app_main
+
+    envelope = _good_envelope()
+    envelope["pool"] = "underperforming"
+    envelope["causal"].update({
+        "did_ci95": [-32.0, -29.0], "mde_pct": 1.5,
+        "placebo_did_pct": 0.3, "pre_trend_divergence": 0.8,
+    })
+    monkeypatch.setattr(app_main, "get_control_comparison", lambda *a, **k: envelope)
+    out = app_main._causal_evidence_for_intervention(317, 650)
+    assert out["evidence_state"] == "SUFFICIENT"
+    assert out["did_ci95"] == [-32.0, -29.0]
+    assert out["mde_pct"] == 1.5
+    assert out["placebo_did_pct"] == 0.3
+    assert out["pre_trend_divergence"] == 0.8
+    assert out["control_pool"] == "underperforming"

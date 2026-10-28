@@ -155,6 +155,22 @@ def test_explain_store_unknown_store_returns_clean_no_evidence_answer():
     assert result["methodology"]  # methodology still retrieved for context
 
 
+def test_explain_store_keeps_methodology_suffix_when_question_given(monkeypatch):
+    """Regression: `question or base_query + suffix` dropped the methodology
+    keywords whenever a caller supplied a question, weakening BM25 retrieval."""
+    seen = {}
+
+    def fake_retrieve(self, query, k=3):
+        seen["query"] = query
+        return []
+
+    monkeypatch.setattr(BM25Retriever, "retrieve", fake_retrieve)
+    explain_store(317, [_rec()], [_event(payload={})], corpus=build_chunks(),
+                  question="why trust matched-control comparisons?")
+    assert seen["query"].startswith("why trust matched-control comparisons?")
+    assert "difference-in-differences" in seen["query"]
+
+
 # --- Endpoint -------------------------------------------------------------------
 
 def test_why_endpoint_end_to_end(monkeypatch):

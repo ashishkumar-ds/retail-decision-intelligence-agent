@@ -276,21 +276,29 @@ def get_prediction(
 def get_evaluation_window_forecast(
     store_id: int,
     start_day: int,
-    window_start_offset: int = 47,
-    window_end_offset: int = 60,
+    window_start_offset: int = 46,
+    window_end_offset: int = 59,
     *,
     retries: int = 3,
     backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
     sleep_fn: Callable[[float], None] = time.sleep,
     max_workers: int = DEFAULT_WINDOW_FETCH_MAX_WORKERS,
 ) -> float:
-    """Fetch daily forecasts for Day +47 through Day +60 and return the arithmetic mean.
+    """Fetch the 14 daily forecasts for the evaluation window's final 14 days.
+
+    The counterfactual reference must cover exactly the same days as
+    ``phase2.evaluator``'s recent observation window: the final 14 days of the
+    60-day evaluation period, i.e. offsets +46..+59 from the intervention start
+    (intervention days +47..+60 when days are numbered from 1). Offset +60 is
+    the evaluation due instant and belongs to neither window, so it is excluded -
+    the labels "Day +47 ... Day +60" are 1-based and must not be added to
+    ``start_day`` as if they were 0-based offsets.
 
     Parameters:
         store_id: Store ID to evaluate.
         start_day: Base day index corresponding to intervention start.
-        window_start_offset: Start day offset relative to start_day (default 47 for Day +47).
-        window_end_offset: End day offset relative to start_day (default 60 for Day +60).
+        window_start_offset: First day offset, default +46 (intervention day +47).
+        window_end_offset: Last in-window day offset, default +59 (intervention day +60).
         retries: Number of retries per daily request.
         backoffs: Backoff seconds tuple (default 2s, 4s, 8s).
         sleep_fn: Sleep function (injectable for testing).
@@ -353,13 +361,15 @@ def get_control_comparison(
     post_end: int,
     *,
     k: int = 10,
+    pool: str = "all",
     retries: int = 3,
     backoffs: Sequence[float] = DEFAULT_RETRY_BACKOFFS,
     sleep_fn: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
     """Fetch a matched-control (DiD) comparison for a store from the forecast service.
 
-    Returns the service envelope: ``{"store_id", "windows", "matched_controls",
+    Returns the service envelope: ``{"store_id", "windows", "pool",
+    "matched_controls",
     "causal": {"did_uplift_pct", ...}, "methodology"}``. The causal field's
     ``did_uplift_pct`` - treated vs matched-control change - is the scale-up
     decision input; raw own-baseline lift is NOT causal (market drift, model bias).
@@ -376,12 +386,15 @@ def get_control_comparison(
             raise TypeError(f"{name} must be an integer")
     if not (pre_start < pre_end < post_start <= post_end):
         raise ValueError("windows must satisfy pre_start < pre_end < post_start <= post_end")
+    if pool not in ("all", "underperforming"):
+        raise ValueError("pool must be 'all' or 'underperforming'")
 
     url = f"{_base_url()}/controls/{store_id}"
     response = _request_with_retry(
         "GET", url,
         params={"pre_start": pre_start, "pre_end": pre_end,
-                "post_start": post_start, "post_end": post_end, "k": k},
+                "post_start": post_start, "post_end": post_end, "k": k,
+                "pool": pool},
         retries=retries, backoffs=backoffs, sleep_fn=sleep_fn,
     )
     payload = _response_json(response)

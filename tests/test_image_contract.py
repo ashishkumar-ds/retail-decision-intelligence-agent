@@ -100,13 +100,12 @@ def _shipped_directories() -> list[pathlib.Path]:
 #   anthropic - `[llm]` extra: rag/llm_explainer.py + rag/advisor.py import it
 #               inside the provider call and fall back to the deterministic
 #               template when it is missing.
-#   pandas    - evaluation/industry_benchmark.py, a one-shot benchmark script.
 #   pypdf     - rag/ingest_pdf.py, the one-shot corpus ingestion script.
 #   psycopg*  - `[storage]` extra: storage/database.py imports it only when
 #               DATABASE_URL selects Postgres (SQLite is the default backend).
 # They stay out of [project] dependencies on purpose - a lazily imported extra
 # is how the default image stays small. Anything else must be declared.
-OPTIONAL_IMPORTS = {"anthropic", "pandas", "psycopg", "psycopg2", "pypdf"}
+OPTIONAL_IMPORTS = {"anthropic", "psycopg", "psycopg2", "pypdf"}
 
 
 def _third_party_imports() -> set[str]:
@@ -124,10 +123,8 @@ def _third_party_imports() -> set[str]:
 
 def _declared_runtime_deps() -> set[str]:
     """Top-level runtime dependencies, as pip would install them in the image."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:  # Python < 3.11 fallback (CI runs 3.10+)
-        import tomli as tomllib  # type: ignore[no-redef]
+    import tomllib
+
     declared = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     names: set[str] = set()
     for requirement in declared["project"]["dependencies"]:

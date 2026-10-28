@@ -150,7 +150,7 @@ def test_live_forecast_api_evaluation_window_is_fast_and_correct_shape():
     httpx with retry/backoff on top."""
     stores = forecast_tool.get_all_stores_info()
     store_id, meta = next(iter(stores.items()))
-    start_day = max(0, meta["last_day"] - 70)  # leave room for the +47..+60 window
+    start_day = max(0, meta["last_day"] - 70)  # leave room for the +46..+59 window
 
     started = time.monotonic()
     mean_val = forecast_tool.get_evaluation_window_forecast(store_id, start_day)

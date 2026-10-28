@@ -49,11 +49,15 @@ def test_metrics_expose_offpath_llm_series(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
     import app.main as app_main
+    from rag import llm_budget
     from rag import llm_telemetry as telemetry
 
     monkeypatch.setenv("OFFPATH_LLM_LOG_PATH", str(tmp_path / "events.jsonl"))
     monkeypatch.setenv("APPROVAL_AUTH_TOKEN", "test-token")
-    telemetry.record("explainer", telemetry.OUTCOME_SERVED, latency_ms=12.5)
+    llm_budget.reset()  # the counters are process-global; pin a known state
+    monkeypatch.setenv("LLM_DAILY_CALL_BUDGET", "250")
+    telemetry.record("explainer", telemetry.OUTCOME_SERVED, latency_ms=12.5,
+                     counts={"tokens_in": 1282, "tokens_out": 139, "cache_read": 1024})
     telemetry.record("explainer", telemetry.OUTCOME_GUARD_REJECTED,
                      reason=telemetry.REASON_NUMERIC)
     telemetry.record("prefilter", telemetry.OUTCOME_SERVED, counts={"kept": 3, "dropped": 1})
@@ -66,8 +70,18 @@ def test_metrics_expose_offpath_llm_series(tmp_path, monkeypatch):
     assert 'retail_offpath_llm_events_total{layer="explainer",outcome="guard_rejected"} 1' in body
     assert 'retail_offpath_llm_guard_rejections_total{layer="explainer",reason="numeric"} 1' in body
     assert 'retail_offpath_llm_latency_ms_avg{layer="explainer"} 12.5' in body
+    # Cost signal: tokens and prompt-cache reads are the only spend the service
+    # can see, and the adapters normalise provider-specific field names.
+    assert 'retail_offpath_llm_tokens_total{layer="explainer",direction="input"} 1282' in body
+    assert 'retail_offpath_llm_tokens_total{layer="explainer",direction="output"} 139' in body
+    assert 'retail_offpath_llm_cache_read_tokens_total{layer="explainer"} 1024' in body
+    # A prefilter's kept/dropped counts must not masquerade as token spend.
+    assert 'retail_offpath_llm_tokens_total{layer="prefilter"' not in body
     assert 'retail_prefilter_chunks_total{result="kept"} 3' in body
     assert 'retail_prefilter_chunks_total{result="dropped"} 1' in body
+    # Spend ceiling vs consumption: the fail-closed budget must be visible.
+    assert "retail_llm_daily_calls_used 0" in body
+    assert "retail_llm_daily_call_budget 250" in body
 
 
 def test_telemetry_skips_malformed_lines(tmp_path, monkeypatch):

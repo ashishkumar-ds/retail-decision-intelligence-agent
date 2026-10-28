@@ -106,6 +106,45 @@ def test_active_and_exact_repetition_guards_are_enforced(integration_context):
     assert registry.reconstruct().snapshots[first["intervention_id"]].lifecycle_state == "CANCELLED"
 
 
+def test_client_occurred_at_cannot_be_future_or_out_of_order(integration_context):
+    """Client-supplied event times are server-validated (two bounds, 400).
+
+    occurred_at drives the reconstruction sort, so a >5-min future stamp could
+    forge an ordering the server never observed, and a stamp earlier than the
+    previous event for the same intervention could replay an already-consumed
+    transition out of causal order. Small clock skew stays accepted.
+    """
+    registry, _, _ = integration_context
+    created = main.create_phase2_intervention(7, {"intervention_key": _key()})
+    main.append_phase2_lifecycle_event(
+        created["intervention_id"],
+        {"event_type": "start", "occurred_at": (datetime.now(timezone.utc)).isoformat()},
+    )
+    with pytest.raises(HTTPException) as future_error:
+        main.append_phase2_lifecycle_event(
+            created["intervention_id"],
+            {"event_type": "complete",
+             "occurred_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()},
+        )
+    assert future_error.value.status_code == 400
+    with pytest.raises(HTTPException) as order_error:
+        main.append_phase2_lifecycle_event(
+            created["intervention_id"],
+            {"event_type": "complete",
+             "occurred_at": "2026-01-01T00:00:00+00:00"},  # before the start event
+        )
+    assert order_error.value.status_code == 400
+    # The refusals must not have consumed the transitions.
+    assert registry.reconstruct().snapshots[created["intervention_id"]].lifecycle_state == "ACTIVE"
+    # Small skew (minutes) is accepted, so within-tolerance writes keep working.
+    main.append_phase2_lifecycle_event(
+        created["intervention_id"],
+        {"event_type": "complete",
+         "occurred_at": (datetime.now(timezone.utc) + timedelta(minutes=4)).isoformat()},
+    )
+    assert registry.reconstruct().snapshots[created["intervention_id"]].lifecycle_state == "COMPLETED"
+
+
 def test_reconstruction_works_after_application_registry_reinitialization(integration_context, monkeypatch):
     registry, _, _ = integration_context
     created = main.create_phase2_intervention(7, {"intervention_key": _key()})
@@ -123,7 +162,10 @@ def test_phase2_registration_does_not_mutate_project2_audit_file(integration_con
 def test_outcome_api_preserves_locked_windows_and_rejects_checkpoint_provenance(integration_context):
     registry, _, _ = integration_context
     created = main.create_phase2_intervention(7, {"intervention_key": _key(), "campaign_id": "camp-api"})
-    started = datetime.now(timezone.utc) + timedelta(seconds=1)
+    # Backtest anchors in the PAST: client-supplied occurred_at is rejected
+    # beyond a 5-min future skew (registry events sort by occurred_at, so a
+    # future stamp could forge an ordering the server never observed).
+    started = datetime.now(timezone.utc) - timedelta(days=40)
     completed = started + timedelta(days=30)
     main.append_phase2_lifecycle_event(created["intervention_id"], {"event_type": "start", "occurred_at": started.isoformat()})
     main.append_phase2_lifecycle_event(created["intervention_id"], {"event_type": "complete", "occurred_at": completed.isoformat()})
@@ -160,7 +202,10 @@ def test_outcome_api_preserves_locked_windows_and_rejects_checkpoint_provenance(
 def test_outcome_api_auto_derives_forecast_reference_and_computes_dual_metrics(integration_context, monkeypatch):
     registry, _, _ = integration_context
     created = main.create_phase2_intervention(7, {"intervention_key": _key(), "campaign_id": "camp-api", "timing_window": "12:00-18:00"})
-    started = datetime.now(timezone.utc) + timedelta(seconds=1)
+    # Backtest anchors in the PAST: client-supplied occurred_at is rejected
+    # beyond a 5-min future skew (registry events sort by occurred_at, so a
+    # future stamp could forge an ordering the server never observed).
+    started = datetime.now(timezone.utc) - timedelta(days=40)
     completed = started + timedelta(days=30)
     main.append_phase2_lifecycle_event(created["intervention_id"], {"event_type": "start", "occurred_at": started.isoformat()})
     main.append_phase2_lifecycle_event(created["intervention_id"], {"event_type": "complete", "occurred_at": completed.isoformat()})
@@ -188,8 +233,9 @@ def test_outcome_api_auto_derives_forecast_reference_and_computes_dual_metrics(i
 
     assert response["evidence_state"] == "SUFFICIENT"
     outcome = response["outcome"]
-    # Check 14-day queried horizon (order not guaranteed - days are fetched concurrently)
-    assert sorted(queried_days) == [(7, d) for d in range(147, 161)]
+    # Check the queried horizon is the evaluator's final 14 days (offsets
+    # +46..+59; order not guaranteed - days are fetched concurrently)
+    assert sorted(queried_days) == [(7, d) for d in range(146, 160)]
     assert outcome["forecast_reference_value"] == 120.0
     assert outcome["forecast_status"] == "AVAILABLE"
     assert outcome["baseline_value"] == 100.0
@@ -206,7 +252,10 @@ def test_outcome_api_auto_derives_forecast_reference_and_computes_dual_metrics(i
 def test_outcome_api_forecast_error_handling_and_no_dummy_substitution(integration_context, monkeypatch):
     registry, _, _ = integration_context
     created = main.create_phase2_intervention(7, {"intervention_key": _key(), "campaign_id": "camp-api", "timing_window": "12:00-18:00"})
-    started = datetime.now(timezone.utc) + timedelta(seconds=1)
+    # Backtest anchors in the PAST: client-supplied occurred_at is rejected
+    # beyond a 5-min future skew (registry events sort by occurred_at, so a
+    # future stamp could forge an ordering the server never observed).
+    started = datetime.now(timezone.utc) - timedelta(days=40)
     completed = started + timedelta(days=30)
     main.append_phase2_lifecycle_event(created["intervention_id"], {"event_type": "start", "occurred_at": started.isoformat()})
     main.append_phase2_lifecycle_event(created["intervention_id"], {"event_type": "complete", "occurred_at": completed.isoformat()})

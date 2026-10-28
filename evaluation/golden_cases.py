@@ -11,7 +11,7 @@ Coverage: routing (no-data), health decision chain (CONTINUE / MONITOR /
 EXTEND_INTERVENTION / ESCALATE), outcome feedback (NEGATIVE -> pause,
 REVIEW_ZONE tempering, MEETS_TARGET causal guardrail: CONFIRMED / REVIEW
 / REFUTED / UNAVAILABLE), and diversified actions (RETARGET_SEGMENT /
-TIMING_SHIFT / REALLOCATE_BUDGET, gated on context).
+TIMING_SHIFT / REALLOCATE_BUDGET, DiD-gated on CONFIRMED + context).
 
 Run: ``python evaluation/run_evals.py`` (or via pytest:
 ``tests/test_golden_evals.py``).
@@ -313,6 +313,18 @@ GOLDEN_CASES: list[GoldenCase] = [
         causal_evidence={"evidence_state": "SUFFICIENT", "did_uplift_pct": 4.0},
         store_context=None,
         tags=["diversification"],
+        **_HEALTHY,
+    ),
+    GoldenCase(
+        case_id="no_diversify_without_confirmed_did",
+        description="MEETS_TARGET own-baseline lift + segment context but no CONFIRMED DiD - "
+                    "spend must not move on market drift (same bar as scale-up).",
+        expected_recommendation="CONTINUE", expected_approval=False,
+        expected_diversification=None, expected_scale_up_eligible=False,
+        outcome_evidence={**_SUFFICIENT, "actual_uplift_pct": 3.5, "target_assessment": "MEETS_TARGET"},
+        causal_evidence=None,
+        store_context={"non_best_customer_household_share": 0.6},
+        tags=["diversification", "causal_guardrail"],
         **_HEALTHY,
     ),
 ]

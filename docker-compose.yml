@@ -30,6 +30,9 @@ services:
 
   # Opt-in backing store: `docker compose --profile postgres up -d` then set
   # DATABASE_URL=postgresql://retail:retail@postgres:5432/retail
+  # The default password is for local iteration only — never publish the
+  # container port or point a public interface at it; set POSTGRES_PASSWORD
+  # for anything long-lived.
   postgres:
     image: postgres:16-alpine
     profiles: ["postgres"]

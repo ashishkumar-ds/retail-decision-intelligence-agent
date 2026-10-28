@@ -22,6 +22,8 @@ def test_reversible_actions_are_reversible():
     assert risk_of("PAUSE_INTERVENTION") == RISK_REVERSIBLE
     assert risk_of("TIMING_SHIFT") == RISK_REVERSIBLE
     assert risk_of("MONITOR") == RISK_REVERSIBLE
+    # Reviewing a data gap (or monitoring instead) commits no budget.
+    assert risk_of("NEEDS_REVIEW") == RISK_REVERSIBLE
 
 
 def test_cautious_actions_commit_this_cycle():
@@ -32,7 +34,6 @@ def test_cautious_actions_commit_this_cycle():
 def test_irreversible_actions_move_money_or_escalate():
     assert risk_of("REALLOCATE_BUDGET") == RISK_IRREVERSIBLE
     assert risk_of("ESCALATE") == RISK_IRREVERSIBLE
-    assert risk_of("NEEDS_REVIEW") == RISK_IRREVERSIBLE
 
 
 def test_unknown_recommendation_defaults_to_most_conservative():

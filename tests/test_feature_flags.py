@@ -117,6 +117,37 @@ def test_phase2_write_endpoints_require_auth(monkeypatch):
     ).status_code == 403
 
 
+def test_portfolio_eval_rejects_store_ids_over_the_documented_cap(monkeypatch):
+    """POST /phase2/portfolio/evaluate refuses an unbounded store universe.
+
+    The cap is DecisionAgentConfig.max_stores_per_portfolio_eval (default 50,
+    operator-tunable via PHASE2_MAX_STORES_PER_EVAL); rejecting with 422 keeps
+    a silent partial portfolio from masquerading as a full evaluation.
+    """
+    from app.config import load_config
+
+    monkeypatch.setenv("PHASE2_ENABLED", "true")
+    monkeypatch.setenv(app_main.APPROVAL_AUTH_TOKEN_ENV, "test-token")
+    client = TestClient(app_main.app)
+    headers = {"Authorization": "Bearer test-token"}
+    body = {"store_ids": list(range(1, load_config().max_stores_per_portfolio_eval + 2))}
+    response = client.post("/phase2/portfolio/evaluate", json=body, headers=headers)
+    assert response.status_code == 422
+    assert "portfolio evaluation cap" in response.json()["detail"]
+    # And the env knob is honored by the guard.
+    monkeypatch.setenv("PHASE2_MAX_STORES_PER_EVAL", "3")
+    response = client.post("/phase2/portfolio/evaluate",
+                           json={"store_ids": [1, 2, 3, 4]}, headers=headers)
+    assert response.status_code == 422
+    # At the cap the request is admitted: patch the portfolio's forecast seam
+    # so the evaluation itself fails content-free (no live upstream calls).
+    import phase2.portfolio as portfolio
+    monkeypatch.setattr(portfolio, "get_all_stores_info", lambda: {})  # no store meta -> NO_DATA path
+    admitted = client.post("/phase2/portfolio/evaluate",
+                           json={"store_ids": [1, 2, 3], "auto_forecast": True}, headers=headers)
+    assert admitted.status_code == 200  # cap passthrough, report still built
+
+
 def test_audit_run_schema_rejects_invalid_store_ids():
     from pydantic import ValidationError
 
@@ -187,3 +218,30 @@ def test_run_and_sweep_endpoints_require_auth(monkeypatch):
     wrong = {"Authorization": "Bearer wrong-token"}
     assert client.post("/recommendations/run", headers=wrong).status_code == 403
     assert client.post("/monitor/sweep", headers=wrong).status_code == 403
+
+
+def test_viewer_role_refused_on_write_gates(monkeypatch, tmp_path):
+    """The decision role is enforced on every write/spend gate, not just
+    approve/reject: a ``viewer`` token is read-only and gets 403 on the run
+    and sweep endpoints and on Phase-2 writes, while reads (/metrics, /log)
+    stay available to it (same bearer gate, no role requirement).
+    """
+    monkeypatch.setenv("APPROVAL_TOKENS", "tok-approve:alice:approver,tok-view:bob:viewer")
+    monkeypatch.delenv(app_main.APPROVAL_AUTH_TOKEN_ENV, raising=False)
+    monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "log.jsonl"))
+    monkeypatch.setenv("PENDING_APPROVAL_STATE_PATH", str(tmp_path / "state.db"))
+    monkeypatch.setenv("APPROVAL_LEDGER_PATH", str(tmp_path / "ledger.jsonl"))
+    monkeypatch.setenv("PHASE2_ENABLED", "true")
+    client = TestClient(app_main.app)
+    viewer = {"Authorization": "Bearer tok-view"}
+    assert client.post("/recommendations/run", headers=viewer).status_code == 403
+    assert client.post("/monitor/sweep", headers=viewer).status_code == 403
+    assert client.post(
+        "/phase2/interventions/does-not-exist/events", json={}, headers=viewer
+    ).status_code == 403
+    assert client.post(
+        "/phase2/portfolio/evaluate", json={"store_ids": [1]}, headers=viewer
+    ).status_code == 403
+    # Reads remain available to the viewer role.
+    assert client.get("/metrics", headers=viewer).status_code == 200
+    assert client.get("/log", headers=viewer).status_code == 200

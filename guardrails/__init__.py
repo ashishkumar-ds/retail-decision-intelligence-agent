@@ -68,7 +68,9 @@ RISK_TIER = {
     "RETARGET_SEGMENT": RISK_CAUTIOUS,
     "REALLOCATE_BUDGET": RISK_IRREVERSIBLE,
     "ESCALATE": RISK_IRREVERSIBLE,
-    "NEEDS_REVIEW": RISK_IRREVERSIBLE,
+    # Reviewing a data gap commits no spend: the pair is review / monitor, both
+    # reversible. It is still approval-gated because a human owns the review.
+    "NEEDS_REVIEW": RISK_REVERSIBLE,
     "MONITOR": RISK_REVERSIBLE,
     "CONTINUE": RISK_REVERSIBLE,
 }

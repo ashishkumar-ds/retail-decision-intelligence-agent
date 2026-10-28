@@ -105,3 +105,18 @@ groups:
             user-visible errors is not health - check the API key, base URL and
             provider status, and confirm the layer is meant to be on (/health
             reports the LLM flags).
+
+      - alert: RetailLlmDailyBudgetExhausted
+        expr: retail_llm_daily_calls_used >= retail_llm_daily_call_budget
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Daily LLM call budget spent; visitors are served templates"
+          description: >-
+            Every request that would call the model is now degraded to the
+            deterministic template, still with a 200 and only a guard.llm string
+            to say so. That is fail-closed by design and equally invisible without
+            this rule. Check whether the traffic is legitimate (bots hammering the
+            public /why and /advisory endpoints) and raise LLM_DAILY_CALL_BUDGET
+            only if it is. The counters are in-process, so a redeploy resets them.

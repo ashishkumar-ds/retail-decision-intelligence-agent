@@ -228,17 +228,40 @@ def _round_and_drop_dust(
 def _trim_overflow(
     allocations: list[BudgetAllocation], total_allocated: Decimal, budget: Decimal
 ) -> tuple[list[BudgetAllocation], Decimal]:
-    """Rounding can push cents over budget; trim the smallest allocation."""
+    """Rounding can push cents over budget; never let the plan exceed it.
+
+    Overflow is shaved from the smallest allocations upward (not just the
+    single smallest), never pushing one below MIN_ALLOCATION. If the floor
+    leaves no room - every allocation is at the minimum and a few cents are
+    still over - the smallest allocation is dropped instead, so
+    ``allocated_budget <= total_budget`` always holds.
+    """
     if total_allocated <= budget or not allocations:
         return allocations, total_allocated
-    overflow = total_allocated - budget
-    smallest = min(allocations, key=lambda a: (a.allocation, a.store_id))
-    trimmed = smallest.allocation - float(_cents(overflow))
-    if trimmed < float(MIN_ALLOCATION):
-        return allocations, total_allocated
+    overflow = _cents(total_allocated - budget)
+    floor = _cents(MIN_ALLOCATION)
+    amounts = {a.store_id: Decimal(str(a.allocation)) for a in allocations}
+    for store_id in sorted(amounts, key=lambda sid: (amounts[sid], sid)):
+        if overflow <= 0:
+            break
+        room = amounts[store_id] - floor
+        if room <= 0:
+            continue
+        take = min(overflow, room)
+        amounts[store_id] -= take
+        overflow -= take
+    dropped: set[int] = set()
+    while overflow > 0 and len(dropped) < len(amounts):
+        smallest = min(
+            (sid for sid in amounts if sid not in dropped),
+            key=lambda sid: (amounts[sid], sid),
+        )
+        dropped.add(smallest)
+        overflow -= amounts[smallest]
     allocations = [
-        BudgetAllocation(a.store_id, a.score, round(trimmed, 2), a.capped, a.share_of_budget)
-        if a.store_id == smallest.store_id else a for a in allocations
+        BudgetAllocation(a.store_id, a.score, float(amounts[a.store_id]), a.capped, a.share_of_budget)
+        for a in allocations
+        if a.store_id not in dropped
     ]
     total_allocated = sum((Decimal(str(a.allocation)) for a in allocations), Decimal(0))
     return allocations, total_allocated

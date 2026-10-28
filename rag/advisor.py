@@ -33,6 +33,7 @@ from typing import Any, Mapping, Sequence
 from guardrails import APPROVAL_REQUIRED_RECOMMENDATIONS
 
 from . import llm_telemetry as telemetry
+from . import llm_usage
 from .corpus import CorpusChunk
 
 logger = logging.getLogger("retail_decision_agent.advisor")
@@ -145,7 +146,17 @@ def _draft_openai_compat(block: str) -> str:
     except Exception as error:
         raise AdvisoryUnavailableError(f"openai_compat call failed: {error}") from error
     try:
-        return payload["choices"][0]["message"]["content"] or ""
+        text = payload["choices"][0]["message"]["content"] or ""
+        raw_usage = payload.get("usage")
+        usage = raw_usage if isinstance(raw_usage, Mapping) else {}
+        details = usage.get("prompt_tokens_details")
+        cached = details.get("cached_tokens") if isinstance(details, Mapping) else None
+        llm_usage.set_last(
+            tokens_in=usage.get("prompt_tokens"),
+            tokens_out=usage.get("completion_tokens"),
+            cache_read=cached,
+        )
+        return text
     except (KeyError, IndexError, TypeError) as error:
         raise AdvisoryUnavailableError(f"openai_compat response malformed: {error}") from error
 
@@ -182,6 +193,12 @@ def draft_triage(store_id: int, question: str, narrative: str,
     except Exception as error:
         raise AdvisoryUnavailableError(f"anthropic API call failed: {error}") from error
 
+    usage = getattr(response, "usage", None)
+    llm_usage.set_last(
+        tokens_in=getattr(usage, "input_tokens", None),
+        tokens_out=getattr(usage, "output_tokens", None),
+        cache_read=getattr(usage, "cache_read_input_tokens", None),
+    )
     return "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
 
 
@@ -208,9 +225,14 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
                           evidence: Mapping[str, Any], corpus: Sequence[CorpusChunk],
                           retrieved: Sequence[tuple[CorpusChunk, float]],
                           llm_enabled: bool,
-                          precedents: Sequence[CorpusChunk] = ()) -> tuple[dict[str, Any], str]:
+                          precedents: Sequence[CorpusChunk] = (),
+                          skip_reason: str = "") -> tuple[dict[str, Any], str]:
     """Return (advisory, status). Never raises; every failure degrades to the
     deterministic fallback (the engine's own recommendation and reason).
+
+    ``skip_reason`` names why the LLM was not attempted when the caller knows a
+    reason the flag does not (the daily spend budget, say), so the status cannot
+    claim the layer is switched off when it is on and merely unaffordable.
 
     The advisory dict is structurally inert: auto_applied is always False,
     requires_human_approval is always True, and nothing here writes to the
@@ -228,12 +250,16 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
         "requires_human_approval": True,
     }
     if not llm_enabled:
-        return fallback, "deterministic (LLM_ADVISORY_ENABLED off)"
+        return fallback, f"deterministic ({skip_reason or 'LLM_ADVISORY_ENABLED off'})"
     started = time.monotonic()
+    # Reset per attempt and fold into whichever outcome lands: a vetoed or
+    # malformed advisory was still a paid call and its tokens are real.
+    llm_usage.reset()
 
     def _record(outcome: str, **fields: Any) -> None:
         telemetry.record("advisory", outcome,
-                         latency_ms=(time.monotonic() - started) * 1000, **fields)
+                         latency_ms=(time.monotonic() - started) * 1000,
+                         counts=llm_usage.last(), **fields)
 
     try:
         text = draft_triage(store_id, question, narrative, evidence, precedents)

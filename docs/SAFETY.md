@@ -28,27 +28,38 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
   (`logs/approval_ledger.jsonl`, `APPROVAL_LEDGER_PATH`) with the operator and
   the gate result.
 - **Failure mode:** gate failure → HTTP 409, the decision is refused, the
-  ledger is never written with an ungated approval. The pending queue entry is
-  dropped so a stale record cannot be retried into approval.
-- **Rebuild invariant:** pending state lives in a durable SQLite store
-  (`app/state.py`, `PENDING_APPROVAL_STATE_PATH`), shared across workers; on a
-  fresh state file it is backfilled at startup from the durable recommendation
-  log (`app/main._rebuild_pending_approvals` → `seed_from`). The ledger is
-  evidence of decisions, never the source of pending state. A decision written
-  to the ledger is always accompanied by the decided record in the
-  recommendation log (both writes happen inside the same request; the
-  ledger write happens first and raises on gate failure).
+  ledger is never written with an ungated approval. The undecided row is kept
+  in the store so a human can inspect or retry it; a successful decision
+  replaces it with the decided record (the queue view filters on
+  `requires_human_approval` and an absent `decided_at`).
+- **Rebuild invariant:** the durable store (`app/state.py`,
+  `PENDING_APPROVAL_STATE_PATH`) holds one latest recommendation per store,
+  gated or not, shared across workers; on a fresh state file it is backfilled
+  at startup from the durable recommendation log
+  (`app/main._rebuild_pending_approvals` → `seed_from`), last record per store
+  wins (so decided rows survive too). The ledger is evidence of decisions,
+  never the source of the store. A decision written to the ledger is always
+  accompanied by the decided record in the recommendation log and the store
+  (both writes happen inside the same request; the recommendation-log write
+  happens first, then the ledger entry - which still raises on gate failure -
+  so a ledger entry is never without its decided record).
 
 ## 3. Approval & write authentication
 - **Where:** `app/main.py::_require_approval_auth` (approve/reject), and
   `app/main.py::_require_phase2_write_auth` (all Phase-2 state-mutating
   endpoints: intervention define/events/checkpoints/outcome, plus portfolio
-  evaluation) and `POST /recommendations/run` / `POST /monitor/sweep`.
+  evaluation), `POST /recommendations/run` / `POST /monitor/sweep`, and the
+  raw audit trail `GET /log` (same bearer gate as `/metrics`). The write
+  gates additionally enforce the decision (approver) role: a `viewer` token
+  is read-only and gets 403 on `POST /recommendations/run`, `POST
+  /monitor/sweep` and every Phase-2 write (`_require_write_auth`).
 - **Rule:** Bearer token (`APPROVAL_AUTH_TOKEN`). Without a configured token all
   of these fail closed (503) rather than allowing unauthenticated decisions,
   intervention writes, or external forecast spend. Read-only endpoints
-  (`GET /recommendations`, `/board`, `/log`, `/pending-approvals`) are
-  unauthenticated and never mutate state.
+  (`GET /recommendations`, `/board`, `/pending-approvals`) are unauthenticated
+  and never mutate state; the raw audit trail (`GET /log`) and `/metrics` are
+  also read-only but token-gated because they expose unaggregated records and
+  named principals.
 
 ## 4. Deterministic decision core
 - **Where:** `decision_engine/` (router → planner → scorer → verifier).
@@ -98,7 +109,7 @@ external or generated content (see `docs/rag_sources.md` for the tier contract).
 ## 10. Off-path LLM measurement (evidence layer)
 - **Where:** `rag/llm_telemetry.py` (append-only `logs/offpath_llm.jsonl`),
   `/metrics` (`retail_offpath_llm_*`, `retail_prefilter_chunks_total`),
-  `ops/prometheus/alerts.yml`, `evaluation/llm_evals.py`.
+  `ops/observability/alerts.yml`, `evaluation/llm_evals.py`.
 - **Rule:** every off-path LLM attempt is recorded (outcome, vetoing gate,
   latency, kept/dropped chunks) and the guards are *measured*, not assumed: a
   rejection surge or any provider unavailability alerts, because a fail-closed

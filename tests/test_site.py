@@ -69,13 +69,29 @@ def test_approvals_page_lists_pending_with_decision_forms(client, monkeypatch):
     assert f"/ui/approve/{store_id}" in response.text and f"/ui/reject/{store_id}" in response.text
 
 
+def test_approvals_page_has_a_form_for_every_gated_store():
+    # No 50-row cap: a stakeholder must be able to act on every gated store.
+    from presentation.site import render_approvals
+
+    pending = [
+        {"store_id": store_id, "recommendation": "EXTEND_INTERVENTION",
+         "requires_human_approval": True}
+        for store_id in range(1, 56)
+    ]
+    html = render_approvals(pending)
+    assert html.count("/ui/approve/") == 55
+    assert html.count("/ui/reject/") == 55
+
+
 def test_ui_approve_with_valid_token_records_decision(client, monkeypatch):
     store_id = _seed_pending(client, monkeypatch)
     response = client.post(f"/ui/approve/{store_id}",
                            data={"token": "test-token", "actor": "operator-site"})
     assert response.status_code == 200
     assert "approved" in response.text.lower()
-    assert store_id not in main._pending_approvals  # queue drained
+    stored = next(r for r in main._pending_approvals.values() if r["store_id"] == store_id)
+    assert "decided_at" in stored  # decision is durable on a diskless deploy
+    assert store_id not in {r["store_id"] for r in main._gated_pending_records()}
     decided = main.read_log()
     assert any(e["store_id"] == store_id and e.get("approved") for e in decided)
 
@@ -101,7 +117,9 @@ def test_ui_reject_records_rejection(client, monkeypatch):
     response = client.post(f"/ui/reject/{store_id}",
                            data={"token": "test-token", "actor": "operator-site"})
     assert response.status_code == 200
-    assert store_id not in main._pending_approvals
+    stored = next(r for r in main._pending_approvals.values() if r["store_id"] == store_id)
+    assert stored.get("approved") is False and "decided_at" in stored
+    assert store_id not in {r["store_id"] for r in main._gated_pending_records()}
     decided = main.read_log()
     assert any(e["store_id"] == store_id and e.get("approved") is False for e in decided)
 
@@ -157,6 +175,58 @@ def test_working_label_collapses_verdict_mapping():
         "Not yet — no outcome yet"
     assert working_label(None) == "—"
     assert working_label("plain") == "plain"
+
+
+_WHY_RESULT = {
+    "store_id": 27,
+    "question": "",
+    "narrative": ("Store 27's latest recommendation is NEEDS_REVIEW with a confidence of 1.0 "
+                  "[rec:recommendation-a5ff843a52aaa422]."),
+    "citations": [{"type": "rec", "id": "recommendation-a5ff843a52aaa422",
+                   "detail": "latest recommendation record"}],
+    "methodology": [{"chunk_id": "src-1", "title": "Difference-in-Differences and Matched Controls",
+                     "part": 4, "score": 15.25,
+                     "license_note": "in-repo methodology note (authored for this project)"}],
+    "evidence": {"store_id": 27,
+                 "latest_recommendation": {
+                     "store_id": 27, "recommendation": "NEEDS_REVIEW", "confidence": 1.0,
+                     "reason": "No forecast signal available for store 27.",
+                     "store_health_score": 0.0, "recovery_pct": 0.0,
+                     "recovery_direction": "flat", "days_remaining": 60, "days_elapsed": 0,
+                     "requires_human_approval": True, "forecast_status": "NO_DATA",
+                     "forecast_signal_available": False, "baseline_forecast": 0,
+                     "current_forecast": 0, "generated_at": "2026-10-13T17:06:48+00:00",
+                     "recommendation_id": "recommendation-a5ff843a52aaa422"},
+                 "outcome": {"evidence_state": None}},
+    "guard": {"numeric_grounding": "passed", "citations": "passed", "llm": "llm-grounded"},
+}
+
+
+def test_why_page_reads_as_an_explanation_not_a_repr():
+    """Regression: render_why dumped `citations` as a Python repr and then every
+    remaining key (`evidence`, `methodology`, `guard`) as `key: value` lines, so
+    the operator page was a data dump rather than an answer."""
+    from presentation.site import render_why
+
+    html = render_why(27, _WHY_RESULT)
+    assert "<span class='cite'" in html                     # markers became chips
+    assert "Evidence the engine used" in html
+    assert "Recommendation record" in html                  # readable citation type
+    assert "Relevance" in html                              # methodology table
+    assert "Grounding checks" in html and "&#10003;" in html
+    assert "Human approval required" in html and "Yes" in html
+    assert "<details class='raw'" in html                   # raw payload collapsed
+    assert "'type':" not in html                            # no Python repr
+    assert "'store_id':" not in html
+    assert "no forecast signal (business data gap, not an integration error)" in html
+
+
+def test_why_page_unknown_store_is_an_honest_banner(client):
+    response = client.get("/ui/why/999999")
+    assert response.status_code == 200
+    assert "no recommendation on record" in response.text
+    # the sections still render, so the page is complete rather than truncated
+    assert "Grounding checks" in response.text and "Raw evidence" in response.text
 
 
 def test_dashboard_never_renders_raw_verdict_dict(client, monkeypatch):

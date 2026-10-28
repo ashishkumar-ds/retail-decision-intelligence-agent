@@ -11,6 +11,8 @@ Palette (matches docs/diagrams/architecture-dunnhumby.*):
 from __future__ import annotations
 
 import html
+import json
+import re
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence
 
@@ -163,6 +165,25 @@ footer {{ margin-top: 40px; border-top: 1px solid #ccc; padding: 10px 0 30px;
 .trend .legend {{ font-size: 12px; color: {GRAY}; }}
 .swatch {{ display: inline-block; width: 10px; height: 10px; margin: 0 4px 0 12px; }}
 .fresh {{ color: {GRAY}; font-size: 12px; margin: 4px 0 0; }}
+.why-top {{ background: #fff; border: 1px solid #d9e5e2; padding: 18px 20px; margin: 16px 0; }}
+.pill {{ display: inline-block; background: {TEAL}; color: #fff; padding: 5px 14px;
+         border-radius: 3px; font-weight: 700; font-size: 15px; letter-spacing: .02em; }}
+.why-kpis span {{ display: inline-block; margin: 14px 26px 0 0; font-size: 11px; color: {GRAY};
+                  text-transform: uppercase; letter-spacing: .04em; }}
+.why-kpis b {{ display: block; font-size: 21px; color: {INDIGO}; font-weight: 700;
+               text-transform: none; letter-spacing: 0; margin-bottom: 2px; }}
+.why-lead {{ font-size: 15px; line-height: 1.6; margin: 16px 0 2px; }}
+.cite {{ display: inline-block; background: {MINT}; border: 1px solid {TEAL}; color: {INDIGO};
+         padding: 0 6px; font-size: 11px; border-radius: 9px; white-space: nowrap;
+         font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }}
+.badges span {{ display: inline-block; border: 1px solid #d9e5e2; background: #fff;
+                padding: 6px 12px; margin: 4px 8px 4px 0; font-size: 13px; }}
+code {{ background: {MINT}; padding: 1px 5px; font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }}
+details.raw {{ margin: 22px 0; }}
+details.raw summary {{ cursor: pointer; font-size: 13px; color: {GRAY}; }}
+details.raw pre {{ background: #fff; border: 1px solid #d9e5e2; padding: 12px;
+                   font-size: 11px; line-height: 1.5; overflow: auto; max-height: 340px; }}
 """
 
 _NAV = [("/ui", "Dashboard"), ("/ui/approvals", "Approvals"),
@@ -174,6 +195,10 @@ def render_page(title: str, active: str, body: str) -> str:
         f'<a href="{href}" class="{"active" if href == active else ""}">{esc(label)}</a>'
         for href, label in _NAV
     )
+    # The footer credits the author (see LICENSE) and names dunnhumby as the data
+    # provider only, so the page reads as a personal project built on their public
+    # dataset rather than as a dunnhumby product. Two spans, so the flexbox
+    # `space-between` in _CSS puts the attribution left and the credit right.
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>{esc(title)} · retail decision agent</title>
 <style>{_CSS}</style></head><body>
@@ -181,8 +206,7 @@ def render_page(title: str, active: str, body: str) -> str:
 <h1>{esc(title)}</h1>
 <nav>{links}</nav>
 {body}
-<footer><span>© 2026 retail decision intelligence agent · all rights reserved</span>
-<span><b>dunnhumby</b></span></footer>
+<footer><span>© 2026 Ashish Kumar</span><span>data: dunnhumby</span></footer>
 </div></body></html>"""
 
 
@@ -386,7 +410,7 @@ def render_approvals(pending: Sequence[Mapping], banner: str | None = None) -> s
         f"<input type='password' name='token' placeholder='token' required>"
         f"<input type='hidden' name='actor' value='operator-site'>"
         f"<button>Reject</button></form></td></tr>"
-        for r in pending[:50]
+        for r in pending
     )
     table = (f'<table><tr><th>Store</th><th>Recommendation</th><th>Health</th>'
              f'<th>Confidence</th><th></th><th>Decision (bearer token)</th></tr>{rows}</table>'
@@ -433,21 +457,176 @@ def render_simulate(store_id: str = "", started_day: str = "",
     return body
 
 
-def render_why(store_id: int, result: Mapping) -> str:
-    parts = [f"<h2>Why store {esc(store_id)}?</h2>"]
-    for key in ("narrative", "answer", "explanation"):
-        if isinstance(result.get(key), str):
-            parts.append(f"<p>{esc(result[key])}</p>")
-            break
-    for key in ("citations", "records_cited", "grounding"):
-        value = result.get(key)
-        if value:
-            parts.append(f"<h3>{esc(key)}</h3>")
-            parts.append(f"<pre style='white-space:pre-wrap;font-size:13px'>{esc(value)}</pre>")
-    for key, value in result.items():
-        if key in ("narrative", "answer", "explanation", "citations", "records_cited", "grounding"):
+# --- Why page (Priority 4 detail view) ---------------------------------------
+
+_WHY_MARKER_RE = re.compile(r"\[(rec|event|src):([^\]\s]+)\]")
+_CITE_KIND = {
+    "rec": ("Recommendation record", "the persisted decision this narrative explains"),
+    "event": ("Lifecycle / outcome event", "an intervention or measured-outcome record"),
+    "src": ("Methodology source", "a cited chunk of the in-repo methodology corpus"),
+}
+
+
+def _display(value: Any) -> str:
+    """Readable cell value: em dash for missing, Yes/No for flags, str otherwise."""
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    return str(value)
+
+
+def _short_ref(ref: Any) -> str:
+    """Compact id for an inline chip; the full id stays in the Citations table."""
+    tail = str(ref).rsplit("-", 1)[-1]
+    return tail[:8] + ("…" if len(tail) > 8 else "")
+
+
+def _why_narrative(text: str) -> str:
+    """Narrative prose with ``[rec:/event:/src:]`` markers as inline chips.
+
+    Sentences are escaped and rendered verbatim - only the citation markers are
+    restyled - so the page still reads exactly what the API served (the
+    frontend contract's "never rewrite the sentences" rule).
+    """
+    text = text or ""
+    out: list[str] = []
+    last = 0
+    for match in _WHY_MARKER_RE.finditer(text):
+        kind, ref = match.group(1), match.group(2)
+        label = _CITE_KIND.get(kind, (kind,))[0]
+        out.append(esc(text[last:match.start()]))
+        out.append(f"<span class='cite' title='{esc(label)}: {esc(ref)}'>"
+                   f"{esc(kind)} {esc(_short_ref(ref))}</span>")
+        last = match.end()
+    out.append(esc(text[last:]))
+    return "".join(out)
+
+
+def _why_citations(citations: Any) -> str:
+    rows = []
+    for cite in citations or []:
+        if not isinstance(cite, Mapping):
             continue
-        parts.append(f"<p class='muted'>{esc(key)}: {esc(value)}</p>")
+        kind = str(cite.get("type") or "")
+        label, note = _CITE_KIND.get(kind, (kind or "—", ""))
+        rows.append(f"<tr><td>{esc(label)}</td><td><code>{esc(cite.get('id'))}</code></td>"
+                    f"<td>{esc(cite.get('detail') or note)}</td></tr>")
+    if not rows:
+        return '<p class="muted">No citations - nothing to ground.</p>'
+    return ("<table><tr><th>Type</th><th>Reference</th><th>What it is</th></tr>"
+            f"{''.join(rows)}</table>")
+
+
+def _why_methodology(methodology: Any) -> str:
+    rows = []
+    for chunk in methodology or []:
+        if not isinstance(chunk, Mapping):
+            continue
+        score = chunk.get("score")
+        score_text = (f"{float(score):.2f}"
+                      if isinstance(score, (int, float)) and not isinstance(score, bool) else "—")
+        rows.append(f"<tr><td>{esc(chunk.get('title') or '—')}</td>"
+                    f"<td>{esc(chunk.get('part'))}</td><td>{esc(score_text)}</td>"
+                    f"<td class='muted'>{esc(chunk.get('license_note') or '—')}</td></tr>")
+    if not rows:
+        return '<p class="muted">No methodology retrieved for this question.</p>'
+    return ("<table><tr><th>Methodology note</th><th>Part</th><th>Relevance</th>"
+            f"<th>Licence</th></tr>{''.join(rows)}</table>")
+
+
+def _why_guard(guard: Any) -> str:
+    """Guard results as badges: a pass is green, a degrade is grey, a veto red."""
+    labels = {"numeric_grounding": "Numbers traceable to the evidence",
+              "citations": "Citations resolve", "llm": "LLM layer"}
+    badges = []
+    for key, value in (guard or {}).items():
+        text = str(value)
+        passed = text == "passed"
+        color = TEAL if passed else (GRAY if ("unavailable" in text or "off" in text) else "#b3261e")
+        badges.append(f"<span><b style='color:{color}'>{'&#10003;' if passed else '&#8226;'}</b> "
+                      f"{esc(labels.get(key, key))}: {esc(text)}</span>")
+    return f"<div class='badges'>{''.join(badges)}</div>" if badges else '<p class="muted">No guard results.</p>'
+
+
+def _why_evidence_rows(latest: Mapping[str, Any]) -> list[tuple[str, Any]]:
+    """The engine's own inputs, in the order a reviewer checks them."""
+    recovery = _recovery_label(latest.get("recovery_pct"))
+    direction = latest.get("recovery_direction")
+    if recovery != "—" and direction:
+        recovery = f"{recovery} ({direction})"
+    forecast = str(latest.get("forecast_status") or "—")
+    if latest.get("forecast_signal_available") is False:
+        forecast += " - no forecast signal (business data gap, not an integration error)"
+    rows = [
+        ("Recommendation", _display(latest.get("recommendation"))),
+        ("Confidence", _display(latest.get("confidence"))),
+        ("Store health score", _display(latest.get("store_health_score"))),
+        ("Recovery", recovery),
+        ("Window", f"{_display(latest.get('days_elapsed'))} days elapsed · "
+                   f"{_days_left_label(latest.get('days_remaining'))} remaining"),
+        ("Forecast", forecast),
+        ("Baseline → current forecast",
+         f"{_display(latest.get('baseline_forecast'))} → {_display(latest.get('current_forecast'))}"),
+        ("Human approval required", _display(latest.get("requires_human_approval"))),
+        ("Reason (engine wording)", latest.get("reason")),
+        ("Recommendation ID", latest.get("recommendation_id")),
+        ("Generated at", _display(latest.get("generated_at"))),
+    ]
+    return [(label, value) for label, value in rows if value not in (None, "")]
+
+
+def render_why(store_id: int, result: Mapping) -> str:
+    """Readable answer for one store: what the engine decided, and why.
+
+    Renders only what the API served. The bulky ``evidence`` payload that the
+    JSON contract exposes for machine consumers is collapsed under "Raw
+    evidence" rather than dumped as ``key: value`` lines, so the page reads as
+    an explanation instead of a Python repr.
+    """
+    evidence = result.get("evidence")
+    evidence = evidence if isinstance(evidence, Mapping) else {}
+    latest = evidence.get("latest_recommendation")
+    latest = latest if isinstance(latest, Mapping) else None
+    narrative = next((result[k] for k in ("narrative", "answer", "explanation")
+                      if isinstance(result.get(k), str) and result[k]), "")
+
+    parts: list[str] = []
+    question = result.get("question")
+    if question:
+        parts.append(f"<p class='muted'>Question asked: {esc(question)}</p>")
+
+    if latest is None:
+        parts.append(f"<div class='banner info'>"
+                     f"{esc(narrative or f'No recommendation on record for store {store_id}.')}</div>")
+        parts.append("<p class='muted'>Once a recommendation exists for this store, "
+                     "this page cites the record it was computed from.</p>")
+    else:
+        parts.append(
+            "<div class='why-top'>"
+            f"<span class='pill'>{esc(latest.get('recommendation') or 'UNKNOWN')}</span>"
+            "<div class='why-kpis'>"
+            f"<span><b>{esc(_display(latest.get('confidence')))}</b>confidence</span>"
+            f"<span><b>{esc(_recovery_label(latest.get('recovery_pct')))}</b>recovery</span>"
+            f"<span><b>{esc(_days_left_label(latest.get('days_remaining')))}</b>days remaining</span>"
+            f"<span><b>{esc(_display(latest.get('forecast_status')))}</b>forecast</span>"
+            "</div>"
+            f"<p class='why-lead'>{_why_narrative(narrative)}</p>"
+            "</div>"
+            "<h2>Evidence the engine used</h2>"
+            f"{_kv_table(_why_evidence_rows(latest))}"
+        )
+
+    parts.append("<h2>Citations</h2>")
+    parts.append(_why_citations(result.get("citations")))
+    parts.append("<h2>Methodology applied</h2>")
+    parts.append(_why_methodology(result.get("methodology")))
+    parts.append("<h2>Grounding checks</h2>")
+    parts.append(_why_guard(result.get("guard")))
+    if evidence:
+        parts.append("<details class='raw'><summary>Raw evidence (JSON)</summary>"
+                     f"<pre>{esc(json.dumps(evidence, indent=2, sort_keys=True, default=str))}</pre>"
+                     "</details>")
     return "".join(parts)
 
 

@@ -74,6 +74,9 @@
 11. **Event-shaped logging with cache metrics** — when LLM calls exist, log a
     `turn_complete`-style event including `cache_read_input_tokens` from day
     one to verify prompt caching.
+    *Adopted:* `rag/llm_usage.py` captures provider usage, the off-path telemetry
+    event carries it (`rag/llm_telemetry.py`), and `/metrics` exposes it as
+    `retail_offpath_llm_tokens_total` / `retail_offpath_llm_cache_read_tokens_total`.
 
 ## Do NOT copy
 
@@ -81,7 +84,8 @@
 - Their commerce domain (cart, checkout, listings) — irrelevant to us.
 - Multi-runtime packaging (Messages API + SDK + Managed Agents) — start with one
   runtime; add others only when actually needed.
-- Next.js web apps.
+- **Their** Next.js web app, as a front end to port. Our board under `app/` is our
+  own surface, built to `docs/FRONTEND_CONTRACT.md`.
 
 ---
 

@@ -31,7 +31,10 @@ point it at a temporary path so synthetic drafts never enter the real trail).
 """
 from __future__ import annotations
 
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows has no POSIX locks; locked appends degrade
+    fcntl = None  # to plain (single-process-safe) appends, same file format
 import json
 import logging
 import os
@@ -87,13 +90,15 @@ def record(layer: str, outcome: str, *, reason: str = "",
         path.parent.mkdir(parents=True, exist_ok=True)
         line = json.dumps(event, default=str) + "\n"
         with path.open("a", encoding="utf-8") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+            if fcntl is not None:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
             try:
                 handle.write(line)
                 handle.flush()
                 os.fsync(handle.fileno())
             finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                if fcntl is not None:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
     except Exception as error:  # noqa: BLE001 - telemetry must never raise
         logger.warning("[LLM TELEMETRY] dropped event (%s): %s: %s",
                        layer, type(error).__name__, error)

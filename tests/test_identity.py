@@ -255,3 +255,33 @@ def test_endpoint_metrics_counts(monkeypatch, tmp_path):
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_metrics_reports_sweep_duration_and_approval_latency(monkeypatch, tmp_path):
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import app.main as app_main
+    monkeypatch.setenv("APPROVAL_AUTH_TOKEN", "tok")
+    monkeypatch.setenv("APPROVAL_LEDGER_PATH", str(tmp_path / "ledger.jsonl"))
+    monkeypatch.setenv("RECOMMENDATION_LOG_PATH", str(tmp_path / "log.jsonl"))
+    monkeypatch.setenv("PENDING_APPROVAL_STATE_PATH", str(tmp_path / "state.db"))
+    app_main._sweep_scheduler._status["last_sweep_at"] = "2026-10-13T00:00:00+00:00"
+    app_main._sweep_scheduler._status["last_sweep_duration_seconds"] = 12.5
+    from memory.history import append_log
+    append_log({"store_id": 1, "recommendation_id": "rec-1",
+                "generated_at": "2026-10-13T00:00:00+00:00",
+                "recommendation": "MONITOR"})
+    import approvals.ledger as ledger_module
+    from approvals.ledger import append_decision
+    monkeypatch.setattr(ledger_module, "utcnow_iso",
+                        lambda: "2026-10-13T01:00:00+00:00")
+    append_decision({"store_id": 1, "recommendation_id": "rec-1",
+                     "recommendation": "MONITOR"}, "approve", "op",
+                    {"allowed": True, "checks": {}},
+                    decided_by="user:op")
+    client = TestClient(app_main.app)
+    text = client.get("/metrics", headers={"Authorization": "Bearer tok"}).text
+    assert "retail_last_sweep_duration_seconds 12.500" in text
+    assert "retail_approval_latency_seconds_avg 3600" in text
+    assert "retail_approval_latency_seconds_max 3600" in text

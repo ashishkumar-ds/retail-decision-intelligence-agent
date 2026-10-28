@@ -239,6 +239,39 @@ def test_outcome_evaluator_sufficient_and_insufficient_paths():
     assert insufficient.outcome.recovery_pct_of_target is None
 
 
+def test_recent_window_is_exactly_fourteen_days_half_open():
+    """Regression: the recent window is the half-open [due-14, due).
+
+    A closed upper bound silently made it 15 days, so the day exactly at the
+    evaluation due timestamp leaked into the recent mean. The window is the
+    final 14 days of the 60-day evaluation period (offsets +46..+59); offset
+    +60 is the due instant and belongs to neither window.
+    """
+    started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    due_at = started_at + timedelta(days=EVALUATION_WINDOW_DAYS)
+
+    # 7 recent days inside the window (offsets +46..+52) plus the last in-window
+    # day (offset +59) — all 100.0 — and a poisoned boundary sample at +60.
+    observations = [
+        OutcomeObservation(started_at + timedelta(days=offset), 100.0)
+        for offset in (46, 47, 48, 49, 50, 51, 52, 59)
+    ]
+    observations.append(OutcomeObservation(due_at, 999.0))
+
+    result = evaluate_outcome(
+        intervention_id="int-boundary",
+        intervention_key=key(),
+        intervention_started_at=started_at,
+        observations=observations,
+        as_of=due_at,
+    )
+
+    assert result.outcome.recent_window_start == started_at + timedelta(days=46)
+    assert result.outcome.recent_window_end == due_at
+    # The offset-+60 sample is outside [start, end); the in-window days are not.
+    assert result.outcome.recent_observation_value == pytest.approx(100.0)
+
+
 def test_outcome_not_due_invalid_and_contradictory_evidence():
     started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     intervention_key = key()
@@ -643,9 +676,11 @@ def test_provenance_join_with_normalized_campaign_and_timing_formats():
 def test_forecast_reference_unit_and_horizon_consistency_with_pilot_stores():
     """Verify that daily counterfactual forecast averages match recent observation daily means in scale ($/day)."""
     started_at = datetime(2026, 1, 1, 0, 0, tzinfo=timezone.utc)
-    # 14-day recent daily observations averaging $55/day
+    # 14-day recent daily observations averaging $55/day, on the final 14 days
+    # of the 60-day evaluation period (offsets +46..+59 - the same days the
+    # counterfactual forecast covers; +60 is the due instant).
     recent_obs = [
-        OutcomeObservation(started_at + timedelta(days=47 + i), 55.0)
+        OutcomeObservation(started_at + timedelta(days=46 + i), 55.0)
         for i in range(14)
     ]
     # 56-day baseline daily observations averaging $45/day

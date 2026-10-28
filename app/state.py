@@ -1,4 +1,4 @@
-"""Persistent, thread-safe pending-approval store (SQLite).
+"""Persistent, thread-safe latest-recommendation store (SQLite/Postgres).
 
 Replaces the process-local ``dict`` that previously could not be shared across
 uvicorn workers and had to be rebuilt from the whole log on every startup.
@@ -6,12 +6,18 @@ uvicorn workers and had to be rebuilt from the whole log on every startup.
 Design contract:
 
 - **System of record stays the append-only recommendation log**
-  (``memory/history.py``). This store is the durable, indexed *pending-state
-  cache* keyed by ``store_id``. ``/pending-approvals``, ``/attention-queue``,
-  ``/board`` and the approve/reject paths read and mutate *this* store, so
-  multiple workers and the background sweep scheduler share one source of
-  truth instead of each holding a private in-memory copy (which split-brained
-  across processes and intermittently 404'd approvals in worker B).
+  (``memory/history.py``). This store is the durable, indexed *latest-record
+  cache* keyed by ``store_id``: one row per store, gated or not. The approval
+  queue is a filtered view over it (``requires_human_approval`` and no
+  ``decided_at``), not the table's contents — a diskless deploy has no log to
+  hold a store that recovered out of the gate, so the store must carry every
+  latest record for the board to rebuild.
+
+- ``/board``, ``/recommendations``, ``/why`` and the approve/reject paths read
+  and mutate *this* store, so multiple workers and the background sweep
+  scheduler share one source of truth instead of each holding a private
+  in-memory copy (which split-brained across processes and intermittently
+  404'd approvals in worker B).
 
 - **SQLite is deliberately the boring durable choice**: no new server, WAL
   journaling so concurrent readers run beside the single writer, and a busy
@@ -59,6 +65,19 @@ DEFAULT_STATE_PATH = Path("logs/pending_approvals.db")
 _PATH_ENV = "PENDING_APPROVAL_STATE_PATH"
 _BUSY_TIMEOUT_MS = 5000
 
+# Processes whose schema is confirmed migrated (see _connect). Keyed by
+# engine identity so re-pointed storage (tests, deploy config) re-migrates;
+# correctness on the first connection is unchanged, later ones skip it.
+_SCHEMA_READY: set[str] = set()
+
+# Overwrite guard for the decided-aware upsert in __setitem__: the new record
+# may replace an existing row only while the existing row is NOT decided.
+# Dialect-specific JSON access on the record column (in-repo SQL constants only).
+_DECIDED_ABSENT_SQL = {
+    "sqlite": "json_extract(pending_approvals.record, '$.decided_at') IS NULL",
+    "postgres": "(pending_approvals.record::jsonb ->> 'decided_at') IS NULL",
+}
+
 def state_path() -> Path:
     """Resolve the configured state file path (call-time, so tests override)."""
     return Path(os.getenv(_PATH_ENV, str(DEFAULT_STATE_PATH)))
@@ -67,7 +86,12 @@ def state_path() -> Path:
 
 
 class PendingApprovalStore:
-    """SQLite-backed dictionary of ``store_id`` → recommendation record."""
+    """Dialect-neutral store of ``store_id`` → latest recommendation record.
+
+    The historical name is kept for the table and call sites; rows are every
+    latest recommendation, not only approvals. Read the queue through
+    ``app.main._gated_pending_records``.
+    """
 
     def __init__(self, path: str | Path | None = None) -> None:
         # An explicit path pins this instance (mostly for tests/composition);
@@ -86,22 +110,41 @@ class PendingApprovalStore:
         return conn
 
     def _connect(self) -> Any:
-        """One fresh connection per operation, on the resolved backend."""
+        """One fresh connection per operation, on the resolved backend.
+
+        Migrations run only on the first connection per engine in this process
+        (cached in ``_SCHEMA_READY``) — they are idempotent, but re-running
+        them on every connection of every operation was pure overhead. The
+        cache key includes the storage target, so a re-pointed path or URL
+        (tests, deploy config) migrates its own engine on first use.
+        """
         if self._explicit_path is not None:
             self._dialect = "sqlite"
             conn = self._connect_sqlite(self._explicit_path)
-            run_migrations(conn, "sqlite")
+            self._migrate_once(conn, self._dialect, str(self._explicit_path))
             return conn
         url = database_url()
         if backend(url) == "postgres":
             self._dialect = "postgres"
             conn = _storage_connect(url)
-            run_migrations(conn, "postgres")
+            self._migrate_once(conn, self._dialect, url)
             return conn
         self._dialect = "sqlite"
         conn = self._connect_sqlite(self._resolve())
-        run_migrations(conn, "sqlite")
+        self._migrate_once(conn, self._dialect, str(self._resolve()))
         return conn
+
+    @staticmethod
+    def _migrate_once(conn: Any, dialect: str, engine: str) -> None:
+        """Apply migrations on first connection per engine, then remember it.
+
+        The flag is only set after run_migrations() succeeds, so a failed
+        migration is retried on the next operation (no half-baked cache).
+        """
+        key = f"{dialect}:{engine}"
+        if key not in _SCHEMA_READY:
+            run_migrations(conn, dialect)
+            _SCHEMA_READY.add(key)
 
     def _q(self, sql: str) -> str:
         """Dialect paramstyle: ``?`` placeholders natively on SQLite, translated
@@ -111,13 +154,29 @@ class PendingApprovalStore:
     # --- mutation -------------------------------------------------------------
 
     def __setitem__(self, store_id: int, record: Mapping[str, Any]) -> None:
+        """Decided-aware upsert of one latest record.
+
+        A fresh *undecided* record (the sweep's output) must never replace a
+        row that already carries a human decision (``decided_at``): approval
+        races the sweep, and losing that race would make a decided store look
+        undecided again. The update branch fires only when the existing row is
+        undecided, so an overwrite of a decided row is refused in the same SQL
+        statement (no check-then-act window). Decisions are still written via
+        the approve/reject path's atomic ``pop`` + write (the row is gone
+        before the decided record is inserted), so nothing legitimate needs to
+        overwrite a decided row in place. Also met by the write-time re-check
+        in ``app.main._evaluate_and_persist_stores`` - both layers guard the
+        same invariant from both sides of the race window.
+        """
         conn = self._connect()
         try:
+            cond = _DECIDED_ABSENT_SQL.get(self._dialect, _DECIDED_ABSENT_SQL["sqlite"])
             conn.execute(
                 self._q(
                 "INSERT INTO pending_approvals(store_id, record, inserted_at) VALUES(?,?,?) "
                 "ON CONFLICT(store_id) DO UPDATE SET "
-                "record=excluded.record, inserted_at=excluded.inserted_at"),
+                "record=excluded.record, inserted_at=excluded.inserted_at "
+                f"WHERE {cond}"),
                 (store_id, json.dumps(dict(record), default=str, ensure_ascii=False), _utcnow_iso()),
             )
             conn.commit()

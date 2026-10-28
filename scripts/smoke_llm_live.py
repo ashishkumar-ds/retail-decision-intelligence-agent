@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """Live LLM smoke test for the /why rephrase layer.
 
-Calls the real Anthropic API once (cost: a fraction of a cent) and verifies
+Calls the configured provider once (cost: a fraction of a cent) and verifies
 the full path: rephrase -> grounding gate -> status. Exits 0 only when the
 narrative comes back ``llm-grounded``.
 
+The provider is selected exactly the way the app selects it, so this exercises
+the real path rather than a stand-in (see ``rag/llm_explainer.py``):
+
+  Anthropic (default):  export ANTHROPIC_API_KEY=sk-ant-...
+  OpenAI-compatible:    export LLM_PROVIDER=openai_compat LLM_API_KEY=...
+                        export LLM_BASE_URL=https://api.groq.com/openai/v1
+                        export LLM_MODEL=<model>
+
 Usage:
-  export ANTHROPIC_API_KEY=sk-ant-...
   python scripts/smoke_llm_live.py [store_id]
 
 The key is read from the environment or from a local ``.env.local`` file
@@ -35,21 +42,48 @@ from memory.history import read_log  # noqa: E402
 from rag.corpus import load_corpus  # noqa: E402
 from rag.llm_explainer import maybe_llm_narrative  # noqa: E402
 
-if not os.getenv("ANTHROPIC_API_KEY"):
-    print("ERROR: ANTHROPIC_API_KEY not set (env or .env.local).", file=sys.stderr)
+_provider = os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+_required_key = "LLM_API_KEY" if _provider == "openai_compat" else "ANTHROPIC_API_KEY"
+if not os.getenv(_required_key):
+    print(f"ERROR: {_required_key} not set for LLM_PROVIDER={_provider} "
+          "(env or .env.local).", file=sys.stderr)
     sys.exit(2)
+
+def _synthetic_record(store_id: int) -> dict:
+    """A minimal, grounded record, so the smoke runs with no local audit trail.
+
+    A canary must not depend on this box's state: CI checks out a repo whose
+    ``logs/`` is gitignored, so a record that only exists locally would fail the
+    scheduled smoke for the wrong reason. Every number here is carried into the
+    evidence block, so the template built from it stays groundable.
+    """
+    return {
+        "store_id": store_id,
+        "recommendation_id": "rec-smoke0001",
+        "recommendation": "CONTINUE",
+        "confidence": 1.0,
+        "store_health_score": 100.0,
+        "recovery_pct": 4.0,
+        "days_remaining": 30,
+    }
+
 
 store_id = int(sys.argv[1]) if len(sys.argv) > 1 else None
 records = [r for r in read_log() if r.get("store_id")]
-if store_id is None:
-    if not records:
-        print("ERROR: no recommendation records in logs; pass a store_id.", file=sys.stderr)
+latest = None
+if store_id is not None:
+    latest = next((r for r in reversed(records) if r.get("store_id") == store_id), None)
+    if latest is None:
+        print(f"ERROR: no recommendation record for store {store_id}.", file=sys.stderr)
         sys.exit(2)
+elif records:
     store_id = records[-1]["store_id"]
-latest = next((r for r in reversed(records) if r.get("store_id") == store_id), None)
+    latest = next((r for r in reversed(records) if r.get("store_id") == store_id), None)
 if latest is None:
-    print(f"ERROR: no recommendation record for store {store_id}.", file=sys.stderr)
-    sys.exit(2)
+    store_id = store_id if store_id is not None else 317
+    latest = _synthetic_record(store_id)
+    print("note: no recommendation records in logs; using a synthetic grounded record.",
+          file=sys.stderr)
 
 # Build Tier-1 evidence the same shape /why uses (inline, no FastAPI needed).
 
