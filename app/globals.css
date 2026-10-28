@@ -155,7 +155,7 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 /* The verdict owns the card: the Recommended action is the biggest type on
    the card (after the store id); Fallback and Commitment run at the smaller
    companion size. */
-.decision { margin-top: 12px; padding: 12px 14px; border-left: 3px solid var(--teal); border-radius: 10px; background: var(--panel) }
+.decision { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--panel) }
 .decision-kicker { display: block; margin-bottom: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--teal-text) }
 .decision-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
 .decision-grid span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
@@ -262,7 +262,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .id-chip:focus-visible,
 .brand:focus-visible,
 .back:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
-.detail-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; padding-bottom: 40px }
+.detail-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; padding-bottom: 24px }
 .panel { padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0 }
 .section-title { font: 700 15px var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.01em; color: var(--indigo); margin: 0 0 14px }
 .narrative { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 }
@@ -280,6 +280,31 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
    back, kept out of the prose and out of the narrative layer. */
 .provenance { margin: 26px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.5; color: var(--muted) }
 .provenance code { font: 600 11px/1.5 var(--font-roboto), monospace; color: var(--teal-text); overflow-wrap: anywhere }
+
+/* --- "Ask about this store" (the off-path LLM advisory) ------------------ */
+/* A third panel under the evidence grid, inheriting the panel card and the
+   .decision result treatment; every state answers in sentences (never raw
+   statuses) and every affordance admits the layer's budget caps. */
+.detail-grid { padding-bottom: 24px }
+.ask-panel { margin: 0 0 40px; padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0 }
+.ask-sub { margin: -4px 0 16px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 70ch; text-wrap: pretty }
+.ask-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px }
+.ask-preset { border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; background: var(--panel); font: 600 12.5px var(--font-roboto), sans-serif; color: var(--teal-text); cursor: pointer }
+.ask-preset:hover { border-color: var(--teal) }
+.ask-preset:disabled { opacity: .55 }
+.ask-preset:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.ask-row { display: flex; gap: 9px }
+.ask-row .dialog-input { width: auto; flex: 1; min-width: 0 }
+.ask-budget { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
+.ask-status { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
+/* Result card sits in the .decision family (tinted panel fill, uppercase
+   teal kicker) - the kicker typography carries the accent; no colored edge
+   (the detector's most-recognized AI-UI tell). */
+.ask-result { margin-top: 18px; padding: 12px 14px; border-radius: 10px; background: var(--panel) }
+.ask-honesty { display: block; margin: 0 0 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--teal-text) }
+.ask-action { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink) }
+.ask-action strong { font: 700 15px/1.3 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.02em; color: var(--indigo) }
+.ask-note { margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink); text-wrap: pretty }
 
 /* --- narrow screens ---------------------------------------------------- */
 /* Breakpoints, smallest last so later rules win: ≤900px stacks the detail
@@ -339,6 +364,12 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .facts { gap: 8px 10px }
   .fact-value { font-size: 13.5px }
   .decision { padding: 11px 12px }
+  /* The ask form stacks on phones: a full-width input, then a full-width
+     button - the 9px desktop gap leaves the button too small to tap. */
+  .ask-panel { padding: 20px 18px; margin-bottom: 32px }
+  .ask-row { flex-direction: column }
+  .ask-row .dialog-input { width: 100% }
+  .ask-row .button-primary { width: 100% }
   .decision-grid { grid-template-columns: 1fr 1fr; gap: 10px 12px }
   .decision-grid > div:nth-child(3) { grid-column: 1 / -1 }
   .card-actions { margin-top: 11px }
@@ -385,15 +416,15 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   outline-offset: 3px;
 }
 
-.tile, .bucket-head, .store-row, .panel {
+.tile, .bucket-head, .store-row, .panel, .ask-panel {
   box-shadow: 0 1px 1px rgba(20, 20, 50, .025), 0 8px 24px rgba(20, 20, 50, .035);
 }
 
-.tile, .bucket-head, .store-row, .panel, .approve-button, .button-primary, .button-ghost, .show-toggle {
+.tile, .bucket-head, .store-row, .panel, .ask-panel, .ask-preset, .approve-button, .button-primary, .button-ghost, .show-toggle {
   transition: border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
-.tile:hover, .bucket-head:hover, .store-row:hover, .panel:hover {
+.tile:hover, .bucket-head:hover, .store-row:hover, .panel:hover, .ask-panel:hover {
   box-shadow: 0 2px 2px rgba(20, 20, 50, .035), 0 12px 28px rgba(20, 20, 50, .06);
 }
 

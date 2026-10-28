@@ -135,6 +135,33 @@ not stakeholder evidence. One deliberate exception: the served
 evidence panel — the product's citable-verdict claim (PRODUCT.md) made visible,
 still outside the narrative layer.
 
+### `GET /advisory/{store_id}?question=...` — the store page's "Ask" panel
+`{"store_id", "question", "engine_recommendation", "narrative", "citations",
+  "advisory": {"suggested_action", "note", "source": "deterministic-engine" | "llm-advisory",
+               "auto_applied": false, "requires_human_approval": true},
+  "advisory_status": "...", "invariants": {"auto_applied": false,
+  "requires_human_approval": true, "writes_nothing": true}}`
+
+The one LLM-backed surface on the stakeholder UI, and read-only like every
+other call on it (GET; the approve POST stays the only write). The client sends
+a preset or free-text question — capped at 500 characters by the input's
+`maxLength`, mirroring the API's guard. Every failure degrades to the engine's
+own recommendation with `advisory_status` naming the outcome; the surface
+renders that honestly:
+
+- The suggestion prints under a permanent "Suggestion — not a decision, records
+  nothing" line (the `rag/advisor.py` invariants made visible).
+- `suggested_action` goes through the same label map as every action token;
+  `note` has its `[rec:/event:/src:]` markers stripped like the narrative.
+- `advisory_status` is audit-log wording and is **never printed raw** — known
+  outcomes (`llm-advisory (grounded)`, budget spent, layer off, no grounded
+  evidence, grounding-failed, unavailable) translate to human sentences;
+  anything unknown degrades to "Engine answer only."
+- `429` (per-IP hourly LLM cap) renders as a rate-limited sentence, not the
+  API's `detail`; `409` (no grounded evidence) says the engine's next sweep
+  refreshes the record and nothing was guessed; `503` says the layer is off on
+  this deployment. Nothing on this surface ever records anything.
+
 ### `GET /pending-approvals`
 `{"count": 2, "pending": [ /* records awaiting a human */ ]}` — read-only count.
 
