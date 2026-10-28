@@ -2,8 +2,11 @@
 
 // Store detail - the "why" page. The narrative is shown as prose with its
 // internal [rec:/event:/src:] citation markers stripped; the page never prints
-// a record id, a retrieval chunk or a raw engine token from the citation layer.
-// Every figure is printed as served. No client math, no rewriting, GET only.
+// a citation id, a retrieval chunk or a raw engine token from the citation
+// layer - the ONE deliberate exception is the served `recommendation_id`,
+// which the product positions as citable provenance (PRODUCT.md) and which
+// rides a quiet footer line under the evidence panel. Every figure is printed
+// as served. No client math, no rewriting, GET only.
 import { use } from 'react'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -178,7 +181,7 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
           kicker={phase.kind === 'waking' ? 'API waking up' : 'Store evidence'}
           title={phase.kind === 'waking' ? 'Waiting for the data API' : 'Fetching store evidence from the API'}
           copy={phase.kind === 'waking'
-            ? 'The free-tier API sleeps when idle. This can take up to 30 seconds; this page retries automatically.'
+            ? 'The free-tier API sleeps when idle. This can take up to a minute; this page retries automatically.'
             : 'Pulling the recommendation, its evidence and the verification record for this store.'}
         />
       ) : data && (
@@ -206,6 +209,14 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
                 (docs/FRONTEND_CONTRACT.md): the ids and internal tokens it
                 carries stay off this page. The human-facing fields above are
                 the whole stakeholder view. */}
+            {rec?.recommendation_id ? (
+              // The one citable affordance: the product's numbers are recomputable,
+              // and this id is what a stakeholder can quote back. Quiet, bottom
+              // of the panel; nothing else on the page cites.
+              <p className="provenance">
+                Provenance for every figure above · <code>{display(rec.recommendation_id)}</code>
+              </p>
+            ) : null}
           </aside>
         </div>
       )}

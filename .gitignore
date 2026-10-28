@@ -31,3 +31,18 @@ AGENTS.md
 docs/agents/
 # Verification skills (generated harnesses that drive the app like a user).
 .cursor/
+
+# impeccable-ignore-start
+# Ephemeral output, runtime state, and per-dev overrides.
+**/.impeccable/config.local.json
+**/.impeccable/hook.cache.json
+**/.impeccable/hook.pending.json
+**/.impeccable/*.png
+**/.impeccable/review/
+**/.impeccable/questions/
+**/.impeccable/live/
+**/.impeccable/critique/*.png
+# impeccable-ignore-end
+
+# agent-local tooling: the impeccable skill ships via npx, never in the repo
+.opencode/
