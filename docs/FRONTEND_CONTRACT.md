@@ -143,7 +143,9 @@ still outside the narrative layer.
   "requires_human_approval": true, "writes_nothing": true}}`
 
 The one LLM-backed surface on the stakeholder UI, and read-only like every
-other call on it (GET; the approve POST stays the only write). The client sends
+other call on it (GET; the approve POST stays the only write). The same-origin
+proxy forwards `GET /api/advisory/{id}?question=...` alongside `why/{id}` (same
+numeric-id shape). The client sends
 a preset or free-text question — capped at 500 characters by the input's
 `maxLength`, mirroring the API's guard. Every failure degrades to the engine's
 own recommendation with `advisory_status` naming the outcome; the surface

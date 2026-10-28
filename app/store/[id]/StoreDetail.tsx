@@ -177,6 +177,8 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
           error = 'The advisory layer is switched off on this deployment. The recommendation above is unaffected.'
         } else if (response.status === 400) {
           error = 'Questions are capped at 500 characters - shorten it and ask again.'
+        } else if (response.status === 404) {
+          error = 'This store is not in the current cohort, so there is nothing to ask about. Open the board to see the stores up for review.'
         } else {
           error = "Couldn't get an answer just now. Nothing was recorded - this surface only asks."
         }

@@ -24,6 +24,17 @@ def test_the_ask_panel_stays_read_only():
     )
 
 
+def test_the_proxy_allowlists_the_advisory_read():
+    # Found live, 2026-10-28: the panel shipped before the same-origin proxy
+    # knew the path - the proxy's own 404 landed in the panel's generic error
+    # and every ask died client-side, before reaching the API.
+    proxy = (ROOT / "app" / "api" / "[...path]" / "route.ts").read_text(encoding="utf-8")
+    assert "advisory" in proxy and "/^(why|advisory)\\/\\d+$/" in proxy, (
+        "The /api proxy must forward GET advisory/{id} like why/{id}, or the "
+        "ask panel 404s at the proxy and can never reach the API."
+    )
+
+
 def test_the_suggestion_is_labelled_a_suggestion():
     assert "Suggestion - not a decision, records nothing" in DETAIL, (
         "The advisory result must render under the permanent honesty line - "

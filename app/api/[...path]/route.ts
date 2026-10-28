@@ -12,6 +12,9 @@ const ALLOWED_PATHS = new Set(['board', 'health', 'recommendations', 'pending-ap
 // (docs/FRONTEND_CONTRACT.md: exactly one client write), so Authorization is
 // intentionally not forwarded on GET today — the proxy attaches no credential
 // it was not handed for the one approved POST.
+// The advisory is the one LLM-backed read: still a public GET (budget-capped
+// server-side), so it allowlists like the others with the same numeric-id
+// shape the /why page uses.
 // The only write the browser may trigger. The backend still refuses anything
 // without a valid approval token (503 when unconfigured, 401/403 otherwise) -
 // this proxy forwards the caller's Authorization header and never injects one.
@@ -31,7 +34,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   const { path } = await params
   const endpoint = path.join('/')
 
-  if (!ALLOWED_PATHS.has(endpoint) && !(path[0] === 'why' && path.length === 2 && /^\d+$/.test(path[1]))) {
+  if (!ALLOWED_PATHS.has(endpoint) && !/^(why|advisory)\/\d+$/.test(endpoint)) {
     return NextResponse.json({ detail: 'Not found' }, { status: 404 })
   }
 
