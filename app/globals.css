@@ -128,10 +128,10 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .store-leading { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap }
 .store-id { font: 700 17px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; color: var(--indigo) }
 .store-id:hover { text-decoration: underline }
-/* The why-page link names its destination: the teal lead word is the
-   affordance, the id stays the scannable anchor. */
-.store-id .why-lead { font: 600 12px/1 var(--font-roboto), sans-serif; letter-spacing: .02em; color: var(--teal-text); margin-right: 5px; vertical-align: 2px }
-.id-hint { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted) }
+/* The why page's own navigation, right of the card header - named, teal,
+   never dependent on hover. */
+.detail-link { flex: none; font-size: 12px; font-weight: 700; color: var(--teal-text); white-space: nowrap }
+.detail-link:hover { text-decoration: underline }
 .state { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap }
 /* "On track" and "Watch" differ: the moving states get the quiet green chip,
    the flat one stays neutral - same rule the tile caption follows. */
@@ -263,6 +263,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
    focus style of its own (brand wordmark, store ids, id chips, the Why
    arrows, the Back-for-board link). */
 .store-id:focus-visible,
+.detail-link:focus-visible,
 .id-chip:focus-visible,
 .brand:focus-visible,
 .back:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
@@ -299,7 +300,6 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .ask-preset:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
 .ask-row { display: flex; gap: 9px }
 .ask-row .dialog-input { width: auto; flex: 1; min-width: 0 }
-.ask-budget { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
 .ask-status { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
 /* Result card sits in the .decision family (tinted panel fill, uppercase
    teal kicker) - the kicker typography carries the accent; no colored edge

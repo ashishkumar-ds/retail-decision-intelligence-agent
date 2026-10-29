@@ -35,17 +35,17 @@ def test_the_proxy_allowlists_the_advisory_read():
     )
 
 
-def test_the_board_card_names_the_why_link():
-    # Found live, 2026-10-29: after the single-link collapse the card's only
-    # why-page affordance was a bare bold id - no hover on touch, nothing
-    # suggesting navigation. The link must name its destination.
+def test_the_board_card_keeps_the_why_navigation():
+    # Restored 2026-10-29: the single-link collapse had left a bare bold id as
+    # the card's only why-page affordance (unreadable as clickable on touch);
+    # the user asked the named "Why →" navigation back on the card header.
     page = (ROOT / "app" / "page.tsx").read_text(encoding="utf-8")
-    assert 'why-lead">Why store</span>' in page, (
-        "The board card's store link must carry the visible 'Why store' lead "
-        "- a bare id does not read as a link to the why page."
+    assert 'className="detail-link"' in page, (
+        "The board card must keep its named why-page navigation (the teal "
+        "'Why ->' link, right of the card header)."
     )
-    assert 'id-hint' in page, (
-        "The shared-decision id list must say that an id opens the why page."
+    assert 'aria-label={`Why store ${row.store_id}`}' in page, (
+        "The Why navigation must name its destination for screen readers."
     )
 
 

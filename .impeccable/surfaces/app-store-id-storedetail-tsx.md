@@ -27,8 +27,11 @@ restrained mint/teal/indigo palette, panel cards.
 `.decision` family: tinted panel fill, uppercase teal kicker carrying the
 honesty line ("Suggestion — not a decision, records nothing"), Space Grotesk
 for the suggested action. Presets first (three grounded questions), free text
-second, budget sentence always visible. No colored edge on the result card —
+second. Budget honesty lives in the translated status and error sentences,
+not in a permanent pre-copy line. No colored edge on the result card —
 the kicker carries the accent (detector's AI-UI tell avoided).
+The why page keeps its own right-side "Why →" navigation on the board card
+(user-restored 2026-10-29 after the single-link collapse hid it).
 
 **States.** idle → asking (disabled controls, "Reading the grounded evidence…")
 → done (honesty kicker, suggested action, optional note, translated status) or

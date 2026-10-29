@@ -207,14 +207,15 @@ function StoreRow({
     <article className="store-row">
       <div className="store-top">
         <div className="store-leading">
-          {/* The why page must name itself: since the single-link collapse
-              the bare id was the only signal, and a bold number doesn't read
-              as clickable (found live, 2026-10-29). */}
-          <Link href={`/store/${row.store_id}`} className="store-id">
-            <span className="why-lead">Why store</span> {display(row.store_id)}
-          </Link>
+          <Link href={`/store/${row.store_id}`} className="store-id">{display(row.store_id)}</Link>
           <span className={`state${stateTone(row)}`}>{display(stateOf(row))}</span>
         </div>
+        {/* The why page keeps its own named navigation, right of the header -
+            the user restored it after the single-link collapse hid the path
+            behind a bare id (2026-10-29). */}
+        <Link href={`/store/${row.store_id}`} className="detail-link" aria-label={`Why store ${row.store_id}`}>
+          Why <span aria-hidden="true">→</span>
+        </Link>
       </div>
       <div className="row-title">
         <p className="reason">{display(row.why_not_working || row.reason)}</p>
@@ -789,7 +790,6 @@ export default function BoardPage() {
                           </span>
                         ))}
                       </div>
-                      <p className="id-hint">An id opens that store&apos;s why page.</p>
                       {pendingRows.length > 1 ? (
                         <button
                           type="button"

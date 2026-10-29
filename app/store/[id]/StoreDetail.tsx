@@ -197,7 +197,7 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
   const rec: Recommendation | null = data?.evidence?.latest_recommendation ?? null
   const rows: Array<[string, unknown]> = rec
     ? ([
-      ['Confidence', rec.confidence],
+      // No Confidence row: the hero already owns it (one figure, one home).
       ['Store health score', rec.store_health_score],
       ['Recovery', rec.recovery_pct != null ? `${rec.recovery_pct}% (${display(rec.recovery_direction)})` : null],
       ['Window', rec.days_elapsed != null && rec.days_remaining != null ? `Day ${rec.days_elapsed} · ${rec.days_remaining} days left` : null],
@@ -207,8 +207,11 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
           ? 'Feed delayed - the forecast feed, not the store, is the problem'
           : rec.forecast_status],
       ['Baseline → current', rec.baseline_forecast != null ? `${rec.baseline_forecast} → ${display(rec.current_forecast)}` : null],
+      // The deterministic engine wording stays even though the narrative
+      // restates it: when the LLM layer is on, this row is the verbatim
+      // ground truth the suggestion is judged against.
       ['Reason (engine wording)', rec.reason],
-      ['Generated at', rec.generated_at],
+      // No Generated-at row: that is provenance, folded into the id line below.
     ] as Array<[string, unknown]>).filter(([, value]) => value !== null && value !== undefined && value !== '')
     : []
 
@@ -298,9 +301,11 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
               {rec?.recommendation_id ? (
                 // The one citable affordance: the product's numbers are recomputable,
                 // and this id is what a stakeholder can quote back. Quiet, bottom
-                // of the panel; nothing else on the page cites.
+                // of the panel; the record timestamp lives here too - provenance,
+                // not evidence.
                 <p className="provenance">
                   Provenance for every figure above · <code>{display(rec.recommendation_id)}</code>
+                  {rec.generated_at ? <> · recorded {display(rec.generated_at)}</> : null}
                 </p>
               ) : null}
             </aside>
@@ -308,9 +313,8 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
           <section className="ask-panel" aria-label="Ask about this store">
             <h2 className="section-title">Ask about this store</h2>
             <p className="ask-sub">
-              A grounded suggestion from the off-path LLM layer, for a human reviewer. It reads
-              the same evidence as this page, and it never writes anything - the recommendation
-              above stays the only decision.
+              A grounded suggestion from the off-path LLM layer, for a human reviewer - it
+              reads the same evidence as this page and records nothing.
             </p>
             <div className="ask-presets">
               {ASK_PRESETS.map((preset) => (
@@ -345,10 +349,6 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
                   {askState.kind === 'asking' ? 'Asking…' : 'Ask'}
                 </button>
               </div>
-              <p className="ask-budget">
-                The advisory layer is budget-capped; when the cap is spent it serves the engine&apos;s
-                own answer and says so.
-              </p>
             </form>
             {askState.kind === 'asking' ? (
               <p className="ask-status" role="status">Reading the grounded evidence for this store…</p>
