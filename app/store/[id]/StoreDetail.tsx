@@ -19,12 +19,13 @@ import type { AdvisoryResponse, Recommendation, WhyPayload } from '../../types'
 
 const MARKER = /\s*\[(rec|event|src):[^\]]+\]/g
 
-// Budget-friendly by construction: the three questions that cover most of a
-// stakeholder's intent are one click each; the free-text field stays for
-// follow-ups. Every ask is a budget-capped LLM call (per-IP hourly + daily
-// cap), so presets keep the cap spent on real questions, not typos.
+// Budget-friendly by construction: the three questions cover intents the
+// static page does NOT already answer - "why this recommendation" is the
+// page's own headline, so asking it here would re-buy the narrative at LLM
+// prices. Every ask is a budget-capped LLM call (per-IP hourly + daily cap),
+// so presets keep the cap spent on real questions, not typos.
 const ASK_PRESETS = [
-  'Why does this store need a decision?',
+  'What is the risk if we do nothing?',
   'What should I check before approving?',
   'What would change this decision?',
 ]
