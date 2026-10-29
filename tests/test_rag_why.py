@@ -29,7 +29,7 @@ def test_corpus_is_deterministic_with_stable_ids():
     assert len(chunks1) > 10  # four methodology sources should chunk substantially
     for chunk in chunks1:
         assert chunk.chunk_id.startswith("src-")
-        assert chunk.source_type in {"methodology", "data_dictionary", "case_study", "narrative"}
+        assert chunk.source_type in {"methodology", "data_dictionary", "case_study", "narrative", "playbook"}
         assert chunk.license_note
 
 
