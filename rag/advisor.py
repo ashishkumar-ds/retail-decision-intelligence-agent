@@ -68,9 +68,13 @@ def build_advisory_system() -> str:
         "NOTE: <2-4 sentences for the reviewer>\n"
         "Rules:\n"
         "- SUGGESTED_ACTION must be one of the actions in ALLOWED_ACTIONS.\n"
-        "- Use only numbers that appear in the narrative or evidence block.\n"
+        "- Use only numbers that appear in the narrative, evidence block or "
+        "retrieved support chunks.\n"
         "- Citations like [rec:id], [event:id], [src:id] may only reference IDs "
-        "given in the narrative or evidence block.\n"
+        "given in the narrative, evidence block or retrieved support chunks.\n"
+        "- Use the retrieved support chunks' mechanisms and thresholds when they "
+        "help answer the question; when the record lacks an input a question "
+        "needs, name the gap instead of guessing it.\n"
         "- The suggestion is advisory only; a human decides. Do not claim it "
         "was applied.\n"
         "- If the evidence is inconclusive, suggest the most conservative "
@@ -92,7 +96,8 @@ class AdvisoryUnavailableError(Exception):
 
 def _block(store_id: int, question: str, narrative: str,
            evidence: Mapping[str, Any],
-           precedents: Sequence[CorpusChunk] = ()) -> str:
+           precedents: Sequence[CorpusChunk] = (),
+           retrieved: Sequence[tuple[CorpusChunk, float]] = ()) -> str:
     from .question_guard import sanitize_question
     question = sanitize_question(question)
     latest = evidence.get("latest_recommendation") or {}
@@ -108,6 +113,14 @@ def _block(store_id: int, question: str, narrative: str,
         narrative,
         json.dumps(evidence, default=str, indent=1),
     ]
+    # The BM25-retrieved corpus chunks (the playbook/policy docs) - the same
+    # chunks the grounding guard treats as a quotable number/citation source.
+    # Without this section the guard allowed numbers and citations the LLM
+    # had never seen; with it the corpus knowledge actually reaches the model.
+    if retrieved:
+        lines.append("RETRIEVED_SUPPORT_CHUNKS:")
+        for chunk, _score in retrieved:
+            lines.append(f"[src:{chunk.chunk_id}] {chunk.title}: {chunk.text}")
     if precedents:
         lines.append("PRECEDENT_CHUNKS:")
         for chunk in precedents:
@@ -163,9 +176,10 @@ def _draft_openai_compat(block: str) -> str:
 
 def draft_triage(store_id: int, question: str, narrative: str,
                  evidence: Mapping[str, Any],
-                 precedents: Sequence[CorpusChunk] = ()) -> str:
+                 precedents: Sequence[CorpusChunk] = (),
+                 retrieved: Sequence[tuple[CorpusChunk, float]] = ()) -> str:
     """Call the configured provider; raises AdvisoryUnavailableError on failure."""
-    block = _block(store_id, question, narrative, evidence, precedents)
+    block = _block(store_id, question, narrative, evidence, precedents, retrieved)
     if _provider() == "openai_compat":
         return _draft_openai_compat(block)
 
@@ -262,7 +276,7 @@ def maybe_advisory_triage(store_id: int, question: str, current_recommendation: 
                          counts=llm_usage.last(), **fields)
 
     try:
-        text = draft_triage(store_id, question, narrative, evidence, precedents)
+        text = draft_triage(store_id, question, narrative, evidence, precedents, retrieved)
         action, note = parse_advisory(text)
         # Same grounding guards the /why narrative must pass, applied to the
         # advisory note: untraceable numbers or invented citations fail closed.
