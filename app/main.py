@@ -151,13 +151,16 @@ logger = logging.getLogger("retail_decision_agent")
 logging.basicConfig(level=logging.INFO)
 
 # Ensure the Tier-2 methodology corpus exists (deterministic rebuild from
-# in-repo sources; cheap even when it already exists). Skipped entirely when
-# the RAG feature switch is off - the /why endpoint refuses to serve anyway,
-# so building the corpus would be wasted work on the startup path.
+# in-repo sources; cheap even when it already exists). Always rebuilt, never
+# trusted stale: an existing file built before the newest sources landed made
+# the advisory retrieve against last month's knowledge (found 2026-10-29).
+# Skipped entirely when the RAG feature switch is off - the /why endpoint
+# refuses to serve anyway, so building the corpus would be wasted work on the
+# startup path.
 from rag.corpus import DEFAULT_CORPUS_PATH as _RAG_CORPUS_PATH  # noqa: E402
 from rag.corpus import build_corpus as _build_rag_corpus  # noqa: E402
 
-if rag_enabled() and not _RAG_CORPUS_PATH.exists():
+if rag_enabled():
     _build_rag_corpus()
 
 RECOVERY_WINDOW_DAYS = 60
