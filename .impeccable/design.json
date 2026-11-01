@@ -4,29 +4,149 @@
   "title": "Design System: Retail Decision Intelligence Agent",
   "extensions": {
     "colorMeta": {
-      "primary": { "role": "primary", "displayName": "Register Indigo", "canonical": "#2a1b6a", "tonalRamp": ["#1e134f", "#2a1b6a", "#3a2b82", "#4f4096", "#675aa9", "#837cbe", "#c7c2e6", "#edece4"] },
-      "brand-green": { "role": "secondary", "displayName": "Shelf Green", "canonical": "#2abf95", "tonalRamp": ["#0e4a36", "#0e7a55", "#189a6d", "#2abf95", "#5ed4b3", "#8fe6cd", "#c1f1e2", "#edece4"] },
-      "brand-magenta": { "role": "secondary", "displayName": "Stamp Magenta", "canonical": "#cf348d", "tonalRamp": ["#6c1c48", "#a4285e", "#cf348d", "#dd62a8", "#e78ebf", "#efb5d6", "#f6d6e9", "#f8e9f1"] },
-      "carbon": { "role": "tertiary", "displayName": "Carbon Ink", "canonical": "#3b3f66", "tonalRamp": ["#21203a", "#2b2e4e", "#3b3f66", "#5a5e82", "#8487a1", "#adb0c2", "#d2d4dd", "#edece4"] },
-      "neutral-bg": { "role": "neutral", "displayName": "Coupon Stock", "canonical": "#f6f4ef", "tonalRamp": ["#212048", "#5d6167", "#8b8c90", "#c2bfae", "#d9d3c6", "#e3ddcd", "#fffdf8", "#f6f4ef"] },
-      "paper": { "role": "neutral", "displayName": "Stub Paper", "canonical": "#fffdf8", "tonalRamp": ["#212048", "#5d6167", "#9a9891", "#d9d3c6", "#e9e5d8", "#f2efe6", "#fffdf8", "#ffffff"] }
+      "primary": {
+        "role": "primary",
+        "displayName": "Register Indigo",
+        "canonical": "#2a1b6a",
+        "tonalRamp": [
+          "#1e134f",
+          "#2a1b6a",
+          "#3a2b82",
+          "#4f4096",
+          "#675aa9",
+          "#837cbe",
+          "#c7c2e6",
+          "#edece4"
+        ]
+      },
+      "brand-green": {
+        "role": "secondary",
+        "displayName": "Shelf Green",
+        "canonical": "#2abf95",
+        "tonalRamp": [
+          "#0e4a36",
+          "#0e7a55",
+          "#189a6d",
+          "#2abf95",
+          "#5ed4b3",
+          "#8fe6cd",
+          "#c1f1e2",
+          "#edece4"
+        ]
+      },
+      "brand-magenta": {
+        "role": "secondary",
+        "displayName": "Stamp Magenta",
+        "canonical": "#cf348d",
+        "tonalRamp": [
+          "#6c1c48",
+          "#a4285e",
+          "#cf348d",
+          "#dd62a8",
+          "#e78ebf",
+          "#efb5d6",
+          "#f6d6e9",
+          "#f8e9f1"
+        ]
+      },
+      "carbon": {
+        "role": "tertiary",
+        "displayName": "Carbon Ink",
+        "canonical": "#3b3f66",
+        "tonalRamp": [
+          "#21203a",
+          "#2b2e4e",
+          "#3b3f66",
+          "#5a5e82",
+          "#8487a1",
+          "#adb0c2",
+          "#d2d4dd",
+          "#edece4"
+        ]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Coupon Stock",
+        "canonical": "#f6f4ef",
+        "tonalRamp": [
+          "#212048",
+          "#5d6167",
+          "#8b8c90",
+          "#c2bfae",
+          "#d9d3c6",
+          "#e3ddcd",
+          "#fffdf8",
+          "#f6f4ef"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Stub Paper",
+        "canonical": "#fffdf8",
+        "tonalRamp": [
+          "#212048",
+          "#5d6167",
+          "#9a9891",
+          "#d9d3c6",
+          "#e9e5d8",
+          "#f2efe6",
+          "#fffdf8",
+          "#ffffff"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Nameplate", "purpose": "Page h1 and store hero only; Space Grotesk, tight tracking." },
-      "title": { "displayName": "Form Name", "purpose": "Group names, dialog titles, recommended action." },
-      "body": { "displayName": "Clerk's Fine Print", "purpose": "Reasons, narrative; Roboto, ~80ch cap." },
-      "mono": { "displayName": "Carbon Figure", "purpose": "All live figures, stamps, proofs - IBM Plex Mono, tabular." },
-      "label": { "displayName": "Content Label", "purpose": "Field labels and zone lines in Roboto sentence case - must print real content to exist; the Quiet Voice Rule bans tracked uppercase." }
+      "display": {
+        "displayName": "Nameplate",
+        "purpose": "Page h1 and store hero only; Space Grotesk, tight tracking."
+      },
+      "title": {
+        "displayName": "Form Name",
+        "purpose": "Group names, dialog titles, recommended action."
+      },
+      "body": {
+        "displayName": "Clerk's Fine Print",
+        "purpose": "Reasons, narrative; Roboto, ~80ch cap."
+      },
+      "mono": {
+        "displayName": "Carbon Figure",
+        "purpose": "All live figures, stamps, proofs - IBM Plex Mono, tabular."
+      },
+      "label": {
+        "displayName": "Content Label",
+        "purpose": "Field labels and zone lines in Roboto sentence case - must print real content to exist; the Quiet Voice Rule bans tracked uppercase."
+      }
     },
     "motion": [
-      { "name": "topline-step", "value": "steps(10, end) 1.4s infinite", "purpose": "Register block stepping across the LED rail while the feed wakes; settles flat. Never a smooth sweep." },
-      { "name": "no-ease", "value": "transition: none (or steps(2) 90ms)", "purpose": "Nothing eases in the register; state changes are steps. Buttons press once." },
-      { "name": "flash-and-hold", "value": "changed cells change in place; rows never reflow", "purpose": "Raised from the transit challenger - the clerk sees the change without losing the row." }
+      {
+        "name": "topline-step",
+        "value": "steps(10, end) 1.4s infinite",
+        "purpose": "Register block stepping across the LED rail while the feed wakes; settles flat. Never a smooth sweep."
+      },
+      {
+        "name": "no-ease",
+        "value": "transition: none (or steps(2) 90ms)",
+        "purpose": "Nothing eases in the register; state changes are steps. Buttons press once."
+      },
+      {
+        "name": "flash-and-hold",
+        "value": "changed cells change in place; rows never reflow",
+        "purpose": "Raised from the transit challenger - the clerk sees the change without losing the row."
+      }
     ],
     "breakpoints": [
-      { "name": "xs", "value": "380px" },
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "900px" }
+      {
+        "name": "xs",
+        "value": "380px"
+      },
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "900px"
+      }
     ]
   },
   "components": [
@@ -84,7 +204,7 @@
       "refersTo": "card",
       "description": "The store record: ruled fields, stamped verdict, decision print.",
       "html": "<div class=\"ds-stub\"><div class=\"ds-stub-top\"><span class=\"ds-sid\">293</span><span class=\"ds-stamp\">Needs intervention</span><span class=\"ds-why\">Why →</span></div><p class=\"ds-reason\">Store 293 health score 20.0 - underperforming projection.</p><div class=\"ds-facts\"><div><span>Health</span><b>20.0</b></div><div><span>Recovery</span><b>-18.5%</b></div></div><div class=\"ds-print\"><strong>Extend the intervention</strong></div></div>",
-      "css": ".ds-stub{position:relative;max-width:640px;padding:15px 18px 16px;border:1px solid #d9d3c6;background:#fffdf8;font-family:Roboto,system-ui,sans-serif}.ds-stub-top{display:flex;align-items:center;gap:12px}.ds-sid{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:20px;letter-spacing:-.03em;color:#2a1b6a}.ds-why{margin-left:auto;font-family:Roboto,system-ui,sans-serif;font-size:13px;font-weight:600;color:#0e7a55}.ds-reason{margin:9px 0 11px;font-size:14.5px;line-height:1.55;color:#212048}.ds-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:12px 0 0;border-top:1px solid #d9d3c6}.ds-facts span{font-family:Roboto,system-ui,sans-serif;font-size:12px;font-weight:500;color:#5d6167}.ds-facts b{display:block;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:15px;color:#3b3f66}.ds-print{margin-top:12px;padding:13px 15px;border:1px solid #d9d3c6;background:#fffdf8}.ds-print strong{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.02em;color:#2a1b6a}.ds-stamp{display:inline-block;padding:3px 10px;border:2px solid #cf348d;color:#a4285e;background:#fffdf8;font-family:Roboto,system-ui,sans-serif;font-size:12px;font-weight:700;white-space:nowrap}"
+      "css": ".ds-stub{position:relative;max-width:640px;padding:15px 18px 16px;border:1px solid #d9d3c6;background:#fffdf8;font-family:Roboto,system-ui,sans-serif}.ds-stub-top{display:flex;align-items:center;gap:12px}.ds-sid{font-family:TESCOModern,Roboto,sans-serif;font-weight:700;font-size:20px;letter-spacing:-.03em;color:#2a1b6a}.ds-why{margin-left:auto;font-family:Roboto,system-ui,sans-serif;font-size:13px;font-weight:600;color:#0e7a55}.ds-reason{margin:9px 0 11px;font-size:14.5px;line-height:1.55;color:#212048}.ds-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:12px 0 0;border-top:1px solid #d9d3c6}.ds-facts span{font-family:Roboto,system-ui,sans-serif;font-size:12px;font-weight:500;color:#5d6167}.ds-facts b{display:block;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:15px;color:#3b3f66}.ds-print{margin-top:12px;padding:13px 15px;border:1px solid #d9d3c6;background:#fffdf8}.ds-print strong{font-family:TESCOModern,Roboto,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.02em;color:#2a1b6a}.ds-stamp{display:inline-block;padding:3px 10px;border:2px solid #cf348d;color:#a4285e;background:#fffdf8;font-family:Roboto,system-ui,sans-serif;font-size:12px;font-weight:700;white-space:nowrap}"
     },
     {
       "name": "Masthead Band",
@@ -92,7 +212,7 @@
       "refersTo": "card",
       "description": "Full-bleed indigo band, white wordmark, LED rail above, deep keyline below.",
       "html": "<div class=\"ds-band\"><span class=\"ds-brand\">dunnhumby</span><span class=\"ds-div\"></span><span class=\"ds-prod\">retail decision intelligence agent</span><span class=\"ds-status\"><i></i>Live board</span></div>",
-      "css": ".ds-band{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#2a1b6a;border-bottom:4px solid #1e134f;color:#fffdf8;font-family:Roboto,system-ui,sans-serif}.ds-brand{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:22px;letter-spacing:-.04em}.ds-div{width:1px;height:22px;background:rgba(255,253,248,.32)}.ds-prod{font-size:13.5px;color:rgba(255,253,248,.85)}.ds-status{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,253,248,.88)}.ds-status i{width:7px;height:7px;background:#2abf95}"
+      "css": ".ds-band{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#2a1b6a;border-bottom:4px solid #1e134f;color:#fffdf8;font-family:Roboto,system-ui,sans-serif}.ds-brand{font-family:TESCOModern,Roboto,sans-serif;font-weight:700;font-size:22px;letter-spacing:-.04em}.ds-div{width:1px;height:22px;background:rgba(255,253,248,.32)}.ds-prod{font-size:13.5px;color:rgba(255,253,248,.85)}.ds-status{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,253,248,.88)}.ds-status i{width:7px;height:7px;background:#2abf95}"
     }
   ],
   "narrative": {
@@ -102,18 +222,50 @@
       "One signature moment per stub: the double-ring magenta ACT NOW stamp, pressed askew (-2deg).",
       "Full-bleed #2a1b6a masthead band with the white wordmark and the green LED rail.",
       "Perforation punches open every store stub; hairlines rule every field.",
-      "Carbon figures print in IBM Plex Mono; Space Grotesk nameplates; Roboto fine print.",
+      "Carbon figures print in IBM Plex Mono; all other text prints in TESCOModern - the files dunnhumby.com self-hosts.",
       "Sharp corners (0-2px), flat stock-on-stock depth, stepped motion that never eases."
     ],
     "rules": [
-      { "name": "The Stamp Rule", "body": "One stamp per stub, and the state it prints never vanishes - approval stamps GREEN, nothing erases, it cancels. #cf348d prints only where the meaning is \"act now\".", "section": "colors" },
-      { "name": "The Carbon Rule", "body": "All live figures print in IBM Plex Mono carbon ink, always tabular. Space Grotesk is reserved for nameplates; Roboto carries prose.", "section": "typography" },
-      { "name": "The Stock-on-Stock Rule", "body": "No shadows anywhere on the shelf. Depth is paper on stock separated by hairlines, with perforations and ruled fields.", "section": "elevation" },
-      { "name": "The Only-Frame Rule", "body": "Stubs wear 1px hairlines. Exactly one element per surface may carry a 2px colored frame: the ACTION REQUIRED form head. No colored border ever rides a single side of a card.", "section": "shapes" },
-      { "name": "The Deep-Ink Rule", "body": "Words print only in deep inks (#a4285e, #0e7a55, #3b3f66, #2a1b6a); the raw trio is reserved for dots, rails, fills, and stamp bodies.", "section": "colors" },
-      { "name": "The Quiet Voice Rule", "body": "The register speaks in sentence case. No tracked uppercase anywhere; IBM Plex Mono carries only figures, record ids, and the token field. Urgency is stamped, not shouted.", "section": "typography" },
-      { "name": "The Tabular Ledger Rule", "body": "The board re-renders every 60s; every number sits in mono tabular slots so re-renders never jitter or reflow rows.", "section": "typography" },
-      { "name": "The No-Shadow Ledger Rule", "body": "If a state needs emphasis, it gets a stamp or a frame - never a shadow, never a lift.", "section": "elevation" }
+      {
+        "name": "The Stamp Rule",
+        "body": "One stamp per stub, and the state it prints never vanishes - approval stamps GREEN, nothing erases, it cancels. #cf348d prints only where the meaning is \"act now\".",
+        "section": "colors"
+      },
+      {
+        "name": "The Carbon Rule",
+        "body": "All live figures print in IBM Plex Mono carbon ink, always tabular. Space Grotesk is reserved for nameplates; Roboto carries prose.",
+        "section": "typography"
+      },
+      {
+        "name": "The Stock-on-Stock Rule",
+        "body": "No shadows anywhere on the shelf. Depth is paper on stock separated by hairlines, with perforations and ruled fields.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Only-Frame Rule",
+        "body": "Stubs wear 1px hairlines. Exactly one element per surface may carry a 2px colored frame: the ACTION REQUIRED form head. No colored border ever rides a single side of a card.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Deep-Ink Rule",
+        "body": "Words print only in deep inks (#a4285e, #0e7a55, #3b3f66, #2a1b6a); the raw trio is reserved for dots, rails, fills, and stamp bodies.",
+        "section": "colors"
+      },
+      {
+        "name": "The Quiet Voice Rule",
+        "body": "The register speaks in sentence case. No tracked uppercase anywhere; IBM Plex Mono carries only figures, record ids, and the token field. Urgency is stamped, not shouted.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Ledger Rule",
+        "body": "The board re-renders every 60s; every number sits in mono tabular slots so re-renders never jitter or reflow rows.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Shadow Ledger Rule",
+        "body": "If a state needs emphasis, it gets a stamp or a frame - never a shadow, never a lift.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do stamp verdicts - one stamp per stub, stamped in the state's ink, upright on mobile.",
