@@ -286,7 +286,14 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
               {Object.keys(guard).length ? (
                 <>
                   <h3 className="section-title" style={{ marginTop: 28 }}>Verification</h3>
-                  {guardPassed ? <p className="grounding">✓ Figures traced to the record</p> : (
+                  {guardPassed ? (
+                    <p className="grounding">
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M3.5 8.5l3 3 6-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Figures traced to the record
+                    </p>
+                  ) : (
                     <div className="chips">
                       {Object.entries(guard).map(([name, value]) => (
                         <Guard key={name} name={name.replace(/_/g, ' ')} value={value} />

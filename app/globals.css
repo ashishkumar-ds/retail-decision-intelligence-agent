@@ -1,166 +1,174 @@
-/* Body is Roboto, the same face dunnhumby.com serves (OFL). Display stays Space Grotesk: dunnhumby's display face TESCOModern is proprietary with no public license, so this is the closest neutral grotesk fallback.
-   Both faces are self-hosted by next/font (app/layout.tsx), so no
-   render-blocking Google @import reaches the browser; the families arrive as
-   the CSS variables --font-roboto / --font-space-grotesk. */
-/* impeccable-disable overused-font: Space Grotesk is the documented brand fallback, not a default pick */
-/* One stylesheet for both pages: the board (/), the "why" page (/store/[id]).
-   Small-text tokens are chosen to clear WCAG AA (4.5:1) on mint, white and
-   #f6faf9 - the teal that reads fine as a 6px bar does not read fine as 10px
-   uppercase text, so --teal stays brand and --teal-text carries words. */
+/* SHELF-EDGE LABEL world — the 2026-11-01 user-initiated redesign.
+   Palette (user-pinned dunnhumby brand trio): #2abf95 green = live/safe
+   system, #2a1b6a indigo = shell ink + decision zones, #cf348d magenta =
+   the single act-now polarity (the grocer's clearance sticker). Words come
+   from AA-adapted inks: --green-ink / --pink-ink clear 4.5:1 on every tint
+   they print on. Body is Roboto (dunnhumby.com), figures Space Grotesk.
+
+   Every store = a shelf-edge label: hairline-ruled white plate, state tag
+   top-left, reason as the label's name, facts as the price field, decision
+   in the stamped indigo zone. Magenta is spent ONLY where the meaning is
+   "this one's time is short" — never as ornament. */
+/* impeccable-disable overused-font: Space Grotesk is the documented brand
+   figure face carried through the redesign, not a default pick */
 :root {
-  --teal: #2aa79f;      /* brand: bar, markers, dots (non-text) */
-  --teal-text: #12625d; /* 6.4:1 on mint - labels, links, eyebrows */
-  --mint: #f1f7f4;
-  --indigo: #25235b;
-  --ink: #202044;
-  --muted: #52636b;     /* 6.0:1 on mint */
-  --line: #d5e3df;
+  --green: #2abf95;      /* brand live/safe: topline, bars, dots, ok fills (non-text) */
+  --green-ink: #0e7a55;  /* 5.3:1 white, 4.9:1 mint - green-family words */
+  --indigo: #2a1b6a;     /* shell ink: headings, decision zones, buttons - 14.4:1 white */
+  --ink: #212048;
+  --muted: #54616b;      /* 6.0:1 on mint */
+  --line: #d7e2df;       /* the label's hairline rules */
   --surface: #fff;
-  --panel: #f7fbfa;
-  --peach: #fae9df;
-  --red-ink: #a1432c;
-  --green: #d9f0e8;
-  --yellow: #f5e9b8;
+  --mint: #f2f7f4;       /* the shelf ground */
+  --panel: #f7f9fa;
+  --green-soft: #e7f6f0; /* live/safe tint */
+  --indigo-soft: #eef0f8;/* indigo tint: review band, decision price zone */
+  --slate: #6f74a8;      /* not-a-verdict state marker (non-text) */
+  --pink: #cf348d;       /* the clearance sticker + act-now graphics only */
+  --pink-ink: #a4285e;   /* #cf348d deepened: magenta words, >=4.5:1 on rose and mint */
+  --rose: #f9edf5;
+  --rose-line: #f0c2dd;
+  --yellow: #f5e9b8;     /* degraded-state amber stays a state color (guard chips) */
   --amber-ink: #8a5a12;
 }
 * { box-sizing: border-box }
 html { -webkit-text-size-adjust: 100% }
-body { margin: 0; background: radial-gradient(circle at 88% 0%, rgba(42, 167, 159, .10), transparent 28rem), var(--mint); color: var(--ink); font-family: var(--font-roboto), system-ui, sans-serif; -webkit-font-smoothing: antialiased }
+body { margin: 0; background: radial-gradient(circle at 88% 0%, rgba(42, 191, 149, .08), transparent 30rem), radial-gradient(circle at 0% 100%, rgba(42, 27, 106, .04), transparent 26rem), var(--mint); color: var(--ink); font-family: var(--font-roboto), system-ui, sans-serif; -webkit-font-smoothing: antialiased }
 a { color: inherit; text-decoration: none }
 button { font: inherit; color: inherit }
 img { max-width: 100% }
-.topline { position: relative; overflow: hidden; height: 6px; background: var(--teal) }
-/* While the store feed loads, the brand rail carries the wait: one indigo
-   segment sweeps the 6px bar, then the bar settles back to flat teal. Nothing
-   else moves - the skeleton below is deliberately matte. */
+
+/* Browser surfaces, themed from the palette: nothing on the page reads as
+   browser stock. */
+::selection { background: color-mix(in srgb, var(--green) 26%, var(--surface)); color: var(--indigo) }
+html { scrollbar-width: thin; scrollbar-color: #c8d7d3 transparent }
+::-webkit-scrollbar { width: 12px }
+::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb { background: #c8d7d3; border: 3px solid var(--mint); border-radius: 999px }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--green) 55%, #c8d7d3) }
+.dialog-input { caret-color: var(--green-ink) }
+.dialog-input::placeholder { color: var(--muted); opacity: 1 }
+.store-id:hover, .detail-link:hover, .back:hover, .link-button { text-decoration-thickness: 1.5px; text-underline-offset: 3px }
+.store-id:hover, .detail-link:hover, .back:hover { text-decoration-color: color-mix(in srgb, var(--green-ink) 60%, transparent) }
+
+/* The shelf's power rail: a crisp green price-rail strip; while the feed
+   wakes, one indigo segment sweeps it, then it settles flat. The one
+   authored motion moment on the surface. */
+.topline { position: relative; overflow: hidden; height: 5px; background: var(--green); border-bottom: 0 }
 .topline::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 28%; background: var(--indigo); opacity: 0; transition: opacity .35s ease }
 .topline.is-loading::after { opacity: 1; animation: topline-sweep 1.6s ease-in-out infinite }
 @keyframes topline-sweep { 0% { transform: translateX(-100%) } 100% { transform: translateX(357%) } }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
-/* --- chrome ------------------------------------------------------------- */
-/* Glass pill, sized to its content: 13px of breathing room reads level with
-   the 30px header row below (the hero title has baseline + padding 6px +
-   border) - 16px vertical padding read as an inflated bar for the 13px links,
-   10px read as smaller than everything under it. 14px radius fits the cards.
-   The negative inline margins push the glass out by the bar's own inner inset
-   (1px border + 16px padding) so the wordmark and links sit EXACTLY on the
-   text column edge, aligned with the h1, summary and footer below - the
-   content mass was 17px narrower than the column it sits over. The bar also
-   reads a touch longer, meeting the column frame deliberately. */
-.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 13px 16px; margin: 12px calc(-1 * (16px + 1px)) 18px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 14px; background: rgba(255, 255, 255, .74); box-shadow: 0 6px 20px rgba(20, 20, 50, .04); backdrop-filter: blur(10px) }
+/* --- chrome: the brand band, a shelf's edge ----------------------------- */
+/* Flat white band over the ground, sealed by a hard 2px indigo edge. Label
+   language: crisp corners, no glass, nothing floating. */
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 15px 0 13px; margin: 0 0 22px; border-bottom: 2px solid var(--indigo); background: transparent }
 .brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
 img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .brand-divider { width: 1px; height: 22px; background: var(--line); flex: none }
 .brand-product { font: 600 14px var(--font-roboto), Arial, sans-serif; color: var(--muted); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .navlinks { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px; white-space: nowrap }
 .nav-status { display: flex; align-items: center; gap: 7px }
-.nav-status i, .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); display: inline-block; flex: none }
+.nav-status i, .live-dot i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; flex: none }
 
-/* Header: series context, the page name and freshness. The numbers come next,
-   so this is a header, not a hero - a 52px title pushed the first figure below
-   the fold. Freshness rides the identity line beside the title. */
-.board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 8px 0 22px; border-bottom: 1px solid var(--line) }
-.board-head h1 { font: 700 30px/1.05 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.055em; margin: 6px 0 0 }
-/* Freshness qualifies every number below it, so it rides the identity line
-   rather than the footer. Eyebrow weight keeps it quiet; stated once. */
-.board-asof { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--teal-text); white-space: nowrap }
-.eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--teal-text); text-wrap: balance }
+/* --- identity: the shelf strip ------------------------------------------ */
+/* The one uppercase strip the header owns: series context left, freshness
+   right. The h1 is the shelf's nameplate - no kicker above it, this strip
+   IS content (campaign, window, figure freshness). */
+.board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 0 0 20px; border-bottom: 1px solid var(--line) }
+.board-head h1 { font: 700 30px/1.05 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.055em; margin: 6px 0 0; color: var(--indigo) }
+.eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10.5px; font-weight: 700; color: var(--indigo); text-wrap: balance }
+.board-asof { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--green-ink); white-space: nowrap }
 
-/* --- summary: the gate sentence, then three counts that add up to it ----- */
-.summary { margin: 26px 0 30px; padding: 20px; border: 1px solid rgba(213, 227, 223, .9); border-radius: 20px; background: rgba(255, 255, 255, .5) }
-.gate-line { display: flex; align-items: baseline; gap: 9px; margin: 0 0 16px; font-size: 16px; line-height: 1.45 }
-.gate-line strong { flex: none; font: 700 27px/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.05em; color: var(--indigo) }
+/* --- summary: the gate sentence, then three count plates ---------------- */
+.summary { margin: 26px 0 30px; padding: 22px 22px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface) }
+.gate-line { display: flex; align-items: baseline; gap: 9px; margin: 0 0 18px; font-size: 16px; line-height: 1.45 }
+.gate-line strong { flex: none; font: 700 28px/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.05em; color: var(--indigo) }
 .gate-line span { min-width: 0 }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch }
-.tile { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: inherit }
-.tile:hover { border-color: var(--teal) }
-.tile:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.tile { display: flex; flex-direction: column; gap: 4px; min-height: 104px; padding: 15px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: inherit }
+.tile:hover { border-color: color-mix(in srgb, var(--indigo) 28%, var(--line)) }
+.tile:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .tile-count { font: 700 34px/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.06em }
 .tile-label { font-size: 12.5px; font-weight: 600; line-height: 1.35; color: var(--muted); text-wrap: balance }
 .tiles-note { margin: 8px 2px 0; font-size: 11.5px; line-height: 1.45; color: var(--muted) }
-.tile.attention { border-color: #e3b4a6; background: #fdf4f0 }
-.tile.attention .tile-count { color: var(--red-ink) }
-.tile.review { border-color: #cfd9d7; background: var(--panel) }
-.tile.idle .tile-count { color: var(--teal-text) }
+/* The banded plates: each state tops its plate with its color - green for
+   the settled shelf, slate for the gap, magenta for the clearance corner. */
+.tile.attention { border-color: var(--rose-line); background: var(--rose) }
+.tile.attention .tile-count { color: var(--pink) }
+.tile.review { background: var(--indigo-soft) }
+.tile.review .tile-count { color: var(--indigo) }
+.tile.idle { border-color: color-mix(in srgb, var(--green-ink) 22%, var(--surface)); background: var(--green-soft) }
+.tile.idle .tile-count { color: var(--green-ink) }
 
-/* --- one section per group --------------------------------------------- */
-/* The header is the only boxed part of a closed group; open groups hang
-   store cards under it. Nothing nests a bordered card inside another. */
+/* --- one shelf per group ------------------------------------------------ */
 .section { margin: 0 0 16px }
-/* Programmatic focus target for tile navigation: quiet on purpose - the
-   section heading is the landmark the eye is already at. */
 .section:focus { outline: none }
-.bucket-head { display: flex; width: 100%; align-items: center; gap: 12px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font: inherit; color: inherit; text-align: left; cursor: pointer }
-.bucket-head:hover { border-color: var(--teal) }
-.bucket-head:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
-.section.attention .bucket-head { border-color: #e3b4a6; background: #fdf4f0 }
-.section.review .bucket-head { background: var(--panel) }
-/* The h2 carries the toggle button (a button must not contain a heading), so
-   the heading itself stays margin-less and unboxed - the section box remains
-   the button. */
+.bucket-head { display: flex; width: 100%; align-items: center; gap: 12px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: inherit; color: inherit; text-align: left; cursor: pointer }
+.bucket-head:hover { border-color: color-mix(in srgb, var(--indigo) 35%, var(--line)) }
+.bucket-head:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .bucket-heading { margin: 0 }
 .bucket-head-label { display: flex; flex-direction: column; min-width: 0; flex: 1 }
-.bucket-title { font: 600 19px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em }
+.bucket-title { font: 600 19px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; color: var(--indigo) }
 .bucket-count { display: block; margin-top: 3px; font-size: 12px; color: var(--muted) }
-.bucket-marker { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--teal) }
-.section.attention .bucket-marker { background: #e7886e }
-.section.review .bucket-marker { background: #8fa5a2 }
-.bucket-toggle { margin-left: auto; width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: var(--panel); color: var(--muted); transition: transform .2s ease, background .2s ease, color .2s ease }
-.bucket-head:hover .bucket-toggle { border-color: var(--teal); color: var(--teal-text) }
+/* The shelf marker: a small printed tab, keyed by the group's role. */
+.bucket-marker { width: 14px; height: 9px; flex: none; border-radius: 2px; background: var(--slate) }
+.section.attention .bucket-head { border-color: var(--rose-line); background: var(--rose) }
+.section.attention .bucket-marker { background: var(--pink) }
+.section.review .bucket-head { background: var(--indigo-soft) }
+.section.review .bucket-marker { background: var(--slate) }
+.section.idle .bucket-head { background: var(--green-soft) }
+.section.idle .bucket-marker { background: var(--green) }
+.bucket-toggle { margin-left: auto; width: 34px; height: 34px; flex: none; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--muted); transition: transform .2s ease, background .2s ease, color .2s ease }
+.bucket-head:hover .bucket-toggle { border-color: var(--indigo); color: var(--indigo) }
 .bucket-toggle.open { transform: rotate(180deg); background: var(--indigo); border-color: var(--indigo); color: #fff }
-/* One note per group, never one per row. Its left edge matches the store
-   card's inner text, so the group reads as one column. */
 .bucket-note, .caveat, .narrative, .hero p, .dialog-sub, .dialog-note { text-wrap: pretty }
-.bucket-note { margin: 10px 18px 0; max-width: 84ch; font-size: 12.5px; line-height: 1.55; color: var(--muted) }
+.bucket-note { margin: 10px 4px 0; max-width: 84ch; font-size: 12.5px; line-height: 1.55; color: var(--muted) }
 .shared-decision { margin-top: 10px }
-.show-toggle { display: block; margin: 12px auto 2px; padding: 7px 18px; border: 1px solid var(--line); border-radius: 999px; background: none; font: 600 12px var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
-.show-toggle:hover { border-color: var(--teal) }
-.show-toggle:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.show-toggle { display: block; margin: 12px auto 2px; padding: 7px 18px; border: 1px solid var(--line); border-radius: 4px; background: none; font: 600 12px var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
+.show-toggle:hover { border-color: var(--indigo) }
+.show-toggle:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .empty { padding: 6px 0 10px; color: var(--muted); font-size: 13px }
 
-/* --- store cards ------------------------------------------------------- */
-/* Every element in the card shares one left edge: id, reason, facts, decision,
-   action. The old 128px id column left a gutter under the id and floated
-   "Why" outside the decision box on its own column. */
-.store-row { margin-top: 10px; padding: 15px 18px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface) }
-.store-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 9px }
+/* --- store labels -------------------------------------------------------- */
+/* Each store is one shelf-edge label: hairline plate, state tag top-left,
+   reason as the label's name, facts as the price field, decision stamped in
+   the indigo zone. One element per label carries the state color - the
+   magenta clearance sticker below - never a rainbow of equal accents. */
+.store-row { margin-top: 10px; padding: 15px 18px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface) }
+.store-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 9px }
 .store-leading { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap }
 .store-id { font: 700 17px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; color: var(--indigo) }
 .store-id:hover { text-decoration: underline }
-/* The why page's own navigation, right of the card header - named, teal,
-   never dependent on hover. */
-.detail-link { flex: none; font-size: 12px; font-weight: 700; color: var(--teal-text); white-space: nowrap }
+.detail-link { flex: none; font-size: 12px; font-weight: 700; color: var(--green-ink); white-space: nowrap }
 .detail-link:hover { text-decoration: underline }
-.state { padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap }
-/* "On track" and "Watch" differ: the moving states get the quiet green chip,
-   the flat one stays neutral - same rule the tile caption follows. */
-.state.state-ok { background: var(--green); border-color: rgba(18, 98, 93, .25); color: var(--teal-text) }
-.state.state-watch { background: #eef1f0 }
+
+/* The state tag. On the action shelf it takes its one signature moment: the
+   slightly die-cut clearance sticker in magenta - this label's time is
+   short. Settled labels wear straight tags, quiet by design. */
+.state { padding: 3px 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); font-size: 11px; line-height: 1.4; color: var(--muted); white-space: nowrap }
+.state.state-ok { background: var(--green-soft); border-color: color-mix(in srgb, var(--green-ink) 25%, transparent); color: var(--green-ink) }
+.state.state-watch { background: var(--panel) }
+.section.attention .store-row .state { background: var(--surface); border: 1.5px solid var(--pink); color: var(--pink-ink); font-weight: 700; border-radius: 6px; transform: rotate(-1.4deg); box-shadow: 0 2px 5px rgba(42, 27, 106, .10) }
+
 .row-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 11px }
-/* The window rides the reason line, right-aligned with the feed chip. */
 .row-meta { display: inline-flex; align-items: center; gap: 8px; flex: none }
 .window-note { font-size: 12px; font-weight: 600; color: var(--indigo); white-space: nowrap }
-/* The reason is the card's headline: it is the only text that explains why the
-   store is here, and it is recorded evidence rather than our summary of it. */
-.reason { margin: 0; font-size: 14.5px; line-height: 1.55; max-width: 80ch; text-wrap: pretty }
+.reason { margin: 0; font-size: 14.5px; line-height: 1.55; max-width: 80ch; text-wrap: pretty; color: var(--ink) }
+/* Price field: the two facts, split by a hairline like a label rule. */
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 0; padding: 11px 0 0; border-top: 1px solid var(--line) }
 .fact { margin: 0; min-width: 0 }
 .fact-label { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
 .fact-value { margin: 3px 0 0; font: 600 15px/1.3 var(--font-roboto), sans-serif; color: var(--indigo) }
-.status { border-radius: 99px; padding: 5px 10px; font-size: 10px; font-weight: 700; white-space: nowrap }
-/* One chip per forecast state, plus a neutral default: an unrecognized
-   forecast_status token must not borrow a class that implies a verdict. */
-.status.error { background: var(--peach); color: var(--red-ink) }
-.status.no_data { background: #eef1f0; color: var(--muted) }
-.status.other { background: #eef1f0; color: var(--muted) }
+.status { border-radius: 4px; padding: 5px 10px; font-size: 10px; font-weight: 700; white-space: nowrap }
+.status.error { background: var(--rose); color: var(--pink-ink) }
+.status.no_data { background: var(--indigo-soft); color: var(--muted) }
+.status.other { background: var(--indigo-soft); color: var(--muted) }
 
-/* --- the decision block ------------------------------------------------ */
-/* The verdict owns the card: the Recommended action is the biggest type on
-   the card (after the store id); Fallback and Commitment run at the smaller
-   companion size. */
-.decision { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: var(--panel) }
-.decision-kicker { display: block; margin-bottom: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--teal-text) }
+/* --- the decision block: the stamped price zone -------------------------- */
+.decision { margin-top: 12px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--indigo) 12%, var(--surface)); border-radius: 4px; background: var(--indigo-soft) }
+.decision-kicker { display: block; margin-bottom: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--green-ink) }
 .decision-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
 .decision-grid span { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
 .decision-grid strong { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.4; color: var(--indigo) }
@@ -168,160 +176,133 @@ img.brand-logo { display: block; height: 19px; width: auto; flex: none }
 .decision p { margin: 10px 0 0; font-size: 13px; line-height: 1.5 }
 .decision-note { display: block; margin-top: 8px; font-size: 11.5px; line-height: 1.45; color: var(--muted) }
 
-/* --- the one write action on the board -------------------------------- */
+/* --- the one write action ------------------------------------------------ */
 .card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px }
 .approve-hint { font-size: 11.5px; color: var(--muted) }
-.approve-button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 20px; border: 1px solid var(--indigo); border-radius: 999px; background: var(--indigo); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer }
-.approve-button:hover { background: #1b1a45 }
-.approve-button:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
-.approved-note { font-size: 12px; font-weight: 700; color: var(--teal-text) }
+.approve-button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 20px; border: 1px solid var(--indigo); border-radius: 6px; background: var(--indigo); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer }
+.approve-button:hover { background: #1e134f }
+.approve-button:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
+.approved-note { font-size: 12px; font-weight: 700; color: var(--green-ink) }
 
-/* Compact per-store review for the no-signal list: the id stays a link and
-   the "Review" button beside it records that one store. The check glyph was
-   dropped: a ✓ reads "already done", and this button is an action. */
+/* Compact per-store review in the no-signal list. */
 .id-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px }
-.id-item { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); overflow: hidden }
+.id-item { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 4px; background: var(--indigo-soft); overflow: hidden }
 .id-chip { display: inline-flex; align-items: center; padding: 8px 10px 8px 14px; font-size: 12.5px; font-weight: 600; color: var(--indigo) }
 .id-chip:hover { background: var(--surface) }
-.chip-approve { display: inline-flex; align-items: center; justify-content: center; min-width: 47px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--teal-text); font: 700 11px/1.2 var(--font-roboto), sans-serif; letter-spacing: .04em; cursor: pointer }
-.chip-approve:hover { background: var(--green) }
-.chip-approve:focus-visible { outline: 2px solid var(--teal-text); outline-offset: -2px }
-/* One token, one pass over the visible pending stores: the listed chips stay
-   the fine-grained control; this is the wave-rider's accelerator. */
-.bulk-review { display: block; margin: 10px auto 2px; padding: 9px 20px; border: 1px solid var(--line); border-radius: 999px; background: none; font: 600 12.5px var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
-.bulk-review:hover { border-color: var(--teal); color: var(--teal-text) }
-.bulk-review:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.chip-approve { display: inline-flex; align-items: center; justify-content: center; min-width: 47px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--green-ink); font: 700 11px/1.2 var(--font-roboto), sans-serif; letter-spacing: .04em; cursor: pointer }
+.chip-approve:hover { background: var(--green-soft) }
+.chip-approve:focus-visible { outline: 2px solid var(--indigo); outline-offset: -2px }
+.bulk-review { display: block; margin: 10px auto 2px; padding: 9px 20px; border: 1px solid var(--line); border-radius: 4px; background: none; font: 600 12.5px var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
+.bulk-review:hover { border-color: var(--indigo) }
+.bulk-review:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 
-/* --- approve dialog ---------------------------------------------------- */
-.approve-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(20, 20, 50, .18) }
-/* Native <dialog> showModal() traps FOCUS behind the backdrop, but wheel and
-   touch could still scroll the board underneath - a reviewer could scroll the
-   record they are approving out of the viewport mid-decision. Lock the page
-   for as long as the sheet is open (:has() is baseline CSS, no JS state). */
+/* --- approve dialog: the price check ------------------------------------- */
+.approve-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(21, 14, 62, .22) }
 body:has(dialog.approve-dialog[open]) { overflow: hidden }
-.approve-dialog::backdrop { background: rgba(18, 22, 38, .45) }
+.approve-dialog::backdrop { background: rgba(31, 20, 79, .5) }
 .dialog-body { padding: 22px 22px 18px }
-.dialog-eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10px; font-weight: 700; color: var(--teal-text) }
-.dialog-title { font: 700 21px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; margin: 6px 0 4px }
+.dialog-eyebrow { display: block; text-transform: uppercase; letter-spacing: .16em; font-size: 10px; font-weight: 700; color: var(--green-ink) }
+.dialog-title { font: 700 21px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; margin: 6px 0 4px; color: var(--indigo) }
 .dialog-sub { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--muted) }
-.dialog-recommend { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 13px; line-height: 1.5 }
+.dialog-recommend { margin: 0 0 16px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--indigo) 12%, var(--surface)); border-radius: 4px; background: var(--indigo-soft); font-size: 13px; line-height: 1.5 }
 .dialog-recommend strong { color: var(--indigo) }
 .dialog-label { display: block; margin-bottom: 6px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted) }
-.dialog-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: 400 14px var(--font-roboto), sans-serif; color: var(--ink) }
-.dialog-input:focus { outline: 2px solid var(--teal-text); outline-offset: 1px; border-color: transparent }
+.dialog-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); font: 400 14px var(--font-roboto), sans-serif; color: var(--ink) }
+.dialog-input:focus { outline: 2px solid var(--indigo); outline-offset: 1px; border-color: transparent }
 .dialog-note { margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
 .dialog-token-intro { margin: 0 0 8px }
-.dialog-error { margin: 12px 0 0; padding: 9px 11px; border: 1px solid #edc7b9; border-radius: 9px; background: #fdf4f0; color: #8e4c40; font-size: 12px; line-height: 1.45 }
+.dialog-error { margin: 12px 0 0; padding: 9px 11px; border: 1px solid var(--rose-line); border-radius: 4px; background: var(--rose); color: var(--pink-ink); font-size: 12px; line-height: 1.45 }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px }
-.link-button { border: 0; padding: 0; background: none; color: var(--teal-text); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer }
-.button-ghost { min-height: 38px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: none; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer }
-.button-ghost:hover { border-color: var(--teal) }
-.button-ghost:focus-visible, .button-primary:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
-.button-primary { min-height: 38px; padding: 0 20px; border: 1px solid var(--indigo); border-radius: 999px; background: var(--indigo); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer }
-.button-primary:hover { background: #1b1a45 }
+.link-button { border: 0; padding: 0; background: none; color: var(--green-ink); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer }
+.button-ghost { min-height: 38px; padding: 0 16px; border: 1px solid var(--line); border-radius: 6px; background: none; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer }
+.button-ghost:hover { border-color: var(--indigo) }
+.button-ghost:focus-visible, .button-primary:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
+.button-primary { min-height: 38px; padding: 0 20px; border: 1px solid var(--indigo); border-radius: 6px; background: var(--indigo); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer }
+.button-primary:hover { background: #1e134f }
 .button-primary:disabled { opacity: .55; cursor: progress }
 
 .caveat { margin: 6px 0 28px; max-width: 84ch; font-size: 11.5px; line-height: 1.55; color: var(--muted) }
-.notice { margin: 16px 0; padding: 13px 16px; border: 1px solid #edc7b9; border-radius: 12px; background: var(--peach); color: #8e4c40; font-size: 13px }
-/* Quiet refresh feedback after the 60s poll: stated, then gone. */
+.notice { margin: 16px 0; padding: 13px 16px; border: 1px solid var(--rose-line); border-radius: 6px; background: var(--rose); color: var(--pink-ink); font-size: 13px }
 .refresh-note { margin: 6px 0 0; font-size: 11.5px; color: var(--muted) }
 
-/* Loading the store feed: a retail-shaped skeleton, not a blank page. */
+/* Loading the store feed: shelf labels being printed, matte plates. */
 .loading-board { padding: 22px 0 8px }
 .loading-intro { display: flex; align-items: flex-start; gap: 15px }
-.loading-mark { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--teal-text); box-shadow: 0 8px 22px rgba(20, 20, 50, .06) }
-.loading-kicker { margin: 1px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--teal-text) }
-.loading-title { margin: 0; font: 700 22px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em }
+.loading-mark { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--line); border-radius: 6px; background: var(--indigo-soft); color: var(--indigo) }
+.loading-kicker { margin: 1px 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--green-ink) }
+.loading-title { margin: 0; font: 700 22px/1.2 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.03em; color: var(--indigo) }
 .loading-copy { margin: 6px 0 0; max-width: 62ch; font-size: 13px; line-height: 1.55; color: var(--muted) }
 .loading-skeleton { display: grid; gap: 14px; margin-top: 24px }
-.skeleton-line, .skeleton-tile, .skeleton-card { display: block; border: 1px solid var(--line); border-radius: 14px; background: var(--panel) }
-.skeleton-line { width: min(430px, 52%); height: 28px; border-radius: 999px }
+.skeleton-line, .skeleton-tile, .skeleton-card { display: block; border: 1px solid var(--line); border-radius: 6px; background: var(--panel) }
+.skeleton-line { width: min(430px, 52%); height: 28px; border-radius: 4px }
 .skeleton-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
 .skeleton-tile { height: 96px }
-.skeleton-card { height: 210px; border-radius: 18px }
+.skeleton-card { height: 210px; border-radius: 6px }
 .loading-note { margin: 14px 0 0; font-size: 11.5px; color: var(--muted) }
 @media (prefers-reduced-motion: reduce) {
-  /* Motion off: hide the sweeping wedge entirely instead of parking it
-     mid-bar, so the loading bar reads as flat matte teal, and let the
-     bucket toggle's open/close rotate snap without transition. */
   .topline.is-loading::after { animation: none; opacity: 0; transition: none }
   .bucket-toggle { transition: none }
 }
 
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px }
 
-/* --- store detail (/store/[id]) - the "why" page ----------------------- */
+/* --- store detail (/store/[id]) - the label's fine print ------------------ */
 .hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 34px 0 30px }
-.hero h1 { font: 700 clamp(30px, 4.5vw, 46px)/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.06em; margin: 13px 0 18px }
+.hero h1 { font: 700 clamp(30px, 4.5vw, 46px)/1 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.06em; margin: 15px 0 13px; color: var(--indigo) }
 .hero p { max-width: 540px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55 }
 .hero-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--muted); font-size: 12px; text-align: right }
-.hero-meta strong { color: var(--indigo); font-size: 13px }
-.live-dot { display: flex; align-items: center; gap: 8px; color: var(--teal-text); font-weight: 700; margin-bottom: 2px }
-.back { display: inline-block; font-weight: 700; font-size: 13px; color: var(--teal-text) }
+.hero-meta strong { color: var(--green-ink); font-size: 13px }
+.live-dot { display: flex; align-items: center; gap: 8px; color: var(--green-ink); font-weight: 700; margin-bottom: 2px }
+.back { display: inline-block; font-weight: 700; font-size: 13px; color: var(--green-ink) }
 .back:hover { text-decoration: underline }
-/* Shared keyboard focus treatment: every interactive link that had no
-   focus style of its own (brand wordmark, store ids, id chips, the Why
-   arrows, the Back-for-board link). */
 .store-id:focus-visible,
 .detail-link:focus-visible,
 .id-chip:focus-visible,
 .brand:focus-visible,
-.back:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.back:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .detail-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; padding-bottom: 24px }
-.panel { padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0 }
+/* Label plates on the why page: straight hairline paper - state color lives
+   in words, zones and the sticker, never in a colored edge. */
+.panel { padding: 22px 26px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); min-width: 0 }
 .section-title { font: 700 15px var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.01em; color: var(--indigo); margin: 0 0 14px }
 .narrative { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 }
-.grounding { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--teal-text) }
+.grounding { display: inline-flex; align-items: center; gap: 7px; margin: 0; font-size: 12.5px; font-weight: 600; color: var(--green-ink) }
+.grounding svg { flex: none; color: var(--green) }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px }
-.chips .badge { border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--panel); font-size: 12px; color: var(--indigo) }
-.chips .badge.ok { border-color: var(--teal); background: var(--green); color: var(--teal-text) }
+.chips .badge { border: 1px solid var(--line); border-radius: 4px; padding: 5px 12px; background: var(--indigo-soft); font-size: 12px; color: var(--indigo) }
+.chips .badge.ok { border-color: color-mix(in srgb, var(--green-ink) 25%, transparent); background: var(--green-soft); color: var(--green-ink) }
 .chips .badge.warn { border-color: #e8d79a; background: var(--yellow); color: var(--amber-ink) }
 .kv { display: flex; justify-content: space-between; gap: 18px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px }
 .kv:last-child { border-bottom: 0 }
 .kv span { color: var(--muted); flex: none }
 .kv strong { color: var(--indigo); text-align: right; max-width: 62%; overflow-wrap: anywhere }
 .directional-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); font-style: italic }
-/* The one citable provenance line: the record id a stakeholder can quote
-   back, kept out of the prose and out of the narrative layer. */
 .provenance { margin: 26px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.5; color: var(--muted) }
-.provenance code { font: 600 11px/1.5 var(--font-roboto), monospace; color: var(--teal-text); overflow-wrap: anywhere }
+.provenance code { font: 600 11px/1.5 var(--font-roboto), monospace; color: var(--pink-ink); overflow-wrap: anywhere }
 
-/* --- "Ask about this store" (the off-path LLM advisory) ------------------ */
-/* A third panel under the evidence grid, inheriting the panel card and the
-   .decision result treatment; every state answers in sentences (never raw
-   statuses) and every affordance admits the layer's budget caps. */
+/* --- "Ask about this store" (the off-path LLM advisory) ------------------- */
+/* The advisory is the live layer, so it wears the live tint; its honesty
+   kicker carries the green ink, and its result card stays a white plate. */
 .detail-grid { padding-bottom: 24px }
-.ask-panel { margin: 0 0 40px; padding: 24px 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0 }
+.ask-panel { margin: 0 0 40px; padding: 22px 26px; border: 1px solid color-mix(in srgb, var(--green-ink) 22%, var(--surface)); border-radius: 6px; background: var(--green-soft); min-width: 0 }
 .ask-sub { margin: -4px 0 16px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 70ch; text-wrap: pretty }
 .ask-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px }
-.ask-preset { border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; background: var(--panel); font: 600 12.5px var(--font-roboto), sans-serif; color: var(--teal-text); cursor: pointer }
-.ask-preset:hover { border-color: var(--teal) }
+.ask-preset { border: 1px solid var(--line); border-radius: 4px; padding: 8px 14px; background: var(--surface); font: 600 12.5px var(--font-roboto), sans-serif; color: var(--green-ink); cursor: pointer }
+.ask-preset:hover { border-color: var(--green-ink) }
 .ask-preset:disabled { opacity: .55 }
-.ask-preset:focus-visible { outline: 2px solid var(--teal-text); outline-offset: 2px }
+.ask-preset:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .ask-row { display: flex; gap: 9px }
 .ask-row .dialog-input { width: auto; flex: 1; min-width: 0 }
 .ask-status { margin: 14px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
-/* Result card sits in the .decision family (tinted panel fill, uppercase
-   teal kicker) - the kicker typography carries the accent; no colored edge
-   (the detector's most-recognized AI-UI tell). */
-.ask-result { margin-top: 18px; padding: 12px 14px; border-radius: 10px; background: var(--panel) }
-.ask-honesty { display: block; margin: 0 0 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--teal-text) }
+.ask-result { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface) }
+.ask-honesty { display: block; margin: 0 0 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--green-ink) }
 .ask-action { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink) }
 .ask-action strong { font: 700 15px/1.3 var(--font-space-grotesk), var(--font-roboto), sans-serif; letter-spacing: -.02em; color: var(--indigo) }
 .ask-note { margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink); text-wrap: pretty }
 
-/* --- narrow screens ---------------------------------------------------- */
-/* Breakpoints, smallest last so later rules win: ≤900px stacks the detail
-   grid; ≤640px is the phone tier (compact tiles/cards, product name drops
-   out); ≤380px is the small-phone tier (one-column decision grid). 375px
-   devices are covered by 640 + 380 together — there is no separate 375px
-   tier. */
-/* "retail decision intelligence agent" cannot sit beside the wordmark below
-   600px, so the product name and its divider drop out - the wordmark alone
-   identifies the page, and the divider would dangle with nothing on its right. */
+/* --- narrow screens ------------------------------------------------------ */
 @media (max-width: 900px) {
   .shell { padding: 0 20px }
-  .board-head { padding-top: 4px }
   .detail-grid { grid-template-columns: 1fr }
   .hero { display: block }
   .hero-meta { align-items: flex-start; text-align: left; margin-top: 20px }
@@ -330,22 +311,15 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 
 @media (max-width: 640px) {
   .brand-product, .brand-divider { display: none }
-  /* Horizontal padding stays INSIDE the pill: zeroing it puts the wordmark
-     and status dot flush against the rounded glass corners. Height mirrors
-     the desktop tier (13px) so the bar keeps its presence beside 27px h1.
-     Same edge alignment as desktop: the glass slides out by the bar's own
-     inner inset (1px border + 12px padding) so the wordmark and links sit on
-     the 20px column edge the headers below use. */
-  .nav { padding: 13px 12px; margin: 10px calc(-1 * (12px + 1px)) 14px }
+  .nav { padding: 13px 0 11px; margin: 0 0 16px }
   .board-head h1 { font-size: 27px }
-  /* Drop to its own left-aligned line; allow a break at 320px. */
   .board-asof { white-space: normal; letter-spacing: .12em; flex-basis: 100% }
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
   .summary { margin: 18px 0 20px }
   .loading-board { padding: 16px 0 4px }
   .loading-intro { gap: 12px }
-  .loading-mark { width: 40px; height: 40px; border-radius: 12px }
+  .loading-mark { width: 40px; height: 40px }
   .loading-title { font-size: 19px }
   .loading-copy { font-size: 12.5px }
   .loading-skeleton { gap: 10px; margin-top: 18px }
@@ -353,23 +327,19 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .skeleton-tile { height: 74px }
   .skeleton-card { height: 170px }
 
-  /* Three compact tiles instead of three stacked cards: the first store now
-     starts on the first screen, not after 500px of summary. */
   .tiles { gap: 8px }
-  .tile { min-height: 0; padding: 11px 10px 12px; border-radius: 12px; gap: 3px }
+  .tile { min-height: 0; padding: 11px 10px 12px; gap: 3px }
   .tile-count { font-size: 26px }
   .tile-label { font-size: 10.5px; letter-spacing: 0 }
 
   .bucket-head { padding: 13px 14px; gap: 10px }
   .bucket-title { font-size: 17px }
   .bucket-note { margin: 9px 14px 0; font-size: 12px }
-  .store-row { padding: 13px 14px 14px; border-radius: 12px }
+  .store-row { padding: 13px 14px 14px }
   .reason { font-size: 14px }
   .facts { gap: 8px 10px }
   .fact-value { font-size: 13.5px }
   .decision { padding: 11px 12px }
-  /* The ask form stacks on phones: a full-width input, then a full-width
-     button - the 9px desktop gap leaves the button too small to tap. */
   .ask-panel { padding: 20px 18px; margin-bottom: 32px }
   .ask-row { flex-direction: column }
   .ask-row .dialog-input { width: 100% }
@@ -379,29 +349,26 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .card-actions { margin-top: 11px }
   .approve-hint { display: none }
   .approve-button { width: 100%; min-height: 42px }
-  /* Touch targets: the pill and its action were 27-30px, too small to hit.
-     The whole item becomes a 44px target at the phone tier. */
   .id-list { gap: 9px }
   .id-item { min-height: 44px }
   .id-chip { padding: 8px 12px; font-size: 13px }
   .chip-approve { min-width: 47px; padding: 0 12px; font-size: 12px }
   .bulk-review { min-height: 44px }
   .show-toggle { min-height: 40px; padding: 8px 20px; font-size: 12.5px }
-  .panel { padding: 18px 16px; border-radius: 14px }
+  .panel { padding: 18px 16px }
   .hero { padding: 22px 0 22px }
   .hero h1 { font-size: 32px }
   .kv { gap: 12px; font-size: 12.5px }
-  /* A long engine sentence right-aligned over three lines has no readable
-     left edge; stack it instead. Short numeric rows stay label/value. */
   .kv-long { display: block }
   .kv-long span { display: block }
   .kv-long strong { display: block; max-width: 100%; margin-top: 4px; text-align: left }
-  /* Citation and guard pills become full-width rows: a 300px pill cannot keep
-     "type · id · detail" on one line, and the wrapped version read as rubble. */
   .chips { flex-direction: column; align-items: stretch }
-  .chips .badge { width: 100%; border-radius: 10px }
-  .approve-dialog { position: fixed; inset: auto 0 0 0; width: 100%; max-width: 100%; margin: 0; border-radius: 18px 18px 0 0 }
+  .chips .badge { width: 100% }
+  .approve-dialog { position: fixed; inset: auto 0 0 0; width: 100%; max-width: 100%; margin: 0; border-radius: 12px 12px 0 0 }
   .dialog-body { padding: 20px 18px 18px }
+  /* The clearance sticker stands back up when the shelf gets narrow: a
+     rotated tag bites the row edge at label scale. */
+  .section.attention .store-row .state { transform: none }
 }
 
 @media (max-width: 380px) {
@@ -410,18 +377,20 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .tile-label { font-size: 10px }
 }
 
-/* --- interaction polish -------------------------------------------------
-   The board is intentionally quiet: depth comes from consistent surfaces and
-   motion only clarifies a state change. */
+/* --- interaction polish ---------------------------------------------------
+   The shelf is intentionally quiet: color carries meaning, not decoration.
+   Depth = settled paper on paper, motion = one state change at a time. */
 :root { color-scheme: light; }
 
 :where(a, button, input, summary):focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--teal) 72%, white);
+  /* #0e7a55 on mint clears the 3:1 focus-indicator minimum where the lighter
+     live green does not. */
+  outline: 3px solid var(--green-ink);
   outline-offset: 3px;
 }
 
 .tile, .bucket-head, .store-row, .panel, .ask-panel {
-  box-shadow: 0 1px 1px rgba(20, 20, 50, .025), 0 8px 24px rgba(20, 20, 50, .035);
+  box-shadow: 0 1px 1px rgba(21, 14, 62, .02), 0 6px 18px rgba(21, 14, 62, .03);
 }
 
 .tile, .bucket-head, .store-row, .panel, .ask-panel, .ask-preset, .approve-button, .button-primary, .button-ghost, .show-toggle {
@@ -429,7 +398,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 }
 
 .tile:hover, .bucket-head:hover, .store-row:hover, .panel:hover, .ask-panel:hover {
-  box-shadow: 0 2px 2px rgba(20, 20, 50, .035), 0 12px 28px rgba(20, 20, 50, .06);
+  box-shadow: 0 2px 2px rgba(21, 14, 62, .03), 0 10px 22px rgba(21, 14, 62, .05);
 }
 
 .tile:active, .bucket-head:active, .show-toggle:active, .button-ghost:active {
@@ -438,10 +407,16 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 
 .approve-button:hover, .button-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 7px 16px rgba(38, 36, 92, .18);
+  box-shadow: 0 7px 16px rgba(42, 27, 106, .22);
 }
 
 button:disabled { cursor: not-allowed; }
+
+/* Data figures in one digit width: the 60s poll re-renders counts every
+   minute and proportional numerals jitter as they change. */
+.tile-count, .bucket-count, .gate-line strong, .fact-value, .window-note, .board-asof, .kv strong, .id-chip, .provenance, .decision p {
+  font-variant-numeric: tabular-nums
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
