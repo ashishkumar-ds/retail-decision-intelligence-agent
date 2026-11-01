@@ -35,18 +35,18 @@ const ibmPlexMono = IBM_Plex_Mono({
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://retail-decision-intelligence-agent.vercel.app'
 
 const SITE_DESCRIPTION =
-  'Store review. Which stores need a decision, which have no signal to judge, and which need no action.'
+  'Unlock the value of data. Smarter decisions, stronger collaboration, sustainable growth - store recovery on live dunnhumby customer science.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'Retail Decision Intelligence Agent',
-    template: '%s · Retail Decision Intelligence Agent',
+    default: 'Retail Decision Intelligence · dunnhumby',
+    template: '%s · dunnhumby',
   },
   description: SITE_DESCRIPTION,
   openGraph: {
     type: 'website',
-    siteName: 'Retail Decision Intelligence Agent',
+    siteName: 'dunnhumby',
     description: SITE_DESCRIPTION,
   },
   twitter: {

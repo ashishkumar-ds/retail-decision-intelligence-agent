@@ -60,7 +60,13 @@ function Footer({ extra, probe }: { extra?: string; probe?: boolean }) {
 
   return (
     <footer className="footer">
-      <span>© 2026 Ashish Kumar · data: dunnhumby</span>
+      {/* Brand voice is dunnhumby's own copy (dunnhumby.com, fetched 2026-11-01):
+          the house strapline and the "Unlock the value of data" positioning line. */}
+      <span className="footer-brandline">
+        The science of serving every customer. Together. At scale.
+        <br />
+        Unlock the value of data · © 2026 dunnhumby limited
+      </span>
       <span>{right}</span>
     </footer>
   )
