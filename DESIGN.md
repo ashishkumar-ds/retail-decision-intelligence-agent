@@ -23,19 +23,19 @@ colors:
   amber-ink: "#8a5a12"
 typography:
   display:
-    fontFamily: "Space Grotesk, Roboto, sans-serif"
+    fontFamily: "TESCOModern, Roboto, sans-serif"
     fontSize: "30px"
     fontWeight: 700
     lineHeight: 1.05
     letterSpacing: "-0.045em"
   title:
-    fontFamily: "Space Grotesk, Roboto, sans-serif"
+    fontFamily: "TESCOModern, Roboto, sans-serif"
     fontSize: "19px"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "-0.03em"
   body:
-    fontFamily: "Roboto, system-ui, sans-serif"
+    fontFamily: "TESCOModern, Roboto, sans-serif"
     fontSize: "14.5px"
     fontWeight: 400
     lineHeight: 1.55
@@ -46,7 +46,7 @@ typography:
     lineHeight: 1.4
     letterSpacing: "0.02em"
   label:
-    fontFamily: "Roboto, system-ui, sans-serif"
+    fontFamily: "TESCOModern, Roboto, sans-serif"
     fontSize: "12.5px"
     fontWeight: 500
     lineHeight: 1.5
@@ -94,7 +94,7 @@ The palette is the pinned dunnhumby trio (`#2abf95`, `#2a1b6a`, `#cf348d`) doing
 - One signature moment per stub: the magenta ACT NOW stamp (a clean 2px magenta ring, straight) on every needs-intervention record.
 - Full-bleed `#2a1b6a` masthead band with the white wordmark (single-color inversion) and the green LED rail above it.
 - Hairlines (`#d9d3c6`) rule every field; no dots, no badges, no perforations anywhere.
-- Carbon figures print in IBM Plex Mono; Space Grotesk prints nameplates; Roboto carries fine print.
+- Carbon figures print in IBM Plex Mono; all other text prints in TESCOModern - dunnhumby's own served face.
 - Sharp corners (0-2px), flat stock-on-stock depth, stepped motion that never eases.
 
 ## Colors
@@ -125,7 +125,7 @@ Warm coupon stock replaces the cool editorial ground; every color still works as
 ### Named Rules
 **The Stamp Rule.** One stamp per stub, and the state it prints never vanishes - approval stamps GREEN, nothing erases, it cancels. `#cf348d` prints only where the meaning is "act now"; a register with no urgent store holds no magenta anywhere.
 
-**The Carbon Rule.** All live figures - counts, percentages, windows, store IDs in boxes - print in IBM Plex Mono carbon ink (`#3b3f66`), always tabular. Space Grotesk is reserved for nameplates; Roboto carries prose.
+**The Carbon Rule.** All live figures - counts, percentages, windows, store IDs in boxes - print in IBM Plex Mono carbon ink (`#3b3f66`), always tabular. TESCOModern carries every word; Roboto is only the loading fallback.
 
 **The Stock-on-Stock Rule.** No shadows anywhere on the shelf. Depth is paper ("#fffdf8") on stock ("#f6f4ef") separated by hairlines and ruled fields - the docket floats on dimmed ink, the only exception.
 
@@ -137,17 +137,17 @@ Warm coupon stock replaces the cool editorial ground; every color still works as
 
 ## Typography
 
-**Nameplate Font:** Space Grotesk (Roboto fallback) - dunnhumby.com body face rule holds; `impeccable-disable` documented for the Grotesk pairing.
-**Body Font:** Roboto (system-ui fallback).
-**Register Font:** IBM Plex Mono - carbon figures, stamps, tracked legends.
+**House Face:** TESCOModern - the exact `.woff` files dunnhumby.com self-hosts, wired through `next/font/local` (Tesco/dunnhumby brand IP; ships for this branded surface per the user's direction, Roboto as the loading fallback and for any weight the face lacks).
+**Body Font:** TESCOModern across the record (the official site prints everything in it); Roboto only as fallback.
+**Register Font:** IBM Plex Mono - figures, record ids, timestamps, the token field (TESCOModern has no mono cut, and the tabular ledger rule needs one).
 
-**Character:** Space Grotesk prints the big verdicts ("Store 289", problem counts); Plex Mono does the register's machine voice - everything tabular, stamped, or uppercase-tracked; Roboto is the clerk's fine print.
+**Character:** One voice, their voice: nameplates, labels, buttons and body all print in TESCOModern; the board never speaks in a generic web font. Plex Mono does the register's machine voice only.
 
 ### Hierarchy
 - **Display** (700, 30px/1.05, -.045em): page nameplates; detail hero scales to `clamp(30px, 4.5vw, 46px)`.
 - **Title** (700, 19-21px): group names, dialog titles, recommended action.
 - **Mono figure** (500-600, 15-34px, tabular): the 53 gate figure, count cells 6/47/32, health/recovery values, store-ID boxes, timestamps.
-- **Label** (Roboto 500-600, 12-13px, sentence case): field labels (Health, Recovery), zone lines (Decision needed), the header identity strip (campaign window + data freshness - a content line, not decoration).
+- **Label** (TESCOModern 500-600, 12-13px, sentence case): field labels (Health, Recovery), zone lines (Decision needed), the header identity strip (campaign window + data freshness - a content line, not decoration).
 - **Body** (400, 13-15px/1.55): reasons, narrative; ~80ch cap.
 
 ### Named Rules
@@ -180,7 +180,7 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Focus:** 2-3px solid outline in carbon/indigo ink, instant (steps).
 
 ### Stamps (state tags - the signature component)
-- **ACT NOW stamp:** paper fill, clean 2px `#cf348d` ring, Stamp Ink 700 Roboto 12px, rotated -1.5deg.
+- **ACT NOW stamp:** paper fill, clean 2px `#cf348d` ring, Stamp Ink 700 TESCOModern 12px, held straight.
 - **Settled stamp:** same ring in Green Ink, held straight.
 - **Quiet tag:** 1px carbon outline, paper fill, carbon 600 12px sentence case - neutral states whisper.
 - **Held-back outline:** dashed carbon outline for pending/disabled record states (raised from the darkroom challenger).
