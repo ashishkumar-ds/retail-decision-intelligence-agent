@@ -46,3 +46,4 @@ docs/agents/
 
 # agent-local tooling: the impeccable skill ships via npx, never in the repo
 .opencode/
+.impeccable/

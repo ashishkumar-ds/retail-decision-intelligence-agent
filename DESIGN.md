@@ -193,6 +193,10 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Inputs:** paper fill, 1px carbon frame, mono text, no radius; indigo 2px focus outline; mono placeholder in Print Grey. Caret green.
 - **Errors:** dashed magenta frame, rose fill, Stamp Ink text ("errata slip").
 
+### Loading (flagged for change)
+- Blank carbon slips: dashed-rule skeleton plates; TESCOModern kicker/title/copy; the `#1e134f` loading mark square.
+- **Open brand item:** the mark still shows the product's storefront glyph — the user wants the official dunnhumby icon here instead of the invented `<StorefrontMark />`. Swap before the next brand-facing release.
+
 ### Navigation
 - The masthead: full-bleed indigo band, white wordmark (single-color `brightness(0) invert(1)` inversion of the brand asset), paper-white product lockup, LED strip (green) above, 4px `#1e134f` keyline below. Collapses to wordmark + status at ≤640px. No glass, no pills.
 
