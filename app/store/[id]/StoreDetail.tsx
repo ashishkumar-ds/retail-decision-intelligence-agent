@@ -229,8 +229,7 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
       <section className="hero">
         <div>
           <Link href="/" className="back">← Back to board</Link>
-          <div className="eyebrow" style={{ marginTop: 24 }}>Store detail</div>
-          <h1>Store {display(data?.store_id ?? id)}</h1>
+          <h1 style={{ marginTop: 24 }}>Store {display(data?.store_id ?? id)}</h1>
           <p>What the engine recommends for this store, and the evidence behind it.</p>
         </div>
         {rec ? (

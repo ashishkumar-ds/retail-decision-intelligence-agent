@@ -170,9 +170,7 @@ function Decision({ row }: { row: BoardRow }) {
       </div>
       {row.cost_of_inaction ? <p>{display(row.cost_of_inaction)}</p> : null}
       <small className="decision-note">
-        {decided
-          ? 'Recorded in the approval ledger.'
-          : 'Approving records the recommended action. The fallback runs only if the guards refuse that action at decision time.'}
+        {decided ? 'Recorded in the approval ledger.' : null}
       </small>
     </div>
   )
@@ -241,7 +239,6 @@ function StoreRow({
       <div className="card-actions">
         {isPending(row) ? (
           <>
-            <span className="approve-hint">Needs your approval</span>
             <button
               type="button"
               className="approve-button"
