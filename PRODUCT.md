@@ -72,12 +72,17 @@ measured off the decision path (never on it).
 
 ## Brand Commitments
 
-Binding as of this record (user-confirmed): the board reads as a **dunnhumby**
-product surface. The `/dunnhumby.svg` wordmark asset, the lowercase wordmark +
-brand-product lockup in the brand rail, Roboto body type (matching
-dunnhumby.com, replacing the earlier DM Sans), the restrained editorial
-palette, and the storefront-outline mark with card/shelf layout language are
-part of the product identity. Future dashboard work preserves this system
+Binding as of this record (user-confirmed; palette re-confirmed 2026-11-01
+when the user named `#2abf95`, `#2a1b6a`, `#cf348d` as the dunnhumby brand
+palette): the board reads as a **dunnhumby** product surface. The
+`/dunnhumby.svg` wordmark asset, the lowercase wordmark + brand-product
+lockup in the brand rail, Roboto body type (matching dunnhumby.com),
+and the storefront-outline mark are part of the product identity. The
+2026-11-01 user-initiated redesign commits the shelf-edge label world:
+the brand palette (`#2abf95` green = live/safe system, `#2a1b6a` indigo =
+shell ink and decision zones, `#cf348d` magenta = the one act-now polarity)
+with AA-adapted text inks (`#0e7a55`, `#a4285e`), replacing the earlier
+teal/peach editorial palette. Future dashboard work preserves this system
 unless the user starts an explicit redesign.
 
 ## Evidence on Hand
