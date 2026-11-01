@@ -1,33 +1,27 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-01T15:30:00Z",
+  "generatedAt": "2026-11-01T16:20:00Z",
   "title": "Design System: Retail Decision Intelligence Agent",
   "extensions": {
     "colorMeta": {
-      "primary": { "role": "primary", "displayName": "Price-Rail Indigo", "canonical": "#2a1b6a", "tonalRamp": ["#2a1b6a", "#3a2b82", "#4f4096", "#675aa9", "#837cbe", "#a49dd4", "#c7c2e6", "#eef0f8"] },
-      "brand-green": { "role": "secondary", "displayName": "Shelf Green", "canonical": "#2abf95", "tonalRamp": ["#0e4a36", "#0e7a55", "#189a6d", "#2abf95", "#5ed4b3", "#8fe6cd", "#c1f1e2", "#e7f6f0"] },
-      "brand-magenta": { "role": "secondary", "displayName": "Clearance Magenta", "canonical": "#cf348d", "tonalRamp": ["#6c1c48", "#a4285e", "#cf348d", "#dd62a8", "#e78ebf", "#efb5d6", "#f6d6e9", "#f9edf5"] },
-      "slate": { "role": "tertiary", "displayName": "Slate Tag", "canonical": "#6f74a8", "tonalRamp": ["#3b3d63", "#54577f", "#6f74a8", "#8f93bb", "#aab0cd", "#c6cadb", "#dfe1ec", "#eef0f8"] },
-      "neutral-bg": { "role": "neutral", "displayName": "Shelf Paper", "canonical": "#f2f7f4", "tonalRamp": ["#212048", "#54616b", "#8a9aa4", "#c1cfd0", "#d7e2df", "#f7f9fa", "#f2f7f4", "#ffffff"] },
-      "line": { "role": "neutral", "displayName": "Hairline", "canonical": "#d7e2df", "tonalRamp": ["#aebfbc", "#c8d5d2", "#d7e2df", "#e6edec", "#f2f7f4", "#f7f9fa", "#ffffff", "#ffffff"] }
+      "primary": { "role": "primary", "displayName": "Register Indigo", "canonical": "#2a1b6a", "tonalRamp": ["#1e134f", "#2a1b6a", "#3a2b82", "#4f4096", "#675aa9", "#837cbe", "#c7c2e6", "#edece4"] },
+      "brand-green": { "role": "secondary", "displayName": "Shelf Green", "canonical": "#2abf95", "tonalRamp": ["#0e4a36", "#0e7a55", "#189a6d", "#2abf95", "#5ed4b3", "#8fe6cd", "#c1f1e2", "#edece4"] },
+      "brand-magenta": { "role": "secondary", "displayName": "Stamp Magenta", "canonical": "#cf348d", "tonalRamp": ["#6c1c48", "#a4285e", "#cf348d", "#dd62a8", "#e78ebf", "#efb5d6", "#f6d6e9", "#f8e9f1"] },
+      "carbon": { "role": "tertiary", "displayName": "Carbon Ink", "canonical": "#3b3f66", "tonalRamp": ["#21203a", "#2b2e4e", "#3b3f66", "#5a5e82", "#8487a1", "#adb0c2", "#d2d4dd", "#edece4"] },
+      "neutral-bg": { "role": "neutral", "displayName": "Coupon Stock", "canonical": "#f6f4ef", "tonalRamp": ["#212048", "#5d6167", "#8b8c90", "#c2bfae", "#d9d3c6", "#e3ddcd", "#fffdf8", "#f6f4ef"] },
+      "paper": { "role": "neutral", "displayName": "Stub Paper", "canonical": "#fffdf8", "tonalRamp": ["#212048", "#5d6167", "#9a9891", "#d9d3c6", "#e9e5d8", "#f2efe6", "#fffdf8", "#ffffff"] }
     },
     "typographyMeta": {
-      "display": { "displayName": "Nameplate", "purpose": "Page h1 and store hero only; tight -0.055em tracking, always Space Grotesk." },
-      "title": { "displayName": "Label Name", "purpose": "Group titles, store IDs, recommended action." },
-      "body": { "displayName": "Fine Print", "purpose": "Reasons, narrative, captions; Roboto, max ~80ch." },
-      "label": { "displayName": "Shelf Strip", "purpose": "Uppercase tracked identity lines and fact labels; earns its place only by printing required content." }
+      "display": { "displayName": "Nameplate", "purpose": "Page h1 and store hero only; Space Grotesk, tight tracking." },
+      "title": { "displayName": "Form Name", "purpose": "Group names, dialog titles, recommended action." },
+      "body": { "displayName": "Clerk's Fine Print", "purpose": "Reasons, narrative; Roboto, ~80ch cap." },
+      "mono": { "displayName": "Carbon Figure", "purpose": "All live figures, stamps, proofs - IBM Plex Mono, tabular." },
+      "label": { "displayName": "Tracked Legend", "purpose": "Uppercase field labels and identity strips; must print real content to exist." }
     },
-    "shadows": [
-      { "name": "settled-paper", "value": "0 1px 1px rgba(21,14,62,.02), 0 6px 18px rgba(21,14,62,.03)", "purpose": "Resting plates; ambient, never hard-offset." },
-      { "name": "settled-lift", "value": "0 2px 2px rgba(21,14,62,.03), 0 10px 22px rgba(21,14,62,.05)", "purpose": "Hover: one step deeper, no vertical jump." },
-      { "name": "sticker", "value": "0 2px 5px rgba(42,27,106,.10)", "purpose": "The clearance sticker's cast shadow; identity, not elevation." },
-      { "name": "dialog-structural", "value": "0 24px 60px rgba(21,14,62,.22)", "purpose": "Approve sheet only; the one structural shadow." },
-      { "name": "button-lift", "value": "0 7px 16px rgba(42,27,106,.22)", "purpose": "Primary button hover." }
-    ],
     "motion": [
-      { "name": "topline-sweep", "value": "keyframes 0%{translateX(-100%)} 100%{translateX(357%)} 1.6s ease-in-out infinite", "purpose": "Indigo segment sweeping the green rail while the feed wakes; settles flat." },
-      { "name": "state-transition", "value": "border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease", "purpose": "One state change at a time; no orchestration." },
-      { "name": "press", "value": "translateY(1px)", "purpose": "Cards and ghost controls press in; primary buttons lift -1px." }
+      { "name": "topline-step", "value": "steps(10, end) 1.4s infinite", "purpose": "Register block stepping across the LED rail while the feed wakes; settles flat. Never a smooth sweep." },
+      { "name": "no-ease", "value": "transition: none (or steps(2) 90ms)", "purpose": "Nothing eases in the register; state changes are steps. Buttons press once." },
+      { "name": "flash-and-hold", "value": "changed cells change in place; rows never reflow", "purpose": "Raised from the transit challenger - the clerk sees the change without losing the row." }
     ],
     "breakpoints": [
       { "name": "xs", "value": "380px" },
@@ -37,109 +31,101 @@
   },
   "components": [
     {
-      "name": "Primary Button (Approve)",
+      "name": "Approve Tab (primary)",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one write action on the shelf: approve the recorded decision.",
-      "html": "<button class=\"ds-btn-primary\">Approve</button>",
-      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 20px;border:1px solid #2a1b6a;border-radius:6px;background:#2a1b6a;color:#fff;font-family:Roboto,system-ui,sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s ease,transform .18s ease,box-shadow .18s ease}.ds-btn-primary:hover{background:#1e134f;transform:translateY(-1px);box-shadow:0 7px 16px rgba(42,27,106,.22)}.ds-btn-primary:focus-visible{outline:2px solid #2a1b6a;outline-offset:2px}.ds-btn-primary:active{transform:translateY(0)}"
+      "description": "The register's one write action; sits in deliberate empty space.",
+      "html": "<button class=\"ds-tab\">Approve</button>",
+      "css": ".ds-tab{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 22px;border:2px solid #2a1b6a;background:#2a1b6a;color:#fffdf8;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;cursor:pointer}.ds-tab:hover{background:#1e134f;border-color:#1e134f}.ds-tab:focus-visible{outline:2px solid #2a1b6a;outline-offset:2px}"
     },
     {
-      "name": "Ghost Button",
+      "name": "Ghost Tab",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "Cancel and dismiss; hairline paper, never filled.",
-      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
-      "css": ".ds-btn-ghost{min-height:38px;padding:0 16px;border:1px solid #d7e2df;border-radius:6px;background:none;color:#54616b;font-family:Roboto,system-ui,sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .18s ease,transform .18s ease}.ds-btn-ghost:hover{border-color:#2a1b6a}.ds-btn-ghost:focus-visible{outline:2px solid #2a1b6a;outline-offset:2px}.ds-btn-ghost:active{transform:translateY(1px)}"
+      "description": "Cancel and dismiss; paper fill, carbon outline.",
+      "html": "<button class=\"ds-ghost\">Cancel</button>",
+      "css": ".ds-ghost{min-height:38px;padding:0 16px;border:1px solid #3b3f66;background:#f6f4ef;color:#5d6167;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}.ds-ghost:hover{border-color:#2a1b6a;color:#2a1b6a}.ds-ghost:focus-visible{outline:2px solid #2a1b6a;outline-offset:2px}"
     },
     {
-      "name": "Token Input",
+      "name": "Token Field",
       "kind": "input",
       "refersTo": "input",
-      "description": "The approval-token field: white plate, hairline, indigo focus.",
-      "html": "<input class=\"ds-input\" placeholder=\"Paste the operator token\" />",
-      "css": ".ds-input{width:100%;min-height:42px;padding:0 12px;border:1px solid #d7e2df;border-radius:4px;background:#fff;font-family:Roboto,system-ui,sans-serif;font-size:14px;color:#212048;caret-color:#0e7a55}.ds-input::placeholder{color:#54616b;opacity:1}.ds-input:focus{outline:2px solid #2a1b6a;outline-offset:1px;border-color:transparent}"
+      "description": "The approval-token field; mono print, no radius.",
+      "html": "<input class=\"ds-field\" placeholder=\"Paste the operator token\" />",
+      "css": ".ds-field{width:100%;min-height:42px;padding:0 12px;border:1px solid #3b3f66;background:#fffdf8;font-family:'IBM Plex Mono',monospace;font-size:13.5px;color:#212048;caret-color:#0e7a55}.ds-field::placeholder{color:#5d6167;opacity:1}.ds-field:focus{outline:2px solid #2a1b6a;outline-offset:1px;border-color:transparent}"
     },
     {
-      "name": "Count Plate (attention)",
+      "name": "Count Cell",
       "kind": "card",
       "refersTo": "card",
-      "description": "One of the three gate plates; the rose one carries the act-now count.",
-      "html": "<div class=\"ds-tile\"><div class=\"ds-tile-count\">6</div><div class=\"ds-tile-label\">Need a decision</div></div>",
-      "css": ".ds-tile{display:flex;flex-direction:column;gap:4px;padding:15px 18px;border:1px solid #f0c2dd;border-radius:6px;background:#f9edf5;box-shadow:0 1px 1px rgba(21,14,62,.02),0 6px 18px rgba(21,14,62,.03)}.ds-tile-count{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:-.06em;color:#cf348d;font-variant-numeric:tabular-nums}.ds-tile-label{font-family:Roboto,system-ui,sans-serif;font-size:12.5px;font-weight:600;color:#54616b}"
+      "description": "One ruled cell of the gate record; the verdict colors the figure.",
+      "html": "<div class=\"ds-cell\"><b>6</b><span>Need a decision</span></div>",
+      "css": ".ds-cell{padding:15px 18px;border:1px solid #d9d3c6;border-left:0;background:#fffdf8;display:flex;flex-direction:column;gap:4px}.ds-cell:first-of-type{border-left:1px solid #d9d3c6}.ds-cell b{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:34px;line-height:1;letter-spacing:-.02em;color:#cf348d;font-variant-numeric:tabular-nums}.ds-cell span{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#5d6167}"
     },
     {
-      "name": "Clearance Sticker (state tag)",
+      "name": "ACT NOW Stamp (signature)",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "The double-ring rubber stamp marking stores whose time is short.",
+      "html": "<span class=\"ds-stamp\">Needs intervention</span>",
+      "css": ".ds-stamp{display:inline-block;padding:4px 11px;border:2px solid #cf348d;box-shadow:inset 0 0 0 1.5px #fffdf8,inset 0 0 0 3px #cf348d;background:#fffdf8;color:#a4285e;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;transform:rotate(-2deg)}"
+    },
+    {
+      "name": "Settled Stamp",
       "kind": "chip",
       "refersTo": "card",
-      "description": "The signature die-cut tag that marks stores whose time is short.",
-      "html": "<span class=\"ds-sticker\">Needs intervention</span>",
-      "css": ".ds-sticker{display:inline-block;padding:3px 9px;border:1.5px solid #cf348d;border-radius:6px;background:#fff;color:#a4285e;font-family:Roboto,system-ui,sans-serif;font-size:11px;font-weight:700;line-height:1.4;white-space:nowrap;transform:rotate(-1.4deg);box-shadow:0 2px 5px rgba(42,27,106,.10)}"
+      "description": "Approved/settled verdicts stamp straight in the green ink.",
+      "html": "<span class=\"ds-stamp-ok\">Renewed</span> <span class=\"ds-tag\">Reviewing the data</span>",
+      "css": ".ds-stamp-ok{display:inline-block;padding:4px 11px;border:2px solid #0e7a55;box-shadow:inset 0 0 0 1.5px #fffdf8,inset 0 0 0 3px #0e7a55;background:#fffdf8;color:#0e7a55;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}.ds-tag{display:inline-block;padding:4px 9px;border:1px solid #3b3f66;background:#fffdf8;color:#3b3f66;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}"
     },
     {
-      "name": "Quiet State Tag",
-      "kind": "chip",
-      "refersTo": "card",
-      "description": "Settled and neutral states stay straight and calm; green words print in the deep ink.",
-      "html": "<span class=\"ds-tag-ok\">Renewed</span> <span class=\"ds-tag\">Reviewing the data</span>",
-      "css": ".ds-tag{display:inline-block;padding:3px 9px;border:1px solid #d7e2df;border-radius:4px;background:#f7f9fa;color:#54616b;font-family:Roboto,system-ui,sans-serif;font-size:11px;line-height:1.4;white-space:nowrap}.ds-tag-ok{display:inline-block;padding:3px 9px;border:1px solid rgba(14,122,85,.25);border-radius:4px;background:#e7f6f0;color:#0e7a55;font-family:Roboto,system-ui,sans-serif;font-size:11px;line-height:1.4;white-space:nowrap}"
-    },
-    {
-      "name": "Shelf-Edge Store Label",
+      "name": "Store Stub",
       "kind": "card",
       "refersTo": "card",
-      "description": "The store row: state tag top-left, reason as the name, facts as the price field, decision zone stamped indigo.",
-      "html": "<div class=\"ds-label\"><div class=\"ds-label-top\"><span class=\"ds-label-id\">293</span><span class=\"ds-sticker\">Needs intervention</span></div><p class=\"ds-label-reason\">Store 293 health score 20.0 - underperforming projection.</p><div class=\"ds-label-facts\"><div><span>HEALTH</span><strong>20</strong></div><div><span>WINDOW</span><strong>46 days left</strong></div></div><div class=\"ds-label-decision\"><span class=\"ds-label-kicker\">Decision needed</span><strong>Extend the intervention</strong></div></div>",
-      "css": ".ds-label{max-width:520px;padding:15px 18px 16px;border:1px solid #d7e2df;border-radius:6px;background:#fff;box-shadow:0 1px 1px rgba(21,14,62,.02),0 6px 18px rgba(21,14,62,.03);font-family:Roboto,system-ui,sans-serif}.ds-label-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}.ds-label-id{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.03em;color:#2a1b6a}.ds-label-reason{margin:0 0 11px;font-size:14.5px;line-height:1.55;color:#212048}.ds-label-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:11px 0 0;border-top:1px solid #d7e2df}.ds-label-facts span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#54616b}.ds-label-facts strong{display:block;margin-top:3px;font-size:15px;color:#2a1b6a;font-variant-numeric:tabular-nums}.ds-label-decision{margin-top:12px;padding:12px 14px;border:1px solid rgba(42,27,106,.12);border-radius:4px;background:#eef0f8}.ds-label-kicker{display:block;margin-bottom:8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:#0e7a55}.ds-label-decision strong{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.025em;color:#2a1b6a}.ds-sticker{display:inline-block;padding:3px 9px;border:1.5px solid #cf348d;border-radius:6px;background:#fff;color:#a4285e;font-size:11px;font-weight:700;transform:rotate(-1.4deg);box-shadow:0 2px 5px rgba(42,27,106,.10)}"
+      "description": "The store record: perforated edge, ruled fields, stamped verdict, decision print.",
+      "html": "<div class=\"ds-stub\"><div class=\"ds-stub-top\"><span class=\"ds-sid\">293</span><span class=\"ds-stamp\">Needs intervention</span><span class=\"ds-why\">WHY →</span></div><p class=\"ds-reason\">Store 293 health score 20.0 - underperforming projection.</p><div class=\"ds-facts\"><div><span>HEALTH</span><b>20.0</b></div><div><span>RECOVERY</span><b>-18.5%</b></div></div><div class=\"ds-print\"><span class=\"ds-kicker\">Decision needed</span><strong>Extend the intervention</strong></div></div>",
+      "css": ".ds-stub{position:relative;max-width:640px;padding:15px 18px 16px 30px;border:1px solid #d9d3c6;background:#fffdf8;font-family:Roboto,system-ui,sans-serif}.ds-stub::before{content:'';position:absolute;left:5px;top:12px;bottom:12px;border-left:6px dotted #e3ddcd}.ds-stub-top{display:flex;align-items:center;gap:12px}.ds-sid{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:20px;letter-spacing:-.03em;color:#2a1b6a}.ds-why{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.1em;color:#0e7a55;text-transform:uppercase}.ds-reason{margin:9px 0 11px;font-size:14.5px;line-height:1.55;color:#212048}.ds-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:12px 0 0;border-top:1px solid #d9d3c6}.ds-facts span{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#5d6167}.ds-facts b{display:block;margin-top:4px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:15px;color:#3b3f66}.ds-print{margin-top:12px;padding:13px 15px;border:1px solid #d9d3c6;background:#fffdf8}.ds-kicker{display:block;margin-bottom:9px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#0e7a55}.ds-print strong{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:17px;letter-spacing:-.02em;color:#2a1b6a}.ds-stamp{display:inline-block;padding:4px 11px;border:2px solid #cf348d;box-shadow:inset 0 0 0 1.5px #fffdf8,inset 0 0 0 3px #cf348d;color:#a4285e;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;transform:rotate(-2deg)}"
     },
     {
-      "name": "Brand Band (nav)",
+      "name": "Masthead Band",
       "kind": "nav",
       "refersTo": "card",
-      "description": "Flat white band sealed by the 2px indigo shelf edge; live dot right.",
-      "html": "<div class=\"ds-band\"><span class=\"ds-band-brand\">dunnhumby</span><span class=\"ds-band-divider\"></span><span class=\"ds-band-product\">retail decision intelligence agent</span><span class=\"ds-band-status\"><i></i>Live board</span></div>",
-      "css": ".ds-band{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 0 13px;border-bottom:2px solid #2a1b6a;background:#fff;font-family:Roboto,system-ui,sans-serif}.ds-band-brand{font-size:15px;letter-spacing:-.03em;color:#212048}.ds-band-divider{width:1px;height:22px;background:#d7e2df}.ds-band-product{font-size:14px;font-weight:600;color:#54616b}.ds-band-status{display:flex;align-items:center;gap:7px;font-size:13px;color:#54616b}.ds-band-status i{width:7px;height:7px;border-radius:50%;background:#2abf95}"
-    },
-    {
-      "name": "Ask Preset Chip",
-      "kind": "chip",
-      "refersTo": "button-ghost",
-      "description": "One-tap advisory question on the live layer; green ink, quiet fill.",
-      "html": "<button class=\"ds-preset\">What changed this week?</button>",
-      "css": ".ds-preset{border:1px solid #d7e2df;border-radius:4px;padding:8px 14px;background:#fff;font-family:Roboto,system-ui,sans-serif;font-size:12.5px;font-weight:600;color:#0e7a55;cursor:pointer;transition:border-color .18s ease}.ds-preset:hover{border-color:#0e7a55}.ds-preset:focus-visible{outline:2px solid #2a1b6a;outline-offset:2px}.ds-preset:disabled{opacity:.55}"
+      "description": "Full-bleed indigo band, white wordmark, LED rail above, deep keyline below.",
+      "html": "<div class=\"ds-band\"><span class=\"ds-brand\">dunnhumby</span><span class=\"ds-div\"></span><span class=\"ds-prod\">retail decision intelligence agent</span><span class=\"ds-status\"><i></i>Live board</span></div>",
+      "css": ".ds-band{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#2a1b6a;border-bottom:4px solid #1e134f;color:#fffdf8;font-family:Roboto,system-ui,sans-serif}.ds-brand{font-family:'Space Grotesk',Roboto,sans-serif;font-weight:700;font-size:22px;letter-spacing:-.04em}.ds-div{width:1px;height:22px;background:rgba(255,253,248,.32)}.ds-prod{font-size:13.5px;color:rgba(255,253,248,.85)}.ds-status{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,253,248,.88)}.ds-status i{width:7px;height:7px;background:#2abf95}"
     }
   ],
   "narrative": {
-    "northStar": "The Shelf Edge",
-    "overview": "The product is a working grocery shelf, not a dashboard. Every store is a shelf-edge label: a white plate with hairline rules, a state tag top-left, the reason printed as the label's name, the facts as the price field, and the decision stamped in a pale-indigo zone. The visitor's eye travels the shelf like a grocer's: three groups, one polarity checked first - the magenta clearance sticker marks every store that needs a human decision. Everything else on the shelf is settled paper; live and safe states stay quiet by design. Color never decorates: indigo carries all shell ink, green carries only the live-data system, magenta is spent only on the act-now polarity. Depth is settled paper on paper, and the one authored motion is the topline sweep, the shelf powering on while the feed wakes.",
+    "northStar": "The Stub Register",
+    "overview": "The product is a carbon-copy register of the engine's recommendations, not a dashboard. Every store is a stub with a perforated edge; the engine's reason prints as the stub's ruled fields; every verdict prints as a stamp. The magenta ACT NOW stamp marks every store that needs a human decision; approved records take the green stamp, and nothing is ever erased, it cancels. Color does named form jobs: indigo owns the masthead band and register ink, green owns only the live system, magenta exists solely to stamp act-now. Depth is stock sitting on stock - no shadows anywhere - and nothing eases: state changes step. This second user-commissioned world replaced the quieter shelf-label world the user judged 'a little bit same.'",
     "keyCharacteristics": [
-      "One signature moment per surface: the die-cut magenta clearance sticker (rotated -1.4deg) on needs-intervention rows.",
-      "Hairline (1px #d7e2df) rules structure every plate; no card wears a colored border above 1px on any side.",
-      "Words print only in deepened inks (#0e7a55, #a4285e); the raw brand trio appears only in non-text positions.",
-      "All live figures are Space Grotesk with tabular-nums; Roboto carries the body.",
-      "The state system is a triad, never a rainbow: act-now (magenta), no-signal (slate), settled (green)."
+      "One signature moment per stub: the double-ring magenta ACT NOW stamp, pressed askew (-2deg).",
+      "Full-bleed #2a1b6a masthead band with the white wordmark and the green LED rail.",
+      "Perforation punches open every store stub; hairlines rule every field.",
+      "Carbon figures print in IBM Plex Mono; Space Grotesk nameplates; Roboto fine print.",
+      "Sharp corners (0-2px), flat stock-on-stock depth, stepped motion that never eases."
     ],
     "rules": [
-      { "name": "The Clearance-Sticker Rule", "body": "#cf348d appears only where the meaning is \"act now\" - the die-cut sticker, its plate count, its tab. A screen with zero needs-intervention stores contains zero magenta. Its rarity is the point.", "section": "colors" },
-      { "name": "The Deep-Ink Rule", "body": "Words never print in the raw brand trio on light ground; green words print #0e7a55, magenta words print #a4285e. The raw trio is for dots, bars, sweeps, and fills.", "section": "colors" },
-      { "name": "The Edge Rule", "body": "No card container carries a colored border above 1px on any side (including painted pseudo-element stripes). State color enters through backgrounds, tags, counts, and the sticker - never through card edges.", "section": "colors" },
-      { "name": "The One Polarity Rule", "body": "Magenta names the only urgent state. Degraded-but-not-urgent wears amber; missing-signal wears slate; nothing else competes for the red-family voice except guard-critical chips.", "section": "colors" },
-      { "name": "The Figure Rule", "body": "Every live figure - counts, percentages, timestamps, store IDs - is Space Grotesk with tabular-nums, because the board re-renders every 60s and proportional digits jitter as they change.", "section": "typography" },
-      { "name": "The Settled-Paper Rule", "body": "Shadows are ambient and always layered rgba-indigo, never hard-offset; the shelf is calm, state changes are the only drama.", "section": "elevation" }
+      { "name": "The Stamp Rule", "body": "One stamp per stub, and the state it prints never vanishes - approval stamps GREEN, nothing erases, it cancels. #cf348d prints only where the meaning is \"act now\".", "section": "colors" },
+      { "name": "The Carbon Rule", "body": "All live figures print in IBM Plex Mono carbon ink, always tabular. Space Grotesk is reserved for nameplates; Roboto carries prose.", "section": "typography" },
+      { "name": "The Stock-on-Stock Rule", "body": "No shadows anywhere on the shelf. Depth is paper on stock separated by hairlines, with perforations and ruled fields.", "section": "elevation" },
+      { "name": "The Only-Frame Rule", "body": "Stubs wear 1px hairlines. Exactly one element per surface may carry a 2px colored frame: the ACTION REQUIRED form head. No colored border ever rides a single side of a card.", "section": "shapes" },
+      { "name": "The Deep-Ink Rule", "body": "Words print only in deep inks (#a4285e, #0e7a55, #3b3f66, #2a1b6a); the raw trio is reserved for dots, rails, fills, and stamp bodies.", "section": "colors" },
+      { "name": "The Tabular Ledger Rule", "body": "The board re-renders every 60s; every number sits in mono tabular slots so re-renders never jitter or reflow rows.", "section": "typography" },
+      { "name": "The No-Shadow Ledger Rule", "body": "If a state needs emphasis, it gets a stamp or a frame - never a shadow, never a lift.", "section": "elevation" }
     ],
     "dos": [
-      "Do reserve #cf348d for act-now moments only; if a screen has no urgent store, it has no magenta.",
-      "Do print green and magenta words in the deep inks (#0e7a55, #a4285e) - the raw duo only for dots, bars, sweeps, fills.",
-      "Do set every live figure in Space Grotesk tabular-nums.",
-      "Do rotate exactly one element - the clearance sticker at -1.4deg - and stand it back up at narrow widths.",
-      "Do keep plate rules at 1px Hairline and radius at 6px/4px."
+      "Do stamp verdicts - one stamp per stub, stamped in the state's ink, upright on mobile.",
+      "Do print every live figure in IBM Plex Mono with tabular numerals.",
+      "Do keep the ground warm (#f6f4ef) and plates paper (#fffdf8); depth = stock-on-stock flat.",
+      "Do carry the trio's brand jobs exactly: indigo band + ink, green live system, magenta stamps only."
     ],
     "donts": [
-      "Don't put a colored border (or painted stripe) thicker than 1px on any card edge; state rides backgrounds, tabs, counts, and stickers.",
-      "Don't add glass, blur, or floating pills to the brand band; it is sealed flat with the 2px indigo edge.",
-      "Don't introduce a second urgent color family (no orange alerts competing with the clearance magenta; amber is for degraded guards only).",
-      "Don't rotate anything else or exceed -1.4deg; one sticker per row is the whole show.",
-      "Don't use decorative kickers or icon+title+text dashboard cards; content lines earn their uppercase tracking only by carrying campaign/freshness truth."
+      "Don't cast a shadow - emphasis comes from stamps, frames, and paper contrast.",
+      "Don't ease anything: motion steps; no smooth sweeps or fades.",
+      "Don't put colored borders >1px on stubs or panels; the ACTION REQUIRED frame and stamp rings are the only 2px color in the system.",
+      "Don't erase history: approvals add a green stamp; error slips print and stay.",
+      "Don't invent serial numbers or fictional form copy - the register voice prints product truth only."
     ]
   }
 }

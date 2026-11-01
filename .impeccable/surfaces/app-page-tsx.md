@@ -1,38 +1,29 @@
----
-version: 1
-slug: "app-page-tsx"
-primary_target: "app/page.tsx"
-related_targets: ["app/_components/chrome.tsx","app/store/[id]/StoreDetail.tsx"]
----
-
 # Surface brief — board page (`app/page.tsx`)
 
 ---
-version: 1
+version: 2
 slug: "app-page-tsx"
 primary_target: "app/page.tsx"
-related_targets: ["app/_components/chrome.tsx", "app/store/[id]/StoreDetail.tsx", "app/globals.css"]
+related_targets: ["app/_components/chrome.tsx", "app/store/[id]/StoreDetail.tsx", "app/globals.css", "app/layout.tsx"]
 ---
 
-**Scope.** The whole stakeholder app (board `/`, store detail `/store/[id]`, shared chrome) rebuilt as one replacement visual world - the 2026-11-01 user-initiated redesign.
+**Scope.** The whole stakeholder app (board `/`, store detail `/store/[id]`, shared chrome) re-worlded again in the 2026-11-01 second user-initiated redesign: the user judged the shelf-label world "a little bit same" and asked for something very new, very connected to dunnhumby.
 
-**Mode & audience.** Operate. A non-technical stakeholder answers one question per store - decide now, cannot evaluate, nothing to do - and trusts each verdict's provenance. Weekly (not daily) use; office light; sometimes projected.
+**Mode & audience.** Operate. A non-technical stakeholder answers one question per store - decide now, cannot evaluate, nothing to do - and trusts each verdict's provenance. Weekly use; office light; sometimes projected.
 
-**Job on the surface.** Scan 85 stores in groups, land on the magenta-tagged row, read its reason and figures, walk to the why page, record approvals via the token-gated dialog, interrogate records through the per-store ask panel.
-
-**Direction - SHELF-EDGE LABEL (pinned palette: `#2abf95`, `#2a1b6a`, `#cf348d`).**
-The board behaves like the shelf a grocery data scientist owns. Each store wears a shelf-edge label: dense, hairline-ruled, structured, product truth printed verbatim in the existing glossary vocabulary. Color does named jobs and only those: `#2a1b6a` indigo carries the shell's ink (headings, price/decision zone, approve buttons, identity lines); `#2abf95` green carries the live-data system (topline sweep, live dot, "no action needed", ok-state fills) with its deepened `#0e7a55` ink for words; `#cf348d` magenta is the grocer's clearance sticker - the single "act now" polarity, marking only stores whose time is short. Signatures: the slightly die-cut magenta state sticker on needs-intervention rows (the reduced-to-clear tag), and the topline sweep as the shelf's power-on while data wakes. Neutrals (mint ground, hairlines, muted captions) keep the labels honest; no new structural chrome from the source world - controls stay standard web controls, the layout stays the gate sentence + three groups the truth requires. World voice arrives only as type, palette, density, and the sticker signature; never as costume (no ruler ticks cosplay, no receipt paper).
+**Direction - THE STUB REGISTER (raised jet-age carbon coupon run; user chose the roll card over the pick).**
+The board is a carbon-copy register of the engine's recommendations. Every store is a stub with a perforated edge; every verdict prints as a stamp - the magenta ACT NOW stamp is the one urgent polarity, approved records wear the green APPROVED stamp, and nothing is ever erased, it cancels. Product supplies every fact; the register supplies form only: warm coupon stock, hairline-ruled fields, mono carbon figures and tracked legends, sharp corners, flat stock-on-stock depth. The paired dunnhumby trio stays binding (`#2abf95`, `#2a1b6a`, `#cf348d`): indigo masthead band + register ink, green live system, magenta stamps act-now only; words print in deep inks (`#a4285e`, `#0e7a55`, carbon `#3b3f66`).
 
 ## Direction contract
 
-THESIS: a stakeholder reads the board the way a grocer reads a shelf - every store a label, every label honest; the magenta clearance sticker is the one thing that says act now. Refuses the category default of dashboard cards with icon+title+text and refuses colored karaoke of all states equally; live/ok stays quiet, the clearance corner speaks once.
+THESIS: a stakeholder reads the board like a register clerk - every store a stub, every stub stamped by its verdict, approval records by stamp and nothing ever erases. Refuses dashboard cards and colored karaoke of states; the paper, the rules, and the stamps do the talking.
 
-OWN-WORLD: pale-mint ground, white label plates with hairline rules; indigo ink and indigo decision/price zones; green reserved for live and safe fills; magenta only as the clearance sticker and its tint family. Roboto body, Space Grotesk figures at tabular width; uppercase tracked shelf-strip identity lines. Stripped of all content the page still reads: structured product labels on a shelf - state tag top-left, reason as the label's name, facts as the price field, decision as the stamped zone.
+OWN-WORLD: warm coupon-stock ground (`#f6f4ef`) with brighter paper stubs (`#fffdf8`), warm hairlines (`#d9d3c6`), perforation punches opening each stub; full-bleed `#2a1b6a` masthead band carrying the white dunnhumby wordmark; IBM Plex Mono for carbon figures, stamps, and tracked uppercase legends; Space Grotesk for nameplates; Roboto fine print; corners 0-2px; no soft shadows - depth is stock sitting on stock; motion steps (90ms, two frames) and never eases. Stripped of all content the page still reads: a ruled register of stamped records.
 
-STORY: visitor scans three shelf groups, sees 6 magenta-tagged labels, reads one label's reason/figures/committed action, clicks through to the same vocabulary on the why page, records approvals, and trusts figures because provenance rides each panel.
+STORY: visitor scans the gate and the three ruled count cells, lands on the ACTION REQUIRED stubs, stamps an approval through the docket, follows the carbon WHY link to the filed evidence sheet, and asks the register clerk (the advisory panel) in the same voice.
 
-FIRST VIEWPORT: indigo-underlined brand band (wordmark + product name + live dot); shelf-strip identity line (campaign window, data as of) above the Space Grotesk h1; gate sentence 27px figure; three state banded tiles (green/slate/magenta top bands) whose counts add to the gate figure; "Need a decision" strip with magenta tab open on stores 293/299/317, first magenta sticker visible above the fold; approve action right-aligned in indigo.
+FIRST VIEWPORT: indigo masthead band (wordmark + product + live dot); register head with gate sentence and mono `53`; three ruled count cells (6 / 47 / 32); ACTION REQUIRED stamp header open on stores 293/299/317; perforated stubs with magenta ACT NOW stamps, indigo APPROVE tabs right, carbon WHY links - all above the fold.
 
-FORM: code-led rebuild of the same anatomy assigned by product truth (gate sentence, three collapsible groups, per-store labels, bulk review, token sheet, why-page panel grid, ask panel). Position: shelf-label world carries type/palette/density/sticker signature. SEED REFERENCE: seed:4684238ba66cc65c (roll assigned a jet-age ticket-wallet world; the user-pinned grocery shelf-edge label direction and the dunnhumby palette trio override it per new-work - named translation: the shelf replaces the wallet as the paper world, and the assigned paper-ephemera ritual survives only as the printed-label density and the stamped decision zone).
+FORM: code-led rebuild of the same anatomy assigned by product truth (gate sentence, three collapsible groups, per-store stubs, bulk review, token sheet, why-page panel grid, ask panel). Position: the register carries type, palette, density, and the stamp signature; never product structure. SEED REFERENCE: seed:b0509f13bda5f4e9 (roll key 39353ae2eddeb9faba2d63923099eebb, assigned index 4). Raises (named lines carried from the weighing): from the dark-first console - the single write action sits in deliberate empty space; from the darkroom exposure record - a pending approval renders as a dotted held-back outline; from the acetate manual - state changes step, nothing eases; from the midnight transit diagram - state text sits in fixed cells that flash and hold, rows never reflow.
 
-FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, a refreshed DESIGN.md, and every shipping raster carrying its provenance.

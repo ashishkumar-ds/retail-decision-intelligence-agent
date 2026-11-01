@@ -82,11 +82,15 @@ export function AppChrome({
   return (
     <>
       <div className={`topline${loading ? ' is-loading' : ''}`} />
+      <div className="brandband">
+        <div className="shell">
+          <nav className="nav">
+            <Brand />
+            <div className="navlinks">{navlinks ?? <span className="nav-status"><i aria-hidden="true" />Live board</span>}</div>
+          </nav>
+        </div>
+      </div>
       <main className="shell">
-        <nav className="nav">
-          <Brand />
-          <div className="navlinks">{navlinks ?? <span className="nav-status"><i aria-hidden="true" />Live board</span>}</div>
-        </nav>
         {children}
         <Footer extra={footerExtra} probe={probe} />
       </main>
