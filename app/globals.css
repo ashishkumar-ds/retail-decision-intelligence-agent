@@ -78,8 +78,8 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 /* --- register head: gate sentence + ruled count cells ---------------------- */
 .board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 30px 0 18px; border-bottom: 2px solid var(--rule) }
 .board-head h1 { font: 700 30px/1.05 var(--display); letter-spacing: -.045em; margin: 7px 0 0; color: var(--indigo) }
-.eyebrow { font: 600 11px var(--mono); letter-spacing: .22em; color: var(--indigo); text-transform: uppercase; text-wrap: balance }
-.board-asof { font: 600 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--green-ink); white-space: nowrap }
+.eyebrow { font: 600 12.5px var(--font-roboto), Arial, sans-serif; letter-spacing: .01em; color: var(--indigo); text-wrap: balance }
+.board-asof { font: 500 11.5px var(--mono); color: var(--green-ink); white-space: nowrap }
 
 .summary { margin: 26px 0 28px; padding: 24px 24px 20px; border: 1px solid var(--rule); background: var(--paper) }
 .gate-line { display: flex; align-items: baseline; gap: 10px; margin: 0 0 18px; font-size: 16px; line-height: 1.45 }
@@ -91,7 +91,7 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 .tile:hover { background: var(--panel) }
 .tile:focus-visible { outline: 2px solid var(--indigo); outline-offset: -2px }
 .tile-count { font: 600 34px/1 var(--mono); letter-spacing: -.02em }
-.tile-label { font: 600 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; line-height: 1.6; color: var(--muted); text-wrap: balance }
+.tile-label { font: 600 13px/1.4 var(--font-roboto), Arial, sans-serif; color: var(--muted); text-wrap: balance }
 .tiles-note { margin: 10px 2px 0; font: 400 11.5px/1.5 var(--font-roboto), sans-serif; color: var(--muted); text-wrap: pretty }
 /* Ruled count cells: the verdict carries the figure's ink. */
 .tile.attention .tile-count { color: var(--flash) }
@@ -108,7 +108,7 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 .bucket-heading { margin: 0 }
 .bucket-head-label { display: flex; flex-direction: column; min-width: 0; flex: 1 }
 .bucket-title { font: 700 19px/1.2 var(--display); letter-spacing: -.03em; color: var(--indigo) }
-.bucket-count { display: block; margin-top: 4px; font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted) }
+.bucket-count { display: block; margin-top: 4px; font: 400 12.5px var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 .bucket-marker { width: 12px; height: 12px; flex: none; background: var(--slate) }
 .section.attention .bucket-head { border-color: var(--flash); border-width: 2px; background: var(--rose) }
 .section.attention .bucket-marker { background: var(--flash) }
@@ -122,7 +122,7 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 .bucket-note, .caveat, .narrative, .hero p, .dialog-sub, .dialog-note { text-wrap: pretty }
 .bucket-note { margin: 10px 4px 0; max-width: 84ch; font-size: 12.5px; line-height: 1.55; color: var(--muted) }
 .shared-decision { margin-top: 10px }
-.show-toggle { display: block; margin: 12px auto 2px; padding: 8px 18px; border: 1px dashed var(--carbon); background: var(--paper); font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--indigo); cursor: pointer }
+.show-toggle { display: block; margin: 12px auto 2px; padding: 8px 18px; border: 1px dashed var(--carbon); background: var(--paper); font: 600 13px var(--font-roboto), Arial, sans-serif; color: var(--indigo); cursor: pointer }
 .show-toggle:hover { border-style: solid; border-color: var(--indigo) }
 .show-toggle:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .empty { padding: 6px 0 10px; color: var(--muted); font-size: 13px }
@@ -137,36 +137,36 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 .store-leading { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap }
 .store-id { font: 700 20px/1.2 var(--display); letter-spacing: -.03em; color: var(--indigo) }
 .store-id:hover { text-decoration: underline }
-.detail-link { flex: none; font: 600 10.5px var(--mono); letter-spacing: .1em; color: var(--green-ink); white-space: nowrap; text-transform: uppercase }
+.detail-link { flex: none; font: 600 13px var(--font-roboto), Arial, sans-serif; color: var(--green-ink); white-space: nowrap }
 .detail-link:hover { text-decoration: underline }
 
 /* The verdict stamps. One element per stub carries the state color; on the
    ACTION REQUIRED form it takes the double-ring magenta stamp, pressed
    askew. Settled stubs wear straight ring stamps; pending wears the dotted
    held-back outline (raised line). */
-.state { padding: 4px 9px; border: 1px solid var(--carbon); color: var(--carbon); font: 600 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; background: var(--paper) }
-.state.state-ok { border: 2px solid var(--green-ink); color: var(--green-ink); box-shadow: inset 0 0 0 1.5px var(--paper), inset 0 0 0 3px var(--green-ink); padding: 4px 11px }
-.section.attention .store-row .state { border: 2px solid var(--flash); color: var(--stamp-ink); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--paper), inset 0 0 0 3px var(--flash); padding: 4px 11px; transform: rotate(-2deg) }
+.state { padding: 3px 10px; border: 1px solid var(--carbon); color: var(--carbon); font: 600 12px var(--font-roboto), Arial, sans-serif; white-space: nowrap; background: var(--paper) }
+.state.state-ok { border: 2px solid var(--green-ink); color: var(--green-ink); padding: 3px 10px }
+.section.attention .store-row .state { border: 2px solid var(--flash); color: var(--stamp-ink); font-weight: 700; padding: 3px 10px; transform: rotate(-1.5deg) }
 
 .row-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 11px }
 .row-meta { display: inline-flex; align-items: center; gap: 10px; flex: none }
-.window-note { font: 600 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--indigo); white-space: nowrap }
+.window-note { font: 600 12.5px var(--mono); color: var(--indigo); white-space: nowrap }
 .reason { margin: 0; font-size: 14.5px; line-height: 1.55; max-width: 80ch; text-wrap: pretty; color: var(--ink) }
 /* Ruled fact fields, exactly like the register's print boxes. */
 .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--rule) }
 .fact { margin: 0; min-width: 0 }
-.fact-label { font: 600 9.5px var(--mono); text-transform: uppercase; letter-spacing: .16em; color: var(--muted) }
+.fact-label { font: 500 12px var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 .fact-value { margin: 4px 0 0; font: 500 15px/1.3 var(--mono); letter-spacing: -.01em; color: var(--carbon) }
-.status { padding: 5px 10px; font: 700 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap }
+.status { padding: 4px 9px; font: 600 11.5px var(--font-roboto), Arial, sans-serif; white-space: nowrap }
 .status.error { border: 1px solid var(--rose-line); background: var(--rose); color: var(--stamp-ink) }
 .status.no_data { border: 1px solid var(--rule); background: var(--no-signal); color: var(--indigo) }
 .status.other { border: 1px solid var(--rule); background: var(--no-signal); color: var(--indigo) }
 
 /* --- the recommendation block: ruled print boxes --------------------------- */
 .decision { margin-top: 12px; padding: 13px 15px; border: 1px solid var(--rule); background: var(--paper) }
-.decision-kicker { display: block; margin-bottom: 9px; font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .18em; color: var(--green-ink) }
+.decision-kicker { display: block; margin-bottom: 8px; font: 600 12.5px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 .decision-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
-.decision-grid span { display: block; font: 600 9.5px var(--mono); text-transform: uppercase; letter-spacing: .16em; color: var(--muted) }
+.decision-grid span { display: block; font: 500 12px var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 .decision-grid strong { display: block; margin-top: 4px; font-size: 13.5px; line-height: 1.4; color: var(--ink) }
 .decision-grid > div:first-child strong { font: 700 17px/1.25 var(--display); letter-spacing: -.02em; color: var(--indigo) }
 .decision p { margin: 10px 0 0; font-size: 13px; line-height: 1.5 }
@@ -176,21 +176,20 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 /* Raised from the dark-console challenger: the approval tab sits alone - no
    hint text crowding it. */
 .card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 28px; margin-top: 14px }
-.approve-hint { font-size: 11.5px; color: var(--muted) }
-.approve-button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 22px; border: 2px solid var(--indigo); background: var(--indigo); color: #fffdf8; font: 700 11px var(--mono); letter-spacing: .16em; text-transform: uppercase; cursor: pointer }
+.approve-button { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 22px; border: 2px solid var(--indigo); background: var(--indigo); color: #fffdf8; font: 700 12.5px var(--mono); letter-spacing: .02em; cursor: pointer }
 .approve-button:hover { background: var(--indigo-deep); border-color: var(--indigo-deep) }
 .approve-button:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
-.approved-note { display: inline-block; padding: 4px 10px; border: 2px solid var(--green-ink); box-shadow: inset 0 0 0 1.5px var(--paper), inset 0 0 0 3px var(--green-ink); font: 700 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--green-ink) }
+.approved-note { display: inline-block; padding: 3px 10px; border: 2px solid var(--green-ink); font: 600 12px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 
 /* Compact per-store review in the no-signal list. */
 .id-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px }
 .id-item { display: inline-flex; align-items: stretch; border: 1px solid var(--rule); background: var(--paper) }
 .id-chip { display: inline-flex; align-items: center; padding: 8px 10px 8px 14px; font: 600 12.5px var(--mono); color: var(--indigo) }
 .id-chip:hover { background: var(--panel) }
-.chip-approve { display: inline-flex; align-items: center; justify-content: center; min-width: 47px; border: 0; border-left: 1px solid var(--rule); background: none; color: var(--green-ink); font: 700 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; cursor: pointer }
+.chip-approve { display: inline-flex; align-items: center; justify-content: center; min-width: 47px; border: 0; border-left: 1px solid var(--rule); background: none; color: var(--green-ink); font: 600 12.5px var(--font-roboto), Arial, sans-serif; cursor: pointer }
 .chip-approve:hover { background: var(--panel); color: var(--indigo) }
 .chip-approve:focus-visible { outline: 2px solid var(--indigo); outline-offset: -2px }
-.bulk-review { display: block; margin: 10px auto 2px; padding: 9px 20px; border: 1px dashed var(--carbon); background: var(--paper); font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--indigo); cursor: pointer }
+.bulk-review { display: block; margin: 10px auto 2px; padding: 9px 20px; border: 1px dashed var(--carbon); background: var(--paper); font: 600 13px var(--font-roboto), Arial, sans-serif; color: var(--indigo); cursor: pointer }
 .bulk-review:hover { border-style: solid; border-color: var(--indigo) }
 .bulk-review:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 
@@ -199,12 +198,12 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .approve-dialog::backdrop { background: rgba(30, 19, 79, .55) }
 .dialog-body { padding: 22px 22px 18px }
-.dialog-eyebrow { display: block; font: 700 10px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--green-ink) }
+.dialog-eyebrow { display: block; font: 600 12.5px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 .dialog-title { font: 700 21px/1.2 var(--display); letter-spacing: -.03em; margin: 7px 0 4px; color: var(--indigo) }
 .dialog-sub { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--muted) }
 .dialog-recommend { margin: 0 0 16px; padding: 11px 13px; border: 1px solid var(--rule); background: var(--stock); font-size: 13px; line-height: 1.5 }
 .dialog-recommend strong { color: var(--indigo) }
-.dialog-label { display: block; margin-bottom: 6px; font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .18em; color: var(--muted) }
+.dialog-label { display: block; margin-bottom: 6px; font: 500 12.5px var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 .dialog-input { width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--carbon); background: var(--paper); font: 500 13.5px var(--mono); letter-spacing: .02em; color: var(--ink) }
 .dialog-input:focus { outline: 2px solid var(--indigo); outline-offset: 1px; border-color: transparent }
 .dialog-note { margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted) }
@@ -212,22 +211,22 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .dialog-error { margin: 12px 0 0; padding: 9px 11px; border: 1px dashed var(--flash); background: var(--rose); color: var(--stamp-ink); font-size: 12px; line-height: 1.45 }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px }
 .link-button { border: 0; padding: 0; background: none; color: var(--green-ink); font-size: inherit; font-weight: 700; text-decoration: underline; cursor: pointer }
-.button-ghost { min-height: 38px; padding: 0 16px; border: 1px solid var(--carbon); background: none; font: 600 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); cursor: pointer }
+.button-ghost { min-height: 38px; padding: 0 16px; border: 1px solid var(--carbon); background: none; font: 600 12.5px var(--mono); color: var(--muted); cursor: pointer }
 .button-ghost:hover { border-color: var(--indigo); color: var(--indigo) }
 .button-ghost:focus-visible, .button-primary:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
-.button-primary { min-height: 38px; padding: 0 22px; border: 2px solid var(--indigo); background: var(--indigo); color: #fffdf8; font: 700 11px var(--mono); letter-spacing: .16em; text-transform: uppercase; cursor: pointer }
+.button-primary { min-height: 38px; padding: 0 22px; border: 2px solid var(--indigo); background: var(--indigo); color: #fffdf8; font: 700 12.5px var(--mono); letter-spacing: .02em; cursor: pointer }
 .button-primary:hover { background: var(--indigo-deep); border-color: var(--indigo-deep) }
 .button-primary:disabled { opacity: .55; cursor: progress }
 
 .caveat { margin: 6px 0 28px; max-width: 84ch; font-size: 11.5px; line-height: 1.55; color: var(--muted) }
 .notice { margin: 16px 0; padding: 13px 16px; border: 1px dashed var(--flash); background: var(--rose); color: var(--stamp-ink); font-size: 13px }
-.refresh-note { margin: 6px 0 0; font: 500 10.5px var(--mono); letter-spacing: .08em; color: var(--muted) }
+.refresh-note { margin: 6px 0 0; font: 400 12px var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 
 /* Loading the store feed: blank carbon slips, dashed rules. */
 .loading-board { padding: 22px 0 8px }
 .loading-intro { display: flex; align-items: flex-start; gap: 15px }
 .loading-mark { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--rule); background: var(--indigo); color: #fffdf8 }
-.loading-kicker { margin: 1px 0 4px; font: 600 10px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--green-ink) }
+.loading-kicker { margin: 1px 0 4px; font: 600 12.5px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 .loading-title { margin: 0; font: 700 22px/1.2 var(--display); letter-spacing: -.03em; color: var(--indigo) }
 .loading-copy { margin: 6px 0 0; max-width: 62ch; font-size: 13px; line-height: 1.55; color: var(--muted) }
 .loading-skeleton { display: grid; gap: 14px; margin-top: 24px }
@@ -237,7 +236,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .skeleton-tile { height: 96px }
 .skeleton-tile + .skeleton-tile { border-left: 0 }
 .skeleton-card { height: 210px }
-.loading-note { margin: 14px 0 0; font: 500 10.5px var(--mono); letter-spacing: .08em; color: var(--muted) }
+.loading-note { margin: 14px 0 0; font: 400 12px var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 @media (prefers-reduced-motion: reduce) {
   .topline.is-loading::after { animation: none; opacity: 0; transition: none }
 }
@@ -250,8 +249,8 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .hero p { max-width: 540px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.55 }
 .hero-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; color: var(--muted); font-size: 12px; text-align: right }
 .hero-meta strong { color: var(--green-ink); font: 600 12px var(--mono); letter-spacing: .06em }
-.live-dot { display: flex; align-items: center; gap: 8px; color: var(--green-ink); font: 600 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 2px }
-.back { display: inline-block; font: 600 11px var(--mono); letter-spacing: .1em; color: var(--green-ink); text-transform: uppercase }
+.live-dot { display: flex; align-items: center; gap: 8px; color: var(--green-ink); font: 600 12px var(--font-roboto), Arial, sans-serif; margin-bottom: 2px }
+.back { display: inline-block; font: 600 13px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 .back:hover { text-decoration: underline }
 .store-id:focus-visible,
 .detail-link:focus-visible,
@@ -262,15 +261,15 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .panel { padding: 22px 26px; border: 1px solid var(--rule); background: var(--paper); min-width: 0 }
 .section-title { font: 700 15px var(--display); letter-spacing: -.01em; color: var(--indigo); margin: 0 0 14px }
 .narrative { font-size: 15px; line-height: 1.7; color: var(--ink); margin: 0 }
-.grounding { display: inline-flex; align-items: center; gap: 7px; margin: 0; font: 600 11px var(--mono); letter-spacing: .08em; color: var(--green-ink); text-transform: uppercase }
+.grounding { display: inline-flex; align-items: center; gap: 7px; margin: 0; font: 600 12px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 .grounding svg { flex: none; color: var(--green) }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px }
-.chips .badge { border: 1px solid var(--carbon); padding: 5px 12px; background: var(--paper); font: 500 11px var(--mono); letter-spacing: .06em; color: var(--carbon) }
+.chips .badge { border: 1px solid var(--carbon); padding: 5px 12px; background: var(--paper); font: 600 12px var(--font-roboto), Arial, sans-serif; color: var(--carbon) }
 .chips .badge.ok { border: 1px solid rgba(14, 122, 85, .5); background: var(--stock); color: var(--green-ink) }
 .chips .badge.warn { border: 1px solid #cbb877; background: var(--yellow); color: var(--amber-ink) }
 .kv { display: flex; justify-content: space-between; gap: 18px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 13px }
 .kv:last-child { border-bottom: 0 }
-.kv span { color: var(--muted); flex: none; font: 600 9.5px var(--mono); text-transform: uppercase; letter-spacing: .16em; padding-top: 3px }
+.kv span { color: var(--muted); flex: none; font: 500 12.5px var(--font-roboto), Arial, sans-serif; padding-top: 2px }
 .kv strong { color: var(--carbon); text-align: right; max-width: 62%; overflow-wrap: anywhere; font: 500 13.5px/1.4 var(--mono) }
 .directional-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); font-style: italic }
 .provenance { margin: 26px 0 0; padding-top: 14px; border-top: 1px solid var(--rule); font: 400 11px/1.6 var(--mono); color: var(--muted) }
@@ -283,15 +282,15 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .ask-panel { margin: 0 0 40px; padding: 22px 26px; border: 1px dashed var(--green-ink); background: var(--stock); min-width: 0 }
 .ask-sub { margin: -4px 0 16px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 70ch; text-wrap: pretty }
 .ask-presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px }
-.ask-preset { border: 1px solid var(--green-ink); padding: 8px 14px; background: var(--paper); font: 500 11.5px var(--mono); letter-spacing: .04em; color: var(--green-ink); cursor: pointer }
+.ask-preset { border: 1px solid var(--green-ink); padding: 8px 14px; background: var(--paper); font: 500 13px var(--font-roboto), Arial, sans-serif; color: var(--green-ink); cursor: pointer }
 .ask-preset:hover { background: var(--rose) }
 .ask-preset:disabled { opacity: .55 }
 .ask-preset:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .ask-row { display: flex; gap: 9px }
 .ask-row .dialog-input { width: auto; flex: 1; min-width: 0 }
-.ask-status { margin: 14px 0 0; font: 400 11px/1.5 var(--mono); color: var(--muted) }
+.ask-status { margin: 14px 0 0; font: 400 12.5px/1.5 var(--font-roboto), Arial, sans-serif; color: var(--muted) }
 .ask-result { margin-top: 18px; padding: 12px 14px; border: 1px solid var(--rule); background: var(--paper) }
-.ask-honesty { display: block; margin: 0 0 8px; font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .18em; color: var(--green-ink) }
+.ask-honesty { display: block; margin: 0 0 8px; font: 600 12.5px var(--font-roboto), Arial, sans-serif; color: var(--green-ink) }
 .ask-action { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink) }
 .ask-action strong { font: 700 15px/1.3 var(--display); letter-spacing: -.02em; color: var(--indigo) }
 .ask-note { margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink); text-wrap: pretty }
@@ -308,7 +307,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 @media (max-width: 640px) {
   .brand-product, .brand-divider { display: none }
   .board-head h1 { font-size: 27px }
-  .board-asof { white-space: normal; letter-spacing: .1em; flex-basis: 100% }
+  .board-asof { white-space: normal; flex-basis: 100% }
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
   .summary { margin: 18px 0 20px; padding: 18px 14px 16px }
@@ -325,7 +324,7 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .tiles { gap: 0 }
   .tile { min-height: 0; padding: 12px 10px }
   .tile-count { font-size: 26px }
-  .tile-label { font-size: 9px; letter-spacing: .1em }
+  .tile-label { font-size: 12px }
 
   .bucket-head { padding: 13px 14px; gap: 10px }
   .bucket-title { font-size: 17px }
@@ -343,12 +342,11 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .decision-grid { grid-template-columns: 1fr 1fr; gap: 10px 12px }
   .decision-grid > div:nth-child(3) { grid-column: 1 / -1 }
   .card-actions { margin-top: 12px; gap: 14px }
-  .approve-hint { display: none }
   .approve-button { width: 100%; min-height: 44px }
   .id-list { gap: 9px }
   .id-item { min-height: 44px }
   .id-chip { padding: 8px 12px; font-size: 13px }
-  .chip-approve { min-width: 47px; padding: 0 12px; font-size: 10px }
+  .chip-approve { min-width: 47px; padding: 0 12px; font-size: 12.5px }
   .bulk-review { min-height: 44px }
   .show-toggle { min-height: 40px; padding: 8px 20px; font-size: 10.5px }
   .panel { padding: 18px 16px }
@@ -370,7 +368,6 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 @media (max-width: 380px) {
   .decision-grid { grid-template-columns: 1fr }
   .decision-grid > div:nth-child(3) { grid-column: auto }
-  .tile-label { font-size: 8.5px }
 }
 
 /* --- interaction polish ------------------------------------------------------

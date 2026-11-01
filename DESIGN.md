@@ -46,10 +46,9 @@ typography:
     lineHeight: 1.4
     letterSpacing: "0.02em"
   label:
-    fontFamily: "IBM Plex Mono, monospace"
-    fontSize: "10px"
-    fontWeight: 600
-    letterSpacing: "0.16em"
+    fontFamily: "Roboto, system-ui, sans-serif"
+    fontSize: "12.5px"
+    fontWeight: 500
     lineHeight: 1.5
 rounded:
   sm: "0px"
@@ -145,16 +144,18 @@ Warm coupon stock replaces the cool editorial ground; every color still works as
 ### Hierarchy
 - **Display** (700, 30px/1.05, -.045em): page nameplates; detail hero scales to `clamp(30px, 4.5vw, 46px)`.
 - **Title** (700, 19-21px): group names, dialog titles, recommended action.
-- **Mono figure** (500-600, 15-34px, tabular): the 53 gate figure, count cells 6/47/32, health/recovery values, store-ID boxes.
-- **Label** (600-700, 9.5-11px, +0.12em to +0.22em, uppercase): field labels (HEALTH, RECOVERY), zone kickers (DECISION NEEDED), the header identity strip (campaign window + data freshness - a content line, not decoration).
+- **Mono figure** (500-600, 15-34px, tabular): the 53 gate figure, count cells 6/47/32, health/recovery values, store-ID boxes, timestamps.
+- **Label** (Roboto 500-600, 12-13px, sentence case): field labels (Health, Recovery), zone lines (Decision needed), the header identity strip (campaign window + data freshness - a content line, not decoration).
 - **Body** (400, 13-15px/1.55): reasons, narrative; ~80ch cap.
 
 ### Named Rules
+**The Quiet Voice Rule.** The register speaks in sentence case. No tracked uppercase anywhere - labels never set `text-transform: uppercase` and never letter-space beyond `.02em`. The register's shout is reserved for the stamp shape alone; IBM Plex Mono carries only figures, record ids, and the token field.
+
 **The Tabular Ledger Rule.** The board re-renders every 60s; every number sits in mono tabular slots so re-renders never jitter or reflow rows. State text lives in fixed cells that change in place (raised from the transit challenger).
 
 ## Layout
 
-One centered column (1160px, 32px gutters) printed on the stock ground. Order: full-bleed masthead band → header strip (identity line left, freshness right, 2px rule) → gate record with the three ruled count cells → three register forms (16-18px apart) → perforated stubs (10px apart) → footer. Detail page prints two sheets at 1.25fr/1fr (why / evidence) over the advisory memo. Breakpoints: 900px stacks the sheets; 640px is the clerk's pocket pass (square stamps, full-width tabs, mono labels shrink to 9px, the docket docks bottom); 380px drops decision prints to one column.
+One centered column (1160px, 32px gutters) printed on the stock ground. Order: full-bleed masthead band → header strip (identity line left, freshness right, 2px rule) → gate record with the three ruled count cells → three register forms (16-18px apart) → perforated stubs (10px apart) → footer. Detail page prints two sheets at 1.25fr/1fr (why / evidence) over the advisory memo. Breakpoints: 900px stacks the sheets; 640px is the clerk's pocket pass (square stamps, full-width tabs, the docket docks bottom); 380px drops decision prints to one column.
 
 ## Elevation & Depth
 
@@ -177,9 +178,9 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Focus:** 2-3px solid outline in carbon/indigo ink, instant (steps).
 
 ### Stamps (state tags - the signature component)
-- **ACT NOW stamp:** paper fill, 2px `#cf348d` ring with inset paper gap + inner ring (rubber-stamp double edge), Stamp Ink uppercase mono text, rotated -2deg.
+- **ACT NOW stamp:** paper fill, clean 2px `#cf348d` ring, Stamp Ink 700 Roboto 12px, rotated -1.5deg.
 - **Settled stamp:** same ring in Green Ink, held straight.
-- **Quiet tag:** 1px carbon outline, paper fill, carbon mono uppercase - neutral states whisper.
+- **Quiet tag:** 1px carbon outline, paper fill, carbon 600 12px sentence case - neutral states whisper.
 - **Held-back outline:** dashed carbon outline for pending/disabled record states (raised from the darkroom challenger).
 - Stamps stand back up at ≤640px.
 
@@ -203,8 +204,10 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Do** print every live figure in IBM Plex Mono with tabular numerals (`font-variant-numeric: tabular-nums`).
 - **Do** keep the ground warm (`#f6f4ef`) and plates paper (`#fffdf8`); depth = stock-on-stock flat.
 - **Do** carry the trio's brand jobs exactly: indigo band + ink, green live system, magenta stamps only.
+- **Do** speak sentence case: mono only carries figures, record ids and the token field.
 
 ### Don't:
+- **Don't** shout: no tracked uppercase anywhere - `letter-spacing` stays ≤ `.02em` outside figures, and stamps carry urgency by shape, not by caps.
 - **Don't** cast a shadow - emphasis comes from stamps, frames, and paper contrast.
 - **Don't** ease anything: motion steps (`steps()`); no fades longer than the LED step.
 - **Don't** put colored borders >1px on stubs or panels; the ACTION REQUIRED frame and stamp rings are the only 2px color in the system.

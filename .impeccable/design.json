@@ -16,7 +16,7 @@
       "title": { "displayName": "Form Name", "purpose": "Group names, dialog titles, recommended action." },
       "body": { "displayName": "Clerk's Fine Print", "purpose": "Reasons, narrative; Roboto, ~80ch cap." },
       "mono": { "displayName": "Carbon Figure", "purpose": "All live figures, stamps, proofs - IBM Plex Mono, tabular." },
-      "label": { "displayName": "Tracked Legend", "purpose": "Uppercase field labels and identity strips; must print real content to exist." }
+      "label": { "displayName": "Content Label", "purpose": "Field labels and zone lines in Roboto sentence case - must print real content to exist; the Quiet Voice Rule bans tracked uppercase." }
     },
     "motion": [
       { "name": "topline-step", "value": "steps(10, end) 1.4s infinite", "purpose": "Register block stepping across the LED rail while the feed wakes; settles flat. Never a smooth sweep." },
@@ -111,6 +111,7 @@
       { "name": "The Stock-on-Stock Rule", "body": "No shadows anywhere on the shelf. Depth is paper on stock separated by hairlines, with perforations and ruled fields.", "section": "elevation" },
       { "name": "The Only-Frame Rule", "body": "Stubs wear 1px hairlines. Exactly one element per surface may carry a 2px colored frame: the ACTION REQUIRED form head. No colored border ever rides a single side of a card.", "section": "shapes" },
       { "name": "The Deep-Ink Rule", "body": "Words print only in deep inks (#a4285e, #0e7a55, #3b3f66, #2a1b6a); the raw trio is reserved for dots, rails, fills, and stamp bodies.", "section": "colors" },
+      { "name": "The Quiet Voice Rule", "body": "The register speaks in sentence case. No tracked uppercase anywhere; IBM Plex Mono carries only figures, record ids, and the token field. Urgency is stamped, not shouted.", "section": "typography" },
       { "name": "The Tabular Ledger Rule", "body": "The board re-renders every 60s; every number sits in mono tabular slots so re-renders never jitter or reflow rows.", "section": "typography" },
       { "name": "The No-Shadow Ledger Rule", "body": "If a state needs emphasis, it gets a stamp or a frame - never a shadow, never a lift.", "section": "elevation" }
     ],
@@ -123,6 +124,7 @@
     "donts": [
       "Don't cast a shadow - emphasis comes from stamps, frames, and paper contrast.",
       "Don't ease anything: motion steps; no smooth sweeps or fades.",
+      "Don't shout: no tracked uppercase anywhere; stamps carry urgency by shape, not caps.",
       "Don't put colored borders >1px on stubs or panels; the ACTION REQUIRED frame and stamp rings are the only 2px color in the system.",
       "Don't erase history: approvals add a green stamp; error slips print and stay.",
       "Don't invent serial numbers or fictional form copy - the register voice prints product truth only."
