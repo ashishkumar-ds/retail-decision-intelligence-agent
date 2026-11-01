@@ -73,7 +73,9 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 .brand-product { font: 500 13.5px var(--font-roboto), Arial, sans-serif; color: rgba(255, 253, 248, .85); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .navlinks { display: flex; align-items: center; gap: 18px; color: rgba(255, 253, 248, .88); font-size: 13px; white-space: nowrap }
 .nav-status { display: flex; align-items: center; gap: 8px }
-.nav-status i, .live-dot i { width: 7px; height: 7px; background: var(--green); display: inline-block; flex: none }
+/* Status reads as plain text: no indicator dots anywhere on an official surface. */
+.nav-status i, .live-dot i { display: none }
+.bucket-marker { display: none }
 
 /* --- register head: gate sentence + ruled count cells ---------------------- */
 .board-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; padding: 30px 0 18px; border-bottom: 2px solid var(--rule) }
@@ -130,8 +132,7 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 /* --- store stubs ------------------------------------------------------------ */
 /* Each store is one stub: perforated edge, hairline-ruled fields, reason as
    the printing, verdict as a stamp. Stamps never vanish; they hold. */
-.store-row { position: relative; margin-top: 10px; padding: 15px 18px 16px 30px; border: 1px solid var(--rule); background: var(--paper) }
-.store-row::before { content: ''; position: absolute; left: 5px; top: 12px; bottom: 12px; width: 0; border-left: 6px dotted var(--punch) }
+.store-row { position: relative; margin-top: 10px; padding: 15px 18px 16px; border: 1px solid var(--rule); background: var(--paper) }
 .section.attention .store-row { border-color: var(--rose-line); border-width: 0; border-left-width: 0; background: var(--paper); outline: 1px solid var(--rose-line); outline-offset: -1px }
 .store-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 9px }
 .store-leading { display: flex; align-items: center; gap: 12px; min-width: 0; flex-wrap: wrap }
@@ -146,7 +147,7 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
    held-back outline (raised line). */
 .state { padding: 3px 10px; border: 1px solid var(--carbon); color: var(--carbon); font: 600 12px var(--font-roboto), Arial, sans-serif; white-space: nowrap; background: var(--paper) }
 .state.state-ok { border: 2px solid var(--green-ink); color: var(--green-ink); padding: 3px 10px }
-.section.attention .store-row .state { border: 2px solid var(--flash); color: var(--stamp-ink); font-weight: 700; padding: 3px 10px; transform: rotate(-1.5deg) }
+.section.attention .store-row .state { border: 2px solid var(--flash); color: var(--stamp-ink); font-weight: 700; padding: 3px 10px }
 
 .row-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 11px }
 .row-meta { display: inline-flex; align-items: center; gap: 10px; flex: none }
@@ -360,9 +361,6 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
   .chips .badge { width: 100% }
   .approve-dialog { position: fixed; inset: auto 0 0 0; width: 100%; max-width: 100%; margin: 0; border-left: 0; border-right: 0 }
   .dialog-body { padding: 20px 18px 18px }
-  /* The stamp stands square when the shelf gets narrow: a rotated ring bites
-     the stub edge at register scale. */
-  .section.attention .store-row .state { transform: none }
 }
 
 @media (max-width: 380px) {

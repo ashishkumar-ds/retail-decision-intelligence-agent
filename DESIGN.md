@@ -86,14 +86,14 @@ components:
 
 **Creative North Star: "The Stub Register"**
 
-The product is a carbon-copy register of the engine's recommendations, not a dashboard. Every store is a stub with a perforated edge; the engine's reason prints as the stub's ruled fields; every verdict prints as a stamp. The magenta ACT NOW stamp - the register's one urgent polarity - marks every store that needs a human decision; approved records take the green stamp, and nothing is ever erased, it cancels. The clerk reads top to bottom like a form: masthead band, gate sentence, ruled count cells, stamped forms, the docket.
+The product is a carbon-copy register of the engine's recommendations, not a dashboard. Every store is a stub on the register; the engine's reason prints as the stub's ruled fields; every verdict prints as a stamp. The magenta ACT NOW stamp - the register's one urgent polarity - marks every store that needs a human decision; approved records take the green stamp, and nothing is ever erased, it cancels. The clerk reads top to bottom like a form: masthead band, gate sentence, ruled count cells, stamped forms, the docket. The brand voice is dunnhumby's own copy (the house strapline sits in the footer); no indicator dots, badges, or perforations decorate the record - status reads as plain text, in the official register voice.
 
 The palette is the pinned dunnhumby trio (`#2abf95`, `#2a1b6a`, `#cf348d`) doing named jobs on paper: indigo owns the full-bleed masthead band and register ink, green owns only the live system, magenta exists solely to stamp act-now. Depth is stock sitting on stock - no shadows anywhere on the shelf - and nothing eases: state changes step. This is the second world the user commissioned in one day; it replaced the quieter shelf-label world the user found "a little bit same."
 
 **Key Characteristics:**
-- One signature moment per stub: the double-ring magenta ACT NOW stamp, pressed askew (-2deg), on every needs-intervention record.
+- One signature moment per stub: the magenta ACT NOW stamp (a clean 2px magenta ring, straight) on every needs-intervention record.
 - Full-bleed `#2a1b6a` masthead band with the white wordmark (single-color inversion) and the green LED rail above it.
-- Perforation punches (`6px dotted`) open every store stub; hairlines (`#d9d3c6`) rule every field.
+- Hairlines (`#d9d3c6`) rule every field; no dots, no badges, no perforations anywhere.
 - Carbon figures print in IBM Plex Mono; Space Grotesk prints nameplates; Roboto carries fine print.
 - Sharp corners (0-2px), flat stock-on-stock depth, stepped motion that never eases.
 
@@ -127,7 +127,9 @@ Warm coupon stock replaces the cool editorial ground; every color still works as
 
 **The Carbon Rule.** All live figures - counts, percentages, windows, store IDs in boxes - print in IBM Plex Mono carbon ink (`#3b3f66`), always tabular. Space Grotesk is reserved for nameplates; Roboto carries prose.
 
-**The Stock-on-Stock Rule.** No shadows anywhere on the shelf. Depth is paper ("#fffdf8") on stock ("#f6f4ef") separated by hairlines, with perforations and ruled fields - the docket floats on dimmed ink, the only exception.
+**The Stock-on-Stock Rule.** No shadows anywhere on the shelf. Depth is paper ("#fffdf8") on stock ("#f6f4ef") separated by hairlines and ruled fields - the docket floats on dimmed ink, the only exception.
+
+**The Plain-Record Rule.** No indicator dots, status squares, badges, or perforations - the register speaks in text alone. Color arrives only through words, cells, frames, and the LED rail.
 
 **The Only-Frame Rule.** Stubs always wear 1px hairlines. Exactly one element per surface may carry a 2px colored frame: the ACTION REQUIRED form head (its stamp frame). No colored border ever rides a single side of a card.
 
@@ -155,18 +157,18 @@ Warm coupon stock replaces the cool editorial ground; every color still works as
 
 ## Layout
 
-One centered column (1160px, 32px gutters) printed on the stock ground. Order: full-bleed masthead band → header strip (identity line left, freshness right, 2px rule) → gate record with the three ruled count cells → three register forms (16-18px apart) → perforated stubs (10px apart) → footer. Detail page prints two sheets at 1.25fr/1fr (why / evidence) over the advisory memo. Breakpoints: 900px stacks the sheets; 640px is the clerk's pocket pass (square stamps, full-width tabs, the docket docks bottom); 380px drops decision prints to one column.
+One centered column (1160px, 32px gutters) printed on the stock ground. Order: full-bleed masthead band → header strip (identity line left, freshness right, 2px rule) → gate record with the three ruled count cells → three register forms (16-18px apart) → stubs (10px apart) → footer. Detail page prints two sheets at 1.25fr/1fr (why / evidence) over the advisory memo. Breakpoints: 900px stacks the sheets; 640px is the clerk's pocket pass (full-width tabs, the docket docks bottom); 380px drops decision prints to one column.
 
 ## Elevation & Depth
 
-None. The register is flat paper: no resting shadows, no hover shadows, no blurred glows. Depth comes from layering brighter paper on the stock ground, hairline rules, and perforation punches. The approval docket is the sole floating object - it dims the register behind ink-dark glass (`rgba(30,19,79,.55)`) without casting a shadow of its own.
+None. The register is flat paper: no resting shadows, no hover shadows, no blurred glows. Depth comes from layering brighter paper on the stock ground and hairline rules. The approval docket is the sole floating object - it dims the register behind ink-dark glass (`rgba(30,19,79,.55)`) without casting a shadow of its own.
 
 ### Named Rules
 **The No-Shadow Ledger Rule.** If a state needs emphasis, it gets a stamp or a frame - never a shadow, never a lift.
 
 ## Shapes
 
-Sharp is the register's form language: 0px on plates, tabs and count cells; 2px maximum on small chips and stamp inner rings. Borders are 1px hairlines everywhere except the two stamped exceptions (the ACT form head's 2px frame and the stamps' 2px rings with inset paper gaps that read as rubber-stamp double-rings). Perforation (`6px dotted #e3ddcd`) is the one recurring silhouette - every stub is torn from the book.
+Sharp is the register's form language: 0px on plates, tabs and count cells; 2px maximum on small chips and stamp rings. Borders are 1px hairlines everywhere except the two stamped exceptions (the ACT form head's 2px frame and the stamps' 2px rings). No dots of any kind: the perforated-stub silhouette was retired in the official-voice pass.
 
 ## Components
 
@@ -174,7 +176,7 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Shape:** square corners, 38px min-height, 2px border.
 - **Primary:** Register Indigo fill, paper-white mono 700 uppercase +0.16em label ("APPROVE"); presses to `#1e134f`.
 - **Ghost:** paper fill, 1px carbon outline, Print Grey mono label ("CANCEL"); hover turns indigo.
-- **Dashed actions** ("SHOW ALL 6 STORES", "BULK REVIEW"): 1px dashed carbon frame - a perforation command, not a primary.
+- **Dashed actions** ("Show all 6 stores", "Bulk review"): 1px dashed carbon frame - a command tag, not a primary.
 - **Focus:** 2-3px solid outline in carbon/indigo ink, instant (steps).
 
 ### Stamps (state tags - the signature component)
@@ -182,10 +184,10 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Settled stamp:** same ring in Green Ink, held straight.
 - **Quiet tag:** 1px carbon outline, paper fill, carbon 600 12px sentence case - neutral states whisper.
 - **Held-back outline:** dashed carbon outline for pending/disabled record states (raised from the darkroom challenger).
-- Stamps stand back up at ≤640px.
+- Stamps never rotate and stand square at every breakpoint.
 
 ### Cards / Containers
-- **Paper plates** (`#fffdf8`) on stock, 1px hairline borders, square corners; store stubs add the perforated left edge and a 28px-perforation padding; the review sheet is a tinted folder (`#edece4`).
+- **Paper plates** (`#fffdf8`) on stock, 1px hairline borders, square corners; the review sheet is a tinted folder (`#edece4`).
 
 ### Fields
 - **Inputs:** paper fill, 1px carbon frame, mono text, no radius; indigo 2px focus outline; mono placeholder in Print Grey. Caret green.
@@ -212,4 +214,5 @@ Sharp is the register's form language: 0px on plates, tabs and count cells; 2px 
 - **Don't** ease anything: motion steps (`steps()`); no fades longer than the LED step.
 - **Don't** put colored borders >1px on stubs or panels; the ACTION REQUIRED frame and stamp rings are the only 2px color in the system.
 - **Don't** erase history: approvals add a green stamp; error slips print and stay.
-- **Don't** invent serial numbers or fictional form copy - the register voice prints product truth only; any uppercase strip must carry campaign/freshness/field content to exist.
+- **Don't** decorate with dots: no indicator squares, no perforations, no badges - status is plain text.
+- **Don't** invent copy: brand voice uses dunnhumby's own sentences; everything else prints product truth.
