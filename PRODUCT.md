@@ -78,11 +78,14 @@ palette): the board reads as a **dunnhumby** product surface. The
 `/dunnhumby.svg` wordmark asset, the lowercase wordmark + brand-product
 lockup in the brand rail, Roboto body type (matching dunnhumby.com),
 and the storefront-outline mark are part of the product identity. The
-2026-11-01 user-initiated redesign commits the shelf-edge label world:
-the brand palette (`#2abf95` green = live/safe system, `#2a1b6a` indigo =
-shell ink and decision zones, `#cf348d` magenta = the one act-now polarity)
-with AA-adapted text inks (`#0e7a55`, `#a4285e`), replacing the earlier
-teal/peach editorial palette. Future dashboard work preserves this system
+2026-11-01 user-initiated redesigns commit the **Stub Register** world (the
+current build; the user judged the earlier shelf-label re-skin that same day
+"still a little bit same"): the brand palette (`#2abf95` green = live/safe
+system, `#2a1b6a` indigo = masthead band + register ink, `#cf348d` magenta =
+the one act-now stamp) with AA-adapted text inks (`#0e7a55`, `#a4285e`,
+carbon `#3b3f66`), full-bleed indigo brand band, perforated stubs, verdict
+stamps that never erase, and IBM Plex Mono carbon figures alongside Roboto
+body + Space Grotesk nameplates. Future dashboard work preserves this system
 unless the user starts an explicit redesign.
 
 ## Evidence on Hand

@@ -1,13 +1,14 @@
 import type { Metadata } from 'next'
-import { Roboto, Space_Grotesk } from 'next/font/google'
+import { IBM_Plex_Mono, Roboto, Space_Grotesk } from 'next/font/google'
 import './globals.css'
 
 // Body is Roboto — the same OFL face dunnhumby.com serves — and display is
 // Space Grotesk: dunnhumby's own display face TESCOModern is proprietary with
 // no public license, so this is the closest neutral grotesk fallback (also
-// OFL). next/font self-hosts both at build time, so the browser never sends a
-// render-blocking request to Google and family metrics match the previous
-// @import exactly.
+// OFL). IBM Plex Mono carries the register's carbon figures, stamps and
+// tracked legends (the Stub Register world). next/font self-hosts all three
+// at build time, so the browser never sends a render-blocking request to
+// Google and family metrics match the previous @import exactly.
 const roboto = Roboto({
   subsets: ['latin'],
   weight: ['400', '500', '700'],
@@ -20,6 +21,13 @@ const spaceGrotesk = Space_Grotesk({
   weight: ['500', '600', '700'],
   display: 'swap',
   variable: '--font-space-grotesk',
+})
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-mono',
 })
 
 // README's live deployment (stakeholder board on Vercel). Overridable per
@@ -49,7 +57,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${roboto.variable} ${spaceGrotesk.variable}`}>{children}</body>
+      <body className={`${roboto.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}>{children}</body>
     </html>
   )
 }

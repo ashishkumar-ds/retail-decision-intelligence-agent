@@ -1,23 +1,24 @@
 ---
 name: Retail Decision Intelligence Agent
-description: A dunnhumby-branded store-recovery decision surface built as shelf-edge labels - every store a label, the magenta clearance sticker says act now.
+description: A dunnhumby-branded store-recovery decision surface built as a carbon-copy register - every store a stamped stub, approvals stamp and nothing ever erases.
 colors:
   primary: "#2a1b6a"
   brand-green: "#2abf95"
   brand-green-ink: "#0e7a55"
   brand-magenta: "#cf348d"
   brand-magenta-ink: "#a4285e"
-  neutral-bg: "#f2f7f4"
-  surface: "#ffffff"
-  panel: "#f7f9fa"
-  line: "#d7e2df"
-  muted: "#54616b"
+  carbon: "#3b3f66"
+  neutral-bg: "#f6f4ef"
+  paper: "#fffdf8"
+  panel: "#f2efe6"
+  line: "#d9d3c6"
+  punch: "#e3ddcd"
+  muted: "#5d6167"
   ink: "#212048"
   slate: "#6f74a8"
-  green-soft: "#e7f6f0"
-  indigo-soft: "#eef0f8"
-  rose: "#f9edf5"
-  rose-line: "#f0c2dd"
+  no-signal: "#edece4"
+  rose: "#f8e9f1"
+  rose-line: "#ecc9dd"
   amber: "#f5e9b8"
   amber-ink: "#8a5a12"
 typography:
@@ -26,11 +27,11 @@ typography:
     fontSize: "30px"
     fontWeight: 700
     lineHeight: 1.05
-    letterSpacing: "-0.055em"
+    letterSpacing: "-0.045em"
   title:
     fontFamily: "Space Grotesk, Roboto, sans-serif"
     fontSize: "19px"
-    fontWeight: 600
+    fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "-0.03em"
   body:
@@ -38,38 +39,44 @@ typography:
     fontSize: "14.5px"
     fontWeight: 400
     lineHeight: 1.55
-  label:
-    fontFamily: "Roboto, system-ui, sans-serif"
-    fontSize: "10.5px"
-    fontWeight: 700
-    letterSpacing: "0.14em"
+  mono:
+    fontFamily: "IBM Plex Mono, monospace"
+    fontSize: "13px"
+    fontWeight: 500
     lineHeight: 1.4
+    letterSpacing: "0.02em"
+  label:
+    fontFamily: "IBM Plex Mono, monospace"
+    fontSize: "10px"
+    fontWeight: 600
+    letterSpacing: "0.16em"
+    lineHeight: 1.5
 rounded:
-  sm: "4px"
-  md: "6px"
+  sm: "0px"
+  md: "2px"
 spacing:
   sm: "8px"
   md: "12px"
   lg: "18px"
-  xl: "22px"
+  xl: "24px"
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
-    textColor: "#ffffff"
-    rounded: "{rounded.md}"
-    padding: "0 20px"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.sm}"
+    padding: "0 22px"
   button-primary-hover:
     backgroundColor: "#1e134f"
   button-ghost:
     backgroundColor: "transparent"
     textColor: "{colors.muted}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.sm}"
     padding: "0 16px"
   card:
-    backgroundColor: "{colors.surface}"
-    rounded: "{rounded.md}"
+    backgroundColor: "{colors.paper}"
+    rounded: "{rounded.sm}"
   input:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
 ---
@@ -78,125 +85,128 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Shelf Edge"**
+**Creative North Star: "The Stub Register"**
 
-The product is a working grocery shelf, not a dashboard. Every store is a shelf-edge label: a white plate with hairline rules, a state tag top-left, the reason printed as the label's name, the facts as the price field, and the decision stamped in a pale-indigo zone. The visitor's eye travels the shelf like a grocer's: three groups, one polarity checked first - the magenta clearance sticker, the grocer's "reduced, time is short" tag, marks every store that needs a human decision. Everything else on the shelf is settled paper; live and safe states stay quiet by design.
+The product is a carbon-copy register of the engine's recommendations, not a dashboard. Every store is a stub with a perforated edge; the engine's reason prints as the stub's ruled fields; every verdict prints as a stamp. The magenta ACT NOW stamp - the register's one urgent polarity - marks every store that needs a human decision; approved records take the green stamp, and nothing is ever erased, it cancels. The clerk reads top to bottom like a form: masthead band, gate sentence, ruled count cells, stamped forms, the docket.
 
-The palette is the pinned dunnhumby brand trio (`#2abf95`, `#2a1b6a`, `#cf348d`) doing named jobs: indigo carries all shell ink and decision zones, green carries only the live-data system, magenta is spent only on the act-now polarity. Color never decorates; every colored pixel means something. Depth is settled paper on paper - layered, ambient, nearly invisible - and the one authored motion is the topline sweep, the shelf powering on while the feed wakes.
+The palette is the pinned dunnhumby trio (`#2abf95`, `#2a1b6a`, `#cf348d`) doing named jobs on paper: indigo owns the full-bleed masthead band and register ink, green owns only the live system, magenta exists solely to stamp act-now. Depth is stock sitting on stock - no shadows anywhere on the shelf - and nothing eases: state changes step. This is the second world the user commissioned in one day; it replaced the quieter shelf-label world the user found "a little bit same."
 
 **Key Characteristics:**
-- One signature moment per surface: the die-cut magenta clearance sticker (rotated -1.4deg) on needs-intervention rows.
-- Hairline (1px `#d7e2df`) rules structure every plate; no card wears a colored border above 1px on any side.
-- Words print only in deepened inks (`#0e7a55`, `#a4285e`) so every word clears WCAG AA on the tint it prints on; the raw brand trio appears only in non-text positions.
-- All live figures are Space Grotesk with `tabular-nums`; Roboto carries the body (dunnhumby.com fidelity).
-- The state system is a triad, never a rainbow: act-now (magenta), no-signal (slate/indigo tint), settled (green).
+- One signature moment per stub: the double-ring magenta ACT NOW stamp, pressed askew (-2deg), on every needs-intervention record.
+- Full-bleed `#2a1b6a` masthead band with the white wordmark (single-color inversion) and the green LED rail above it.
+- Perforation punches (`6px dotted`) open every store stub; hairlines (`#d9d3c6`) rule every field.
+- Carbon figures print in IBM Plex Mono; Space Grotesk prints nameplates; Roboto carries fine print.
+- Sharp corners (0-2px), flat stock-on-stock depth, stepped motion that never eases.
 
 ## Colors
 
-The palette is committed at three names and kept restrained everywhere else; tints exist so large fields stay pale while inks stay dark.
+Warm coupon stock replaces the cool editorial ground; every color still works as a named form field.
 
 ### Primary
-- **Price-Rail Indigo** (`#2a1b6a`): the shell's ink - headings, store IDs, decision-zone values, primary buttons, the 2px nav seal. Prints 14.4:1 on white.
+- **Register Indigo** (`#2a1b6a`): the masthead band, headings, store IDs, decision print, primary tabs; the deep keyline `#1e134f` seats it. 14.4:1 on paper.
 
 ### Secondary
-- **Shelf Green** (`#2abf95`): the live-data system only - the topline price-rail, the live dot, ok-state fills, hover mixes. Never used for words.
-- **Green Ink** (`#0e7a55`): the same green family deepened for text; 5.3:1 on white, 4.9:1 on the mint ground.
-- **Clearance Magenta** (`#cf348d`): the act-now polarity - the clearance sticker outline/fill, the magenta tab, the "6" count on its plate. Non-text only.
-- **Magenta Ink** (`#a4285e`): the magenta family deepened for text; 6.4:1 on the rose tint, 6.9:1 on white.
+- **Shelf Green** (`#2abf95`): the LED rail, live dots, verdict marks for settled states - never words.
+- **Green Ink** (`#0e7a55`): green words - LIVE legends, CLEAR counts, verification. 5.1:1 on paper.
+- **Stamp Magenta** (`#cf348d`): the ACT NOW stamp, its form frame, the act-now count. Non-text or stamped text only.
+- **Stamp Ink** (`#a4285e`): magenta family words, 6.2:1 on paper; all errata slips.
 
 ### Tertiary
-- **Slate Tag** (`#6f74a8`): the no-signal marker (marker tabs, ids) where a verdict does not exist yet.
+- **Slate** (`#6f74a8`): no-signal tab marks and review fills (`#edece4`) where no verdict exists.
 
 ### Neutral
-- **Shelf Paper** (`#f2f7f4`): the ground the labels sit on.
-- **Label White** (`#ffffff`): every plate.
-- **Hairline** (`#d7e2df`): all dividing rules.
-- **Print Grey** (`#54616b`): captions, count subtitles; 6.0:1 on mint.
-- **Body Ink** (`#212048`): paragraph text.
-- **Safe Tint** (`#e7f6f0`) / **Review Tint** (`#eef0f8`) / **Rose Tint** (`#f9edf5`) with **Rose Line** (`#f0c2dd`): the three state plate fills, keyed to the triad.
-- **Amber Tag** (`#f5e9b8`) with **Amber Ink** (`#8a5a12`): guard/degraded chips ('red for critical, amber for degraded' lives here).
+- **Coupon Stock** (`#f6f4ef`): the ground.
+- **Stub Paper** (`#fffdf8`): every plate; the docket.
+- **Neutral Fill** (`#f2efe6`): review cells, skeleton slips.
+- **Hairline** (`#d9d3c6`) / **Punch** (`#e3ddcd`): rules and perforations.
+- **Carbon** (`#3b3f66`): mono figure ink, 8.2:1 on paper.
+- **Print Grey** (`#5d6167`): captions; **Body Ink** (`#212048`): prose.
+- **Amber Tag** (`#f5e9b8`) + **Amber Ink** (`#8a5a12`): degraded guard chips.
 
 ### Named Rules
-**The Clearance-Sticker Rule.** `#cf348d` appears only where the meaning is "act now" - the die-cut sticker, its plate count, its tab. A screen with zero needs-intervention stores contains zero magenta. Its rarity is the point.
+**The Stamp Rule.** One stamp per stub, and the state it prints never vanishes - approval stamps GREEN, nothing erases, it cancels. `#cf348d` prints only where the meaning is "act now"; a register with no urgent store holds no magenta anywhere.
 
-**The Deep-Ink Rule.** Words never print in the raw brand trio on light ground; green words print `#0e7a55`, magenta words print `#a4285e`. The raw trio is for dots, bars, sweeps, and fills.
+**The Carbon Rule.** All live figures - counts, percentages, windows, store IDs in boxes - print in IBM Plex Mono carbon ink (`#3b3f66`), always tabular. Space Grotesk is reserved for nameplates; Roboto carries prose.
 
-**The Edge Rule.** No card container carries a colored border above 1px on any side (including painted pseudo-element stripes). State color enters through backgrounds, tags, counts, and the sticker - never through card edges.
+**The Stock-on-Stock Rule.** No shadows anywhere on the shelf. Depth is paper ("#fffdf8") on stock ("#f6f4ef") separated by hairlines, with perforations and ruled fields - the docket floats on dimmed ink, the only exception.
 
-**The One Polarity Rule.** Magenta names the only urgent state. Degraded-but-not-urgent wears amber; missing-signal wears slate; nothing else competes for the red-family voice except guard-critical chips.
+**The Only-Frame Rule.** Stubs always wear 1px hairlines. Exactly one element per surface may carry a 2px colored frame: the ACTION REQUIRED form head (its stamp frame). No colored border ever rides a single side of a card.
+
+**The Deep-Ink Rule.** Words print only in deep inks (`#a4285e`, `#0e7a55`, carbon `#3b3f66`, indigo `#2a1b6a`); the raw trio is reserved for dots, rails, fills, and stamp bodies.
 
 ## Typography
 
-**Display Font:** Space Grotesk (with Roboto fallback), used only for figures and nameplates.
-**Body Font:** Roboto (with system-ui fallback) - matches dunnhumby.com; `impeccable-disable` noted for the documented Space Grotesk brand pairing.
+**Nameplate Font:** Space Grotesk (Roboto fallback) - dunnhumby.com body face rule holds; `impeccable-disable` documented for the Grotesk pairing.
+**Body Font:** Roboto (system-ui fallback).
+**Register Font:** IBM Plex Mono - carbon figures, stamps, tracked legends.
 
-**Character:** Roboto is the label's fine print: plain, dense, honest. Space Grotesk is the printed numerals: tight-tracked, tabular, slightly engineered - the price string, not the prose.
+**Character:** Space Grotesk prints the big verdicts ("Store 289", problem counts); Plex Mono does the register's machine voice - everything tabular, stamped, or uppercase-tracked; Roboto is the clerk's fine print.
 
 ### Hierarchy
-- **Display** (700, 30px/1.05 at -0.055em): page nameplates ("Store recovery review", "Store 289").
-- **Headline** (700, 21px): dialog titles and section h1 on detail page (hero scales to `clamp(30px, 4.5vw, 46px)`).
-- **Title** (600-700, 17-19px): group titles, store IDs, recommended action.
-- **Body** (400, 13-15.5px/1.55): reasons, narrative, captions; capped near 80ch.
-- **Label** (700, 10-10.5px, +0.12em to +0.16em, uppercase): the tracked shelf-strip identity line, fact labels, zone kickers.
+- **Display** (700, 30px/1.05, -.045em): page nameplates; detail hero scales to `clamp(30px, 4.5vw, 46px)`.
+- **Title** (700, 19-21px): group names, dialog titles, recommended action.
+- **Mono figure** (500-600, 15-34px, tabular): the 53 gate figure, count cells 6/47/32, health/recovery values, store-ID boxes.
+- **Label** (600-700, 9.5-11px, +0.12em to +0.22em, uppercase): field labels (HEALTH, RECOVERY), zone kickers (DECISION NEEDED), the header identity strip (campaign window + data freshness - a content line, not decoration).
+- **Body** (400, 13-15px/1.55): reasons, narrative; ~80ch cap.
 
 ### Named Rules
-**The Figure Rule.** Every live figure - counts, percentages, timestamps, store IDs - is Space Grotesk with `font-variant-numeric: tabular-nums`, because the board re-renders every 60s and proportional digits jitter as they change.
+**The Tabular Ledger Rule.** The board re-renders every 60s; every number sits in mono tabular slots so re-renders never jitter or reflow rows. State text lives in fixed cells that change in place (raised from the transit challenger).
 
 ## Layout
 
-A single centered column: `.shell` max-width 1160px, 32px side padding. Content stacks flat: brand band → identity strip → gate sentence → three count plates (12px gap) → three collapsible shelf groups (16px apart) → store labels (10px apart) → footer. On the detail page a `1.25fr / 1fr` label grid (why / evidence) with the ask panel beneath. Breakpoints: 900px collapses the detail grid and hero; 640px is the label-scale pass (full-width buttons, stacked facts, sticker stood back up, sheet-style dialog docked to the bottom); 380px drops the decision grid to one column. The 60s poll is a layout fact: every figure sits in a fixed-width tabular slot; nothing reflows when numbers tick.
+One centered column (1160px, 32px gutters) printed on the stock ground. Order: full-bleed masthead band → header strip (identity line left, freshness right, 2px rule) → gate record with the three ruled count cells → three register forms (16-18px apart) → perforated stubs (10px apart) → footer. Detail page prints two sheets at 1.25fr/1fr (why / evidence) over the advisory memo. Breakpoints: 900px stacks the sheets; 640px is the clerk's pocket pass (square stamps, full-width tabs, mono labels shrink to 9px, the docket docks bottom); 380px drops decision prints to one column.
 
 ## Elevation & Depth
 
-Settled paper on paper. Resting plates carry one barely-there ambient layer (`0 1px 1px rgba(21,14,62,.02), 0 6px 18px rgba(21,14,62,.03)`); hover deepens it one step with no vertical lift except on interactive controls (buttons rise 1px, cards press 1px). The clearance sticker is the only element with a cast shadow as identity (`0 2px 5px rgba(42,27,106,.10)`) and it is a sticker, not a card. Dialogs use the only structural shadow (`0 24px 60px rgba(21,14,62,.22)`).
+None. The register is flat paper: no resting shadows, no hover shadows, no blurred glows. Depth comes from layering brighter paper on the stock ground, hairline rules, and perforation punches. The approval docket is the sole floating object - it dims the register behind ink-dark glass (`rgba(30,19,79,.55)`) without casting a shadow of its own.
 
 ### Named Rules
-**The Settled-Paper Rule.** Shadows are ambient and always layered rgba-indigo, never hard-offset; the shelf is calm, state changes are the only drama.
+**The No-Shadow Ledger Rule.** If a state needs emphasis, it gets a stamp or a frame - never a shadow, never a lift.
 
 ## Shapes
 
-The label language is crisp: 6px radius on every plate (cards, buttons, tiles, panels), 4px on small stamps (state tags, inputs, chips), and one intentional exception - the 6px die-cut sticker that prints rotated -1.4deg. Corners are never pill-shaped for controls; pills exist only for the scrollbar. Borders are hairline 1px `#d7e2df`; tinted plates may swap in their family's line color (rose line, green mix) at the same 1px weight. White plates on the mint ground; nothing floats above the shelf except the sticker and the dialog.
+Sharp is the register's form language: 0px on plates, tabs and count cells; 2px maximum on small chips and stamp inner rings. Borders are 1px hairlines everywhere except the two stamped exceptions (the ACT form head's 2px frame and the stamps' 2px rings with inset paper gaps that read as rubber-stamp double-rings). Perforation (`6px dotted #e3ddcd`) is the one recurring silhouette - every stub is torn from the book.
 
 ## Components
 
-### Buttons
-- **Shape:** 6px radius, 38px min-height.
-- **Primary:** Price-Rail Indigo fill, white 700 label (`approve-button`, `button-primary`); hovers to `#1e134f` and lifts 1px with a 16px indigo shadow; disabled at 55% opacity in progress.
-- **Ghost:** no fill, hairline border, Print Grey label; hover turns the border indigo.
-- **Focus:** 3px outline in the state's own ink, +3px offset.
+### Buttons (register tabs)
+- **Shape:** square corners, 38px min-height, 2px border.
+- **Primary:** Register Indigo fill, paper-white mono 700 uppercase +0.16em label ("APPROVE"); presses to `#1e134f`.
+- **Ghost:** paper fill, 1px carbon outline, Print Grey mono label ("CANCEL"); hover turns indigo.
+- **Dashed actions** ("SHOW ALL 6 STORES", "BULK REVIEW"): 1px dashed carbon frame - a perforation command, not a primary.
+- **Focus:** 2-3px solid outline in carbon/indigo ink, instant (steps).
 
-### Chips / State tags
-- **Style:** 4px radius, 1px hairline, pale fill, 11px label.
-- **Triangles:** settled-ok = Safe Tint + Green Ink text; neutral states = panel + Print Grey; guard-critical = Rose + Magenta Ink; degraded = Amber Tag + Amber Ink.
-- **The clearance sticker (signature):** on needs-intervention rows the tag becomes a white label with a 1.5px magenta edge, 700 Magenta Ink text, rotated -1.4deg with the sticker shadow. Stands back up at ≤640px where row space is tight.
+### Stamps (state tags - the signature component)
+- **ACT NOW stamp:** paper fill, 2px `#cf348d` ring with inset paper gap + inner ring (rubber-stamp double edge), Stamp Ink uppercase mono text, rotated -2deg.
+- **Settled stamp:** same ring in Green Ink, held straight.
+- **Quiet tag:** 1px carbon outline, paper fill, carbon mono uppercase - neutral states whisper.
+- **Held-back outline:** dashed carbon outline for pending/disabled record states (raised from the darkroom challenger).
+- Stamps stand back up at ≤640px.
 
 ### Cards / Containers
-- **Corner Style:** 6px; **Border:** 1px Hairline (tinted family lines on state plates); **Background:** Label White or the state tint; **Internal Padding:** 13-22px; **Shadow Strategy:** Settled-Paper Rule.
-- No colored card edges of any kind (see The Edge Rule); the group's state shows in a small printed tab (14x9px) next to the title.
+- **Paper plates** (`#fffdf8`) on stock, 1px hairline borders, square corners; store stubs add the perforated left edge and a 28px-perforation padding; the review sheet is a tinted folder (`#edece4`).
 
-### Inputs / Fields
-- **Style:** white fill, 1px hairline, 4px radius, 42px min-height; placeholder Print Grey.
-- **Focus:** 2px indigo outline (never a glow), caret in Green Ink.
-- **Error:** rose plate with Rose Line border and Magenta Ink text below the field.
+### Fields
+- **Inputs:** paper fill, 1px carbon frame, mono text, no radius; indigo 2px focus outline; mono placeholder in Print Grey. Caret green.
+- **Errors:** dashed magenta frame, rose fill, Stamp Ink text ("errata slip").
 
 ### Navigation
-- A flat white band sealed by a hard 2px Price-Rail Indigo bottom edge - the shelf's printed edge. Wordmark + product lockup left, live status (green dot) right; collapses to wordmark + status at ≤640px. No glass, no blur, no floating pill.
+- The masthead: full-bleed indigo band, white wordmark (single-color `brightness(0) invert(1)` inversion of the brand asset), paper-white product lockup, LED strip (green) above, 4px `#1e134f` keyline below. Collapses to wordmark + status at ≤640px. No glass, no pills.
 
-### The topline (signature system component)
-- A full-width 5px Shelf Green rail at the very top of the page; while the feed loads, one indigo segment sweeps it (1.6s ease-in-out loop) and the rail settles flat green. Reduced motion parks it. It is the only authored motion on the surface.
+### The LED rail (signature system component)
+- 4px green rail across the very top. While the feed wakes, a register block STEPS across it (10 frames, 1.4s, `steps(10)`) - never a smooth sweep - and settles flat green. Reduced motion parks it.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** reserve `#cf348d` for act-now moments only; if a screen has no urgent store, it has no magenta.
-- **Do** print green and magenta words in the deep inks (`#0e7a55`, `#a4285e`) - the raw duo only for dots, bars, sweeps, fills.
-- **Do** set every live figure in Space Grotesk `tabular-nums`.
-- **Do** rotate exactly one element - the clearance sticker at -1.4deg - and stand it back up at narrow widths.
-- **Do** keep plate rules at 1px Hairline and radius at 6px/4px.
+- **Do** stamp verdicts - one stamp per stub, stamped in the state's ink (`#a4285e`/`#0e7a55`), upright on mobile.
+- **Do** print every live figure in IBM Plex Mono with tabular numerals (`font-variant-numeric: tabular-nums`).
+- **Do** keep the ground warm (`#f6f4ef`) and plates paper (`#fffdf8`); depth = stock-on-stock flat.
+- **Do** carry the trio's brand jobs exactly: indigo band + ink, green live system, magenta stamps only.
 
 ### Don't:
-- **Don't** put a colored border (or painted stripe) thicker than 1px on any card edge; state rides backgrounds, tabs, counts, and stickers.
-- **Don't** add glass, blur, or floating pills to the brand band; it is sealed flat with the 2px indigo edge.
-- **Don't** introduce a second urgent color family (no orange alerts competing with the clearance magenta; amber is for degraded guards only).
-- **Don't** rotate anything else or exceed -1.4deg; one sticker per row is the whole show.
-- **Don't** use decorative kickers or icon+title+text dashboard cards; content lines earn their uppercase tracking only by carrying campaign/freshness truth - new screens must justify any uppercase strip by the content it prints.
+- **Don't** cast a shadow - emphasis comes from stamps, frames, and paper contrast.
+- **Don't** ease anything: motion steps (`steps()`); no fades longer than the LED step.
+- **Don't** put colored borders >1px on stubs or panels; the ACTION REQUIRED frame and stamp rings are the only 2px color in the system.
+- **Don't** erase history: approvals add a green stamp; error slips print and stay.
+- **Don't** invent serial numbers or fictional form copy - the register voice prints product truth only; any uppercase strip must carry campaign/freshness/field content to exist.
