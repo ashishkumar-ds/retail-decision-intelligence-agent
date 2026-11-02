@@ -90,9 +90,9 @@ export function AppChrome({
 // The boot stage: the one moment the register speaks for itself. The API
 // sleeps on the free tier, so a first load can take about a minute - this
 // screen owns that wait instead of hiding it: a full-viewport indigo field,
-// the official lockup at scale, one honest wake line, and a real elapsed
-// timer. Nothing here invents progress. It plays for any surface's first
-// wait of a session; later waits take the round mark below.
+// the official lockup at scale, and one honest wake line. Nothing here
+// invents progress. It plays for any surface's first wait of a session;
+// later waits take the round mark below.
 export function BootScreen() {
   const [elapsed, setElapsed] = useState(0)
 
@@ -103,8 +103,6 @@ export function BootScreen() {
     }, 1000)
     return () => clearInterval(tick)
   }, [])
-
-  const clock = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`
 
   return (
     <section className="boot">
@@ -121,9 +119,8 @@ export function BootScreen() {
         <p className="boot-wake" role="status" aria-live="polite" aria-busy="true">
           {elapsed >= 60
             ? 'Still waking - the page prints the moment the data lands.'
-            : 'First load wakes the system. Up to about a minute.'}
+            : 'First load wakes the system.'}
         </p>
-        <p className="boot-clock" aria-hidden="true">{clock}</p>
       </div>
     </section>
   )
@@ -177,7 +174,7 @@ export function SpinnerScreen() {
         />
       </svg>
       <p className="spinner-line" role="status">
-        Loading. Up to about a minute.
+        Loading.
       </p>
     </section>
   )

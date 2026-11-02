@@ -43,7 +43,7 @@ const GROUP_NOTES: Record<string, string> = {
   insufficient_data:
     'No forecast signal reached these stores, so the campaign effect cannot be evaluated. No data is not zero - it is no verdict. Mark a store reviewed once its data gap is understood: use the Review button beside its id, or mark the visible set in one pass below.',
   needs_intervention:
-    'The engine has already chosen. Approving records the recommended action; the alternative shown is what runs only if the decision-time guardrails refuse that choice.',
+    'Approving records the recommended action. If the guardrails refuse it, the fallback runs instead.',
 }
 
 // Fallback only. The API serves `state` per row; this keeps an older API from
@@ -826,9 +826,8 @@ export default function BoardPage() {
             {/* One caveat for the whole board, instead of one per row. */}
             {anyEarlySignal ? (
               <p className="caveat">
-                Measured uplift follows once an evaluation window closes. Until then a row
-                carries the early forecast signal, which is directional and not a
-                measurement.
+                Uplift figures are directional forecasts, not measurements, until the
+                evaluation window closes - then the measured uplift replaces them.
               </p>
             ) : null}
           </>
