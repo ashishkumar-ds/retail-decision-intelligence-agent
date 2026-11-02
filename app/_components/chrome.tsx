@@ -100,6 +100,48 @@ export function AppChrome({
   )
 }
 
+// The boot stage: the one moment the register speaks for itself. The API
+// sleeps on the free tier, so a first load can take about a minute - this
+// screen owns that wait instead of hiding it: a full-viewport indigo field,
+// the official lockup at scale, one honest wake line, and a real elapsed
+// timer. Nothing here invents progress. Board entry only; the store page's
+// short fetches keep the paper skeleton below.
+export function BootScreen() {
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    const startedAt = Date.now()
+    const tick = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000))
+    }, 1000)
+    return () => clearInterval(tick)
+  }, [])
+
+  const clock = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`
+
+  return (
+    <section className="boot">
+      <div className="boot-lockup">
+        <img src="/dunnhumby.svg" alt="dunnhumby" className="boot-mark" width={188} height={44} />
+        <span className="boot-divider" aria-hidden="true" />
+        <span className="boot-product">retail decision intelligence agent</span>
+      </div>
+      {/* The print-head pass: a paper block steps across the lead rule on the
+          cadence the retired LED rail used - steps, never eases. Hidden from
+          the status reading and parked for reduced motion. */}
+      <div className="boot-lead" aria-hidden="true"><span /></div>
+      <div className="boot-strip">
+        <p className="boot-wake" role="status" aria-live="polite" aria-busy="true">
+          {elapsed >= 60
+            ? 'Still waking - the board prints the moment the data lands.'
+            : 'First load wakes the system. Up to about a minute.'}
+        </p>
+        <p className="boot-clock" aria-hidden="true">{clock}</p>
+      </div>
+    </section>
+  )
+}
+
 // Loading the store feed: a retail-shaped skeleton, not a blank page. Shared
 // because both pages wait on the same cold-start-prone API.
 export function LoadingCard({

@@ -234,6 +234,34 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .skeleton-card { height: 210px }
 .loading-note { margin: 14px 0 0; font: 400 12px var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
 
+/* --- boot stage: the cold-start screen (board only) -------------------------*/
+/* While the feed wakes, the whole viewport becomes one continuous indigo
+   field. The lockup, the lead rule it prints under, and one honest status
+   strip — the clock counts real time, so the wait says what it is. */
+html:has(.boot) { background: var(--indigo) }
+.boot { min-height: 100dvh; display: grid; align-content: center; justify-content: center; padding: 32px; background: var(--indigo); color: rgba(255, 253, 248, .92) }
+.boot-lockup { display: flex; align-items: center; gap: 13px; width: max-content }
+img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: brightness(0) invert(1) }
+.boot-divider { width: 1px; height: 40px; background: rgba(255, 253, 248, .32) }
+.boot-product { font: 500 15.5px var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .85); letter-spacing: .01em; white-space: nowrap }
+.boot-lead { position: relative; overflow: hidden; height: 2px; margin-top: 20px; background: rgba(255, 253, 248, .24) }
+.boot-lead span { position: absolute; inset: 0 auto 0 0; width: 22%; background: rgba(255, 253, 248, .85); animation: boot-step 1.4s steps(10, end) infinite }
+@keyframes boot-step { from { transform: translateX(-100%) } to { transform: translateX(454%) } }
+.boot-strip { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-top: 15px }
+.boot-wake { margin: 0; font: 400 13.5px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .9) }
+.boot-clock { margin: 0; font: 500 13px/1.5 var(--mono); font-variant-numeric: tabular-nums; color: rgba(255, 253, 248, .78) }
+@media (prefers-reduced-motion: reduce) {
+  .boot-lead span { display: none }
+}
+@media (max-width: 640px) {
+  .boot { padding: 24px }
+  .boot-lockup { flex-direction: column; gap: 15px; width: auto; text-align: center }
+  .boot-divider { display: none }
+  img.boot-mark { width: 150px }
+  .boot-product { font-size: 13.5px; white-space: normal }
+  .boot-strip { flex-wrap: wrap }
+}
+
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11px }
 
 /* --- store detail (/store/[id]) - the filed evidence sheet ------------------ */

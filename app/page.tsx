@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppChrome, LoadingCard } from './_components/chrome'
+import { AppChrome, BootScreen } from './_components/chrome'
 import { actionLabel, api, display } from './_lib/api'
 import type { Board, BoardRow } from './types'
 
@@ -599,7 +599,12 @@ export default function BoardPage() {
   const buckets = board?.buckets || {}
   const anyEarlySignal = Object.values(buckets).some(rows =>
     (rows || []).some(row => row.directional_note))
+  // The boot stage owns the cold-start wait: the free-tier API can take about
+  // a minute to wake, and the indigo boot screen carries it. Only real
+  // failures hand control back to the chrome with its error notice.
   const loading = !board && !error
+
+  if (loading) return <BootScreen />
 
   return (
     <>
@@ -647,17 +652,7 @@ export default function BoardPage() {
           </div>
         ) : null}
 
-        {loading ? (
-          <LoadingCard
-            kicker={waking ? 'API waking up' : 'Live store data'}
-            title={waking ? 'Waiting for the data API' : 'Fetching store data from the API'}
-            copy={waking
-              ? 'The free-tier API sleeps when idle. This can take up to a minute; the board retries automatically.'
-              : 'Pulling the latest forecasts, recovery signals and approval status for the campaign cohort.'}
-            note="The board opens as soon as the data lands."
-            tiles
-          />
-        ) : board && (
+        {board && (
           <>
             <section className="summary">
               {/* One number for the human workload. The tiles below carry the
