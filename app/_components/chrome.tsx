@@ -1,8 +1,7 @@
 'use client'
 
-// Shared chrome for both stakeholder surfaces: the brand rail + status wedge,
-// the nav bar, the loading skeleton and the footer (with the one-shot health
-// probe). The board and the store page hand in the pieces that differ — nav
+// Shared chrome for both stakeholder surfaces: the masthead band, the nav bar,
+// the loading skeleton and the footer (with the one-shot health probe). The board and the store page hand in the pieces that differ — nav
 // links, footer right-hand text, loading copy — everything else stays in one
 // place so the pages cannot drift apart again.
 import Link from 'next/link'
@@ -73,13 +72,11 @@ function Footer({ extra, probe }: { extra?: string; probe?: boolean }) {
 }
 
 export function AppChrome({
-  loading = false,
   navlinks,
   footerExtra,
   probe = false,
   children,
 }: {
-  loading?: boolean
   navlinks?: ReactNode
   footerExtra?: string
   probe?: boolean
@@ -87,7 +84,6 @@ export function AppChrome({
 }) {
   return (
     <>
-      <div className={`topline${loading ? ' is-loading' : ''}`} />
       <div className="brandband">
         <div className="shell">
           <nav className="nav">
@@ -122,9 +118,11 @@ export function LoadingCard({
   return (
     <section className="loading-board" role="status" aria-live="polite" aria-busy="true">
       <div className="loading-intro">
-        <span className="loading-mark" aria-hidden="true">
-          <StorefrontMark />
-        </span>
+        {/* Official mark, not an invented glyph: the exact wordmark asset the
+            dunnhumby.com header serves (also /dunnhumby.svg). The user asked
+            for the official loading icon, so this is the brand mark itself -
+            dark as printed, on paper, no stamp treatment. */}
+        <img src="/dunnhumby.svg" alt="dunnhumby" width={132} height={31} className="loading-mark" />
         <div>
           <p className="loading-kicker">{kicker}</p>
           <h2 className="loading-title">{title}</h2>
