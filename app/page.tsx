@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppChrome, BootScreen, SpinnerScreen, useBootedOnce, markBooted } from './_components/chrome'
+import { AppChrome, BootScreen, SpinnerScreen, useWaitScreen } from './_components/chrome'
 import { actionLabel, api, display } from './_lib/api'
 import type { Board, BoardRow } from './types'
 
@@ -510,13 +510,9 @@ export default function BoardPage() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadedOnceRef = useRef(false)
 
-  // The indigo boot stage plays for the session's first successful board
-  // load only (shared gate with the why page); every later wait in this tab
-  // takes the small round mark instead.
-  const bootedOnce = useBootedOnce()
-  useEffect(() => {
-    if (board) markBooted()
-  }, [board])
+  // A fresh document (first visit or refresh) holds the full boot stage until
+  // the board lands; same-document route changes take the small round mark.
+  const waitScreen = useWaitScreen()
 
   // Cold start: free-tier services sleep after ~15 min idle, so on 502/504
   // wait 30s and retry once before showing an error
@@ -612,7 +608,7 @@ export default function BoardPage() {
   // with its error notice either way.
   const loading = !board && !error
 
-  if (loading) return bootedOnce === true ? <SpinnerScreen /> : <BootScreen />
+  if (loading) return waitScreen === 'spinner' ? <SpinnerScreen /> : <BootScreen />
 
   return (
     <>
@@ -647,16 +643,19 @@ export default function BoardPage() {
         </header>
 
         {error ? (
-          <div className="notice">
-            {error}
-            {' '}
-            <button type="button" className="link-button" onClick={() => load()}>
+          // Standard notice anatomy: what failed, why, and the way forward -
+          // framed hairline paper, register inks only.
+          <div className="notice" role="alert">
+            <p className="notice-title">Couldn't load the board</p>
+            <p className="notice-copy">{error}</p>
+            <button type="button" className="notice-action" onClick={() => load()}>
               Retry now
             </button>
           </div>
         ) : board && waking ? (
-          <div className="notice">
-            The data service is waking up. Showing the last loaded board; retrying shortly.
+          <div className="notice" role="status">
+            <p className="notice-title">Data service waking</p>
+            <p className="notice-copy">Showing the last loaded board; retrying shortly.</p>
           </div>
         ) : null}
 

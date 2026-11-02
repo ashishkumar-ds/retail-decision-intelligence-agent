@@ -91,8 +91,8 @@ export function AppChrome({
 // sleeps on the free tier, so a first load can take about a minute - this
 // screen owns that wait instead of hiding it: a full-viewport indigo field,
 // the official lockup at scale, and one honest wake line. Nothing here
-// invents progress. It plays for any surface's first wait of a session;
-// later waits take the round mark below.
+// invents progress. It plays for every wait a fresh document produces -
+// first visit or refresh; same-document route changes take the round mark.
 export function BootScreen() {
   const [elapsed, setElapsed] = useState(0)
 
@@ -126,32 +126,27 @@ export function BootScreen() {
   )
 }
 
-// Tab-scoped boot gate, shared by every stakeholder surface: the full boot
-// stage plays for the session's first *successful* load only - the flag
-// records a working feed, not a bare visit, so a failed first visit still
-// earns the boot stage on retry. Every later wait in the same tab takes the
-// round mark instead; a new tab (a new cold start) earns the stage again.
-const BOOT_SEEN_KEY = 'agent-booted'
+// Which wait screen belongs to this wait? A fresh document - a first visit
+// or a refresh - always takes the full boot stage, and the answer is
+// settled before first paint so the screen holds steady instead of
+// collapsing into the small mark mid-repaint. A route change inside the
+// same document ("back to board") takes the round mark: the stage is a
+// document-level moment, not a per-fetch one. Module state, not tab
+// storage - it resets with the document by definition, which is also what
+// keeps the server render and the first client paint identical.
+let waitedThisDocument = false
 
-export function useBootedOnce(): boolean | null {
-  // null until the gate has been read on the client, so the very first render
-  // always matches the server's boot-stage output; the flag can only swap to
-  // the round mark after hydration has settled. Without this guard, a stale
-  // or persisted flag turns the hydration pass into a rebuild.
-  const [booted, setBooted] = useState<boolean | null>(null)
+// Frozen per mount on purpose: a wait screen must never swap mid-life. The
+// decision is settled once (document age: fresh document boots, a remount
+// from same-document navigation gets the mark) and kept until the wait
+// ends, whatever state changes happen underneath.
+export function useWaitScreen(): 'boot' | 'spinner' {
+  const [screen] = useState<'boot' | 'spinner'>(() =>
+    typeof window !== 'undefined' && waitedThisDocument ? 'spinner' : 'boot')
   useEffect(() => {
-    setBooted(sessionStorage.getItem(BOOT_SEEN_KEY) === '1')
+    waitedThisDocument = true
   }, [])
-  return booted
-}
-
-export function markBooted() {
-  try {
-    sessionStorage.setItem(BOOT_SEEN_KEY, '1')
-  } catch {
-    // Private-mode storage refusals just mean the boot stage shows again;
-    // no stakeholder journey should break over a wait-state preference.
-  }
+  return screen
 }
 
 // Repeat waits: a standard round mark in register indigo on the stock

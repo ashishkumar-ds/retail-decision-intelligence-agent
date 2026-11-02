@@ -215,7 +215,14 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .button-primary:disabled { opacity: .55; cursor: progress }
 
 .caveat { margin: 6px 0 28px; max-width: 84ch; font-size: 11.5px; line-height: 1.55; color: var(--muted) }
-.notice { margin: 16px 0; padding: 13px 16px; border: 1px dashed var(--flash); background: var(--rose); color: var(--stamp-ink); font-size: 13px }
+/* Notices: what failed, why, and the way forward - framed hairline paper,
+   register inks only (the dashed magenta errata slip is retired). */
+.notice { margin: 18px 0; padding: 17px 20px; border: 1px solid var(--rule); background: var(--paper) }
+.notice-title { margin: 0 0 7px; font: 700 17px/1.3 var(--display); letter-spacing: -.02em; color: var(--indigo) }
+.notice-copy { margin: 0; font: 400 13.5px/1.55 var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted); max-width: 62ch }
+.notice-action { margin-top: 13px; padding: 9px 28px; border: 1px solid var(--carbon); background: var(--paper); color: var(--carbon); font: 600 12.5px var(--font-dh), var(--font-roboto), sans-serif; cursor: pointer }
+.notice-action:hover { border-color: var(--indigo); color: var(--indigo) }
+.notice-action:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .refresh-note { margin: 6px 0 0; font: 400 12px var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
 
 /* Waits own the viewport: the boot stage and the round mark (below) replaced
