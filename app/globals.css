@@ -61,13 +61,13 @@ html { scrollbar-width: thin; scrollbar-color: #cfc9bb transparent }
 .brandband { background: var(--indigo); border-bottom: 4px solid var(--indigo-deep); color: #fff }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
-.nav { display: flex; justify-content: space-between; align-items: center; gap: 24px; min-height: 58px; padding: 15px 0 13px }
-.brand { display: flex; align-items: center; gap: 12px; min-width: 0; letter-spacing: -.03em }
-img.brand-logo { display: block; height: 22px; width: auto; flex: none; filter: brightness(0) invert(1) }
-.brand-divider { width: 1px; height: 24px; background: rgba(255, 253, 248, .32); flex: none }
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0 14px }
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
+img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: brightness(0) invert(1) }
+.brand-divider { width: 1px; height: 22px; background: rgba(255, 253, 248, .32); flex: none }
 .brand-product { font: 500 13.5px var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .85); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .navlinks { display: flex; align-items: center; gap: 18px; color: rgba(255, 253, 248, .88); font-size: 13px; white-space: nowrap }
-.nav-status { display: flex; align-items: center; min-height: 22px; line-height: 1; font: 600 12px/1 var(--mono); letter-spacing: .035em }
+.nav-status { display: flex; align-items: center; gap: 8px }
 /* Status reads as plain text: no indicator dots anywhere on an official surface. */
 .nav-status i, .live-dot i { display: none }
 .bucket-marker { display: none }
