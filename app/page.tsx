@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppChrome, BootScreen, SpinnerScreen } from './_components/chrome'
+import { AppChrome, BootScreen, SpinnerScreen, useBootedOnce, markBooted } from './_components/chrome'
 import { actionLabel, api, display } from './_lib/api'
 import type { Board, BoardRow } from './types'
 
@@ -510,17 +510,12 @@ export default function BoardPage() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadedOnceRef = useRef(false)
 
-  // The indigo boot stage plays for the session's first load only: this flag
-  // flips on once the board has landed and is remembered in tab-scoped
-  // sessionStorage. Every later wait in the same tab takes the small round
-  // mark instead. Tab-scoped on purpose - a brand-new session faces the cold
-  // start again, so it gets the full boot stage back.
-  const [bootedOnce, setBootedOnce] = useState(false)
+  // The indigo boot stage plays for the session's first successful board
+  // load only (shared gate with the why page); every later wait in this tab
+  // takes the small round mark instead.
+  const bootedOnce = useBootedOnce()
   useEffect(() => {
-    setBootedOnce(sessionStorage.getItem('board-booted') === '1')
-  }, [])
-  useEffect(() => {
-    if (board) sessionStorage.setItem('board-booted', '1')
+    if (board) markBooted()
   }, [board])
 
   // Cold start: free-tier services sleep after ~15 min idle, so on 502/504

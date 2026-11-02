@@ -13,7 +13,7 @@ import { use } from 'react'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppChrome, LoadingCard } from '../../_components/chrome'
+import { AppChrome, BootScreen, SpinnerScreen, useBootedOnce, markBooted } from '../../_components/chrome'
 import { actionLabel, api, display } from '../../_lib/api'
 import type { AdvisoryResponse, Recommendation, WhyPayload } from '../../types'
 
@@ -219,6 +219,17 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
   const guard = data?.guard || {}
   const guardPassed = guard.numeric_grounding === 'passed' && guard.citations === 'passed'
   const waiting = phase.kind === 'loading' || phase.kind === 'waking'
+  // Same session gate as the board: this page's wait takes the boot stage on
+  // a session's first successful load, the round mark after that.
+  const bootedOnce = useBootedOnce()
+  useEffect(() => {
+    if (phase.kind === 'ready') markBooted()
+  }, [phase])
+
+  // The wait states own the viewport entirely, like the board's: the chrome
+  // prints with the payload (or the error / missing notices) that follows.
+  if (waiting) return bootedOnce ? <SpinnerScreen /> : <BootScreen />
+
   return (
     <AppChrome
       footerExtra="Read-only"
@@ -262,15 +273,7 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
         </div>
       ) : null}
 
-      {waiting ? (
-        <LoadingCard
-          kicker={phase.kind === 'waking' ? 'API waking up' : 'Store evidence'}
-          title={phase.kind === 'waking' ? 'Waiting for the data API' : 'Fetching store evidence from the API'}
-          copy={phase.kind === 'waking'
-            ? 'The free-tier API sleeps when idle. This can take up to a minute; this page retries automatically.'
-            : 'Pulling the recommendation, its evidence and the verification record for this store.'}
-        />
-      ) : data && (
+      {data && (
         <>
           <div className="detail-grid">
             <article className="panel">
