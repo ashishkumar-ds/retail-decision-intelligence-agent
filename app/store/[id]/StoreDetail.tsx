@@ -13,7 +13,7 @@ import { use } from 'react'
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppChrome, BootScreen, SpinnerScreen, useBootedOnce, markBooted } from '../../_components/chrome'
+import { AppChrome, BootScreen, SpinnerScreen, useWaitScreen } from '../../_components/chrome'
 import { actionLabel, api, display } from '../../_lib/api'
 import type { AdvisoryResponse, Recommendation, WhyPayload } from '../../types'
 
@@ -219,16 +219,13 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
   const guard = data?.guard || {}
   const guardPassed = guard.numeric_grounding === 'passed' && guard.citations === 'passed'
   const waiting = phase.kind === 'loading' || phase.kind === 'waking'
-  // Same session gate as the board: this page's wait takes the boot stage on
-  // a session's first successful load, the round mark after that.
-  const bootedOnce = useBootedOnce()
-  useEffect(() => {
-    if (phase.kind === 'ready') markBooted()
-  }, [phase])
+  // A fresh document (first visit or refresh) holds the full boot stage until
+  // the why data lands; same-document route changes take the small round mark.
+  const waitScreen = useWaitScreen()
 
   // The wait states own the viewport entirely, like the board's: the chrome
   // prints with the payload (or the error / missing notices) that follows.
-  if (waiting) return bootedOnce === true ? <SpinnerScreen /> : <BootScreen />
+  if (waiting) return waitScreen === 'spinner' ? <SpinnerScreen /> : <BootScreen />
 
   return (
     <AppChrome
@@ -255,18 +252,21 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
 
       {phase.kind === 'missing' ? (
         // (a) 404 is a real state, not a dead end: name it and offer the way back.
-        <div className="notice">
-          <strong>Store not found.</strong> Store {display(id)} is not in the current cohort -
-          check the id, or open the board to see the stores up for review.
+        <div className="notice" role="alert">
+          <p className="notice-title">Store not found</p>
+          <p className="notice-copy">
+            Store {display(id)} is not in the current cohort - check the id, or open the
+            board to see the stores up for review.
+          </p>
         </div>
       ) : null}
       {phase.kind === 'error' ? (
         // (c) other failures keep a visible Retry button - the load is one
         // click away, not a "try again in a moment" sentence.
-        <div className="notice">
-          Couldn't load this store.
-          {' '}
-          <button type="button" className="link-button" onClick={() => void fetchStore(id)}>
+        <div className="notice" role="alert">
+          <p className="notice-title">Couldn't load this store</p>
+          <p className="notice-copy">The data service didn't answer this request. Nothing was changed - this page only reads.</p>
+          <button type="button" className="notice-action" onClick={() => void fetchStore(id)}>
             Retry
           </button>
         </div>
