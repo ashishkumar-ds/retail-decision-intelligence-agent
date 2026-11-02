@@ -75,7 +75,7 @@ export function AppChrome({
         <div className="shell">
           <nav className="nav">
             <Brand />
-            <div className="navlinks">{navlinks ?? <span className="nav-status"><i aria-hidden="true" />Live board</span>}</div>
+            <div className="navlinks">{navlinks ?? <span className="nav-status"><span className="live-dot" aria-hidden="true" />Live board</span>}</div>
           </nav>
         </div>
       </div>

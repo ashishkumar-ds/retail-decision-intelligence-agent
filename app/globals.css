@@ -61,15 +61,15 @@ html { scrollbar-width: thin; scrollbar-color: #cfc9bb transparent }
 .brandband { background: var(--indigo); border-bottom: 4px solid var(--indigo-deep); color: #fff }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
-.nav { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 0 14px }
-.brand { display: flex; align-items: center; gap: 11px; min-width: 0; letter-spacing: -.03em }
-img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: brightness(0) invert(1) }
-.brand-divider { width: 1px; height: 22px; background: rgba(255, 253, 248, .32); flex: none }
-.brand-product { font: 500 13.5px var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .85); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 14px 0 }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; letter-spacing: -.03em }
+img.brand-logo { display: block; height: 28px; width: auto; flex: none; filter: brightness(0) invert(1) }
+.brand-divider { width: 1px; height: 28px; background: rgba(255, 253, 248, .32); flex: none }
+.brand-product { font: 500 14.5px var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .9); letter-spacing: .01em; white-space: nowrap }
 .navlinks { display: flex; align-items: center; gap: 18px; color: rgba(255, 253, 248, .88); font-size: 13px; white-space: nowrap }
 .nav-status { display: flex; align-items: center; gap: 8px }
-/* Status reads as plain text: no indicator dots anywhere on an official surface. */
-.nav-status i, .live-dot i { display: none }
+/* Live indicator: a small green dot next to "Live board" reads as status at a glance. */
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex: none; box-shadow: 0 0 0 1px rgba(255,253,248,.4) }
 .bucket-marker { display: none }
 
 /* --- register head: gate sentence + ruled count cells ---------------------- */
