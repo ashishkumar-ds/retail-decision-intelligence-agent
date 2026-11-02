@@ -1,25 +1,14 @@
 'use client'
 
-// Shared chrome for both stakeholder surfaces: the masthead band, the nav bar,
-// the loading skeleton and the footer (with the one-shot health probe). The board and the store page hand in the pieces that differ — nav
-// links, footer right-hand text, loading copy — everything else stays in one
+// Shared chrome for both stakeholder surfaces: the masthead band, the nav
+// bar, the boot/spinner wait states and the footer (with the one-shot health
+// probe). The board and the store ("why") page hand in the pieces that
+// differ — nav links, footer right-hand text — everything else stays in one
 // place so the pages cannot drift apart again.
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { api } from '../_lib/api'
-
-/** Storefront outline, matching the card/shelf language of the pages. */
-export function StorefrontMark() {
-  return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M4 9.5V20h16V9.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3 9.5l1.4-4.2h15.2L21 9.5H3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-      <path d="M8 13h8M8 16.5h8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M10 20v-4h4v4" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-    </svg>
-  )
-}
 
 export function Brand() {
   return (
@@ -104,8 +93,8 @@ export function AppChrome({
 // sleeps on the free tier, so a first load can take about a minute - this
 // screen owns that wait instead of hiding it: a full-viewport indigo field,
 // the official lockup at scale, one honest wake line, and a real elapsed
-// timer. Nothing here invents progress. Board entry only; the store page's
-// short fetches keep the paper skeleton below.
+// timer. Nothing here invents progress. It plays for any surface's first
+// wait of a session; later waits take the round mark below.
 export function BootScreen() {
   const [elapsed, setElapsed] = useState(0)
 
@@ -133,7 +122,7 @@ export function BootScreen() {
       <div className="boot-strip">
         <p className="boot-wake" role="status" aria-live="polite" aria-busy="true">
           {elapsed >= 60
-            ? 'Still waking - the board prints the moment the data lands.'
+            ? 'Still waking - the page prints the moment the data lands.'
             : 'First load wakes the system. Up to about a minute.'}
         </p>
         <p className="boot-clock" aria-hidden="true">{clock}</p>
@@ -142,62 +131,52 @@ export function BootScreen() {
   )
 }
 
-// Repeat visits: the boot stage is the session's first-load moment only.
-// Every later wait earns the register's small round mark - a standard ring
-// in register indigo over the stock ground, stepped not eased, with the
-// wait still stated in plain text.
+// Tab-scoped boot gate, shared by every stakeholder surface: the full boot
+// stage plays for the session's first *successful* load only - the flag
+// records a working feed, not a bare visit, so a failed first visit still
+// earns the boot stage on retry. Every later wait in the same tab takes the
+// round mark instead; a new tab (a new cold start) earns the stage again.
+const BOOT_SEEN_KEY = 'agent-booted'
+
+export function useBootedOnce(): boolean {
+  const [booted, setBooted] = useState(false)
+  useEffect(() => {
+    setBooted(sessionStorage.getItem(BOOT_SEEN_KEY) === '1')
+  }, [])
+  return booted
+}
+
+export function markBooted() {
+  try {
+    sessionStorage.setItem(BOOT_SEEN_KEY, '1')
+  } catch {
+    // Private-mode storage refusals just mean the boot stage shows again;
+    // no stakeholder journey should break over a wait-state preference.
+  }
+}
+
+// Repeat waits: a standard round mark in register indigo on the stock
+// ground - one full track at 14% ink under a quarter arc in full ink, round-
+// capped and drawn on an SVG ring so the thicker stroke stays crisp. Stepped
+// rotation: even the spinner never eases. Status reads as plain text below.
 export function SpinnerScreen() {
   return (
     <section className="spinner-stage" aria-busy="true">
-      <span className="spinner-ring" aria-hidden="true" />
+      <svg className="spinner-ring" viewBox="0 0 32 32" aria-hidden="true">
+        <circle className="ring-track" cx="16" cy="16" r="13" fill="none" strokeWidth="3.5" />
+        <circle
+          className="ring-arc"
+          cx="16" cy="16" r="13"
+          fill="none"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray="20.4 61.7"
+          transform="rotate(-90 16 16)"
+        />
+      </svg>
       <p className="spinner-line" role="status">
-        Loading the board. Up to about a minute.
+        Loading. Up to about a minute.
       </p>
-    </section>
-  )
-}
-
-// Loading the store feed: a retail-shaped skeleton, not a blank page. Shared
-// because both pages wait on the same cold-start-prone API.
-export function LoadingCard({
-  kicker,
-  title,
-  copy,
-  note,
-  tiles = false,
-}: {
-  kicker: string
-  title: string
-  copy: string
-  note?: string
-  tiles?: boolean
-}) {
-  return (
-    <section className="loading-board" role="status" aria-live="polite" aria-busy="true">
-      <div className="loading-intro">
-        {/* Official mark, not an invented glyph: the exact wordmark asset the
-            dunnhumby.com header serves (also /dunnhumby.svg). The user asked
-            for the official loading icon, so this is the brand mark itself -
-            dark as printed, on paper, no stamp treatment. */}
-        <img src="/dunnhumby.svg" alt="dunnhumby" width={132} height={31} className="loading-mark" />
-        <div>
-          <p className="loading-kicker">{kicker}</p>
-          <h2 className="loading-title">{title}</h2>
-          <p className="loading-copy">{copy}</p>
-        </div>
-      </div>
-      <div className="loading-skeleton" aria-hidden="true">
-        <span className="skeleton-line" />
-        {tiles ? (
-          <div className="skeleton-tiles">
-            <span className="skeleton-tile" />
-            <span className="skeleton-tile" />
-            <span className="skeleton-tile" />
-          </div>
-        ) : null}
-        <span className="skeleton-card" />
-      </div>
-      {note ? <p className="loading-note">{note}</p> : null}
     </section>
   )
 }

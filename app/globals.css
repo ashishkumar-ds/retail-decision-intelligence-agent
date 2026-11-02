@@ -218,22 +218,8 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .notice { margin: 16px 0; padding: 13px 16px; border: 1px dashed var(--flash); background: var(--rose); color: var(--stamp-ink); font-size: 13px }
 .refresh-note { margin: 6px 0 0; font: 400 12px var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
 
-/* Loading the store feed: blank carbon slips, dashed rules. */
-.loading-board { padding: 22px 0 8px }
-.loading-intro { display: flex; align-items: flex-start; gap: 15px }
-.loading-mark { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border: 1px solid var(--rule); background: var(--indigo); color: #fffdf8 }
-.loading-kicker { margin: 1px 0 4px; font: 600 12.5px var(--font-dh), var(--font-roboto), sans-serif; color: var(--green-ink) }
-.loading-title { margin: 0; font: 700 22px/1.2 var(--display); letter-spacing: -.03em; color: var(--indigo) }
-.loading-copy { margin: 6px 0 0; max-width: 62ch; font-size: 13px; line-height: 1.55; color: var(--muted) }
-.loading-skeleton { display: grid; gap: 14px; margin-top: 24px }
-.skeleton-line, .skeleton-tile, .skeleton-card { display: block; border: 1px dashed var(--rule); background: var(--paper) }
-.skeleton-line { width: min(430px, 52%); height: 28px }
-.skeleton-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 }
-.skeleton-tile { height: 96px }
-.skeleton-tile + .skeleton-tile { border-left: 0 }
-.skeleton-card { height: 210px }
-.loading-note { margin: 14px 0 0; font: 400 12px var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
-
+/* Waits own the viewport: the boot stage and the round mark (below) replaced
+   the old in-flow loading skeleton. */
 /* --- boot stage: the cold-start screen (board only) -------------------------*/
 /* While the feed wakes, the whole viewport becomes one continuous indigo
    field. The lockup, the lead rule it prints under, and one honest status
@@ -254,12 +240,17 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
   .boot-lead span { display: none }
 }
 
-/* --- repeat-visit spinner: the small round mark ------------------------------*/
+/* --- repeat-wait spinner: the small round mark --------------------------------*/
 /* The boot stage plays once per tab session; after that, waits show this -
-   a standard round loading mark in register indigo (16%-tinted track, the
-   arc in full ink), stepped rotation so even the spinner never eases. */
+   a standard round loading mark in register indigo: a 3.5-weight ring, its
+   track at 14% ink, a quarter arc in full ink, round-capped - drawn as SVG
+   so the thicker stroke stays crisp at every pixel ratio. Stepped rotation
+   (12 ticks per turn): even the spinner never eases. Colors ride CSS here
+   because SVG presentation attributes cannot carry var(). */
 .spinner-stage { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 32px; background: var(--stock) }
-.spinner-ring { width: 27px; height: 27px; border: 2px solid rgba(42, 27, 106, .16); border-top-color: var(--indigo); border-radius: 50%; animation: spinner-step 1s steps(12, end) infinite }
+.spinner-ring { width: 30px; height: 30px; overflow: visible; animation: spinner-step 1.1s steps(12, end) infinite }
+.spinner-ring .ring-track { stroke: rgba(42, 27, 106, .14) }
+.spinner-ring .ring-arc { stroke: var(--indigo) }
 @keyframes spinner-step { to { transform: rotate(360deg) } }
 .spinner-line { margin: 0; font: 400 13px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
 @media (prefers-reduced-motion: reduce) {
@@ -344,15 +335,6 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
   .gate-line { font-size: 14.5px; gap: 8px }
   .gate-line strong { font-size: 24px }
   .summary { margin: 18px 0 20px; padding: 18px 14px 16px }
-  .loading-board { padding: 16px 0 4px }
-  .loading-intro { gap: 12px }
-  .loading-mark { width: 40px; height: 40px }
-  .loading-title { font-size: 19px }
-  .loading-copy { font-size: 12.5px }
-  .loading-skeleton { gap: 10px; margin-top: 18px }
-  .skeleton-line { height: 24px }
-  .skeleton-tile { height: 74px }
-  .skeleton-card { height: 170px }
 
   .tiles { gap: 0 }
   .tile { min-height: 0; padding: 12px 10px }
