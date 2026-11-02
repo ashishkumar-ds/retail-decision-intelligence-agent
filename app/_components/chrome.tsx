@@ -133,16 +133,14 @@ export function useWaitScreen(): 'boot' | 'spinner' {
   return screen
 }
 
-// Repeat waits: a three-dot mark in register indigo on the stock ground.
-// The dots light one after another - a third of the cycle each, on a stepped
-// cadence, the retired LED rail's rhythm again (never an ease). Screen
-// readers still get the plain status line below.
+// Repeat waits: a single indigo circle on the stock ground.
+// Screen readers still get the plain status line below.
 export function SpinnerScreen() {
   return (
     <section className="spinner-stage" aria-busy="true">
-      <span className="spinner-dots" aria-hidden="true"><i /><i /><i /></span>
+      <span className="spinner-circle" aria-hidden="true" />
       <p className="spinner-line" role="status">
-        Loading.
+        loading...
       </p>
     </section>
   )
