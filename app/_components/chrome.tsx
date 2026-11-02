@@ -88,22 +88,13 @@ export function AppChrome({
 }
 
 // The boot stage: the one moment the register speaks for itself. The API
-// sleeps on the free tier, so a first load can take about a minute - this
-// screen owns that wait instead of hiding it: a full-viewport indigo field,
-// the official lockup at scale, and one honest wake line. Nothing here
-// invents progress. It plays for every wait a fresh document produces -
-// first visit or refresh; same-document route changes take the round mark.
+// sleeps on the free tier, so a fresh load can take a while - this screen
+// owns that wait instead of hiding it: a full-viewport indigo field, the
+// official lockup at scale, and the print-head rule passing beneath. Nothing
+// here invents progress - it doesn't even speak. It plays for every wait a
+// fresh document produces - first visit or refresh; same-document route
+// changes take the three-dot mark.
 export function BootScreen() {
-  const [elapsed, setElapsed] = useState(0)
-
-  useEffect(() => {
-    const startedAt = Date.now()
-    const tick = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAt) / 1000))
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [])
-
   return (
     <section className="boot">
       <div className="boot-lockup">
@@ -115,13 +106,6 @@ export function BootScreen() {
           cadence the retired LED rail used - steps, never eases. Hidden from
           the status reading and parked for reduced motion. */}
       <div className="boot-lead" aria-hidden="true"><span /></div>
-      <div className="boot-strip">
-        <p className="boot-wake" role="status" aria-live="polite" aria-busy="true">
-          {elapsed >= 60
-            ? 'Still waking - the page prints the moment the data lands.'
-            : 'First load wakes the system.'}
-        </p>
-      </div>
     </section>
   )
 }
@@ -130,7 +114,7 @@ export function BootScreen() {
 // or a refresh - always takes the full boot stage, and the answer is
 // settled before first paint so the screen holds steady instead of
 // collapsing into the small mark mid-repaint. A route change inside the
-// same document ("back to board") takes the round mark: the stage is a
+// same document ("back to board") takes the three-dot mark: the stage is a
 // document-level moment, not a per-fetch one. Module state, not tab
 // storage - it resets with the document by definition, which is also what
 // keeps the server render and the first client paint identical.
@@ -149,25 +133,14 @@ export function useWaitScreen(): 'boot' | 'spinner' {
   return screen
 }
 
-// Repeat waits: a standard round mark in register indigo on the stock
-// ground - one full track at 14% ink under a quarter arc in full ink, round-
-// capped and drawn on an SVG ring so the thicker stroke stays crisp. Stepped
-// rotation: even the spinner never eases. Status reads as plain text below.
+// Repeat waits: a three-dot mark in register indigo on the stock ground.
+// The dots light one after another - a third of the cycle each, on a stepped
+// cadence, the retired LED rail's rhythm again (never an ease). Screen
+// readers still get the plain status line below.
 export function SpinnerScreen() {
   return (
     <section className="spinner-stage" aria-busy="true">
-      <svg className="spinner-ring" viewBox="0 0 32 32" aria-hidden="true">
-        <circle className="ring-track" cx="16" cy="16" r="13" fill="none" strokeWidth="3.5" />
-        <circle
-          className="ring-arc"
-          cx="16" cy="16" r="13"
-          fill="none"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          strokeDasharray="20.4 61.7"
-          transform="rotate(-90 16 16)"
-        />
-      </svg>
+      <span className="spinner-dots" aria-hidden="true"><i /><i /><i /></span>
       <p className="spinner-line" role="status">
         Loading.
       </p>
