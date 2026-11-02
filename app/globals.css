@@ -119,8 +119,8 @@ img.brand-logo { display: block; height: 20px; width: auto; flex: none; filter: 
 .bucket-note, .caveat, .narrative, .hero p, .dialog-sub, .dialog-note { text-wrap: pretty }
 .bucket-note { margin: 10px 4px 0; max-width: 84ch; font-size: 12.5px; line-height: 1.55; color: var(--muted) }
 .shared-decision { margin-top: 10px }
-.show-toggle { display: block; margin: 12px auto 2px; padding: 8px 18px; border: 0; background: var(--paper); font: 600 13px var(--font-dh), var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
-.show-toggle:hover { color: var(--indigo-deep) }
+.show-toggle { display: block; margin: 12px auto 2px; padding: 8px 18px 6px; border: 0; border-bottom: 2px solid var(--indigo); background: var(--paper); font: 600 13px var(--font-dh), var(--font-roboto), sans-serif; color: var(--indigo); cursor: pointer }
+.show-toggle:hover { border-bottom-color: var(--indigo-deep); color: var(--indigo-deep) }
 .show-toggle:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
 .empty { padding: 6px 0 10px; color: var(--muted); font-size: 13px }
 
