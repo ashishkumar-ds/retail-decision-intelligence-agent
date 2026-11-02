@@ -229,8 +229,8 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
    the old in-flow loading skeleton. */
 /* --- boot stage: the cold-start screen (board only) -------------------------*/
 /* While the feed wakes, the whole viewport becomes one continuous indigo
-   field. The lockup, the lead rule it prints under, and one honest status
-   strip — the clock counts real time, so the wait says what it is. */
+   field: the lockup and the lead rule it prints under. No words on the
+   field - silence is its own honest status. */
 html:has(.boot) { background: var(--indigo) }
 .boot { min-height: 100dvh; display: grid; align-content: center; justify-content: center; padding: 32px; background: var(--indigo); color: rgba(255, 253, 248, .92) }
 .boot-lockup { display: flex; align-items: center; gap: 13px; width: max-content }
@@ -240,27 +240,24 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
 .boot-lead { position: relative; overflow: hidden; height: 2px; margin-top: 20px; background: rgba(255, 253, 248, .24) }
 .boot-lead span { position: absolute; inset: 0 auto 0 0; width: 22%; background: rgba(255, 253, 248, .85); animation: boot-step 1.4s steps(10, end) infinite }
 @keyframes boot-step { from { transform: translateX(-100%) } to { transform: translateX(454%) } }
-.boot-strip { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-top: 15px }
-.boot-wake { margin: 0; font: 400 13.5px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .9) }
 @media (prefers-reduced-motion: reduce) {
   .boot-lead span { display: none }
 }
 
-/* --- repeat-wait spinner: the small round mark --------------------------------*/
-/* The boot stage plays once per tab session; after that, waits show this -
-   a standard round loading mark in register indigo: a 3.5-weight ring, its
-   track at 14% ink, a quarter arc in full ink, round-capped - drawn as SVG
-   so the thicker stroke stays crisp at every pixel ratio. Stepped rotation
-   (12 ticks per turn): even the spinner never eases. Colors ride CSS here
-   because SVG presentation attributes cannot carry var(). */
+/* --- repeat-wait mark: three dots ---------------------------------------------*/
+/* The boot stage owns fresh documents; waits inside a loaded document show
+   this - a three-dot mark in register indigo. Each dot lights for a third of
+   the cycle on a stepped cadence (the retired LED rail's rhythm again), never
+   easing; colors ride CSS so the mark keeps the tokens in one place. */
 .spinner-stage { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 32px; background: var(--stock) }
-.spinner-ring { width: 30px; height: 30px; overflow: visible; animation: spinner-step 1.1s steps(12, end) infinite }
-.spinner-ring .ring-track { stroke: rgba(42, 27, 106, .14) }
-.spinner-ring .ring-arc { stroke: var(--indigo) }
-@keyframes spinner-step { to { transform: rotate(360deg) } }
+.spinner-dots { display: inline-flex; gap: 9px }
+.spinner-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--indigo); opacity: .14; animation: dot-wait 1.5s steps(1, end) infinite }
+.spinner-dots i:nth-child(2) { animation-delay: .5s }
+.spinner-dots i:nth-child(3) { animation-delay: 1s }
+@keyframes dot-wait { 0% { opacity: 1 } 33.3% { opacity: .14 } }
 .spinner-line { margin: 0; font: 400 13px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
 @media (prefers-reduced-motion: reduce) {
-  .spinner-ring { animation: none }
+  .spinner-dots i { animation: none; opacity: .45 }
 }
 @media (max-width: 640px) {
   .boot { padding: 24px }
@@ -268,7 +265,6 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
   .boot-divider { display: none }
   img.boot-mark { width: 150px }
   .boot-product { font-size: 13.5px; white-space: normal }
-  .boot-strip { flex-wrap: wrap }
 }
 
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11px }
