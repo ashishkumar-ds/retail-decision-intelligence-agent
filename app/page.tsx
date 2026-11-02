@@ -1,5 +1,10 @@
 'use client'
 
+// Force dynamic rendering so Vercel does not cache a stale static HTML shell.
+// The board data is fetched client-side with cache: 'no-store', so the page
+// must always be rendered fresh rather than served from the CDN cache.
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 

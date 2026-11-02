@@ -7,6 +7,29 @@ const nextConfig = {
   // overlay on a stakeholder surface; compile errors still surface in the
   // terminal. See node_modules/next/dist/docs/.../devIndicators.md.
   devIndicators: false,
+  // Prevent Vercel CDN from caching the homepage so users always see the
+  // current board data instead of a stale cached shell.
+  async headers() {
+    return [
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Pragma",
+            value: "no-cache",
+          },
+          {
+            key: "Expires",
+            value: "0",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
