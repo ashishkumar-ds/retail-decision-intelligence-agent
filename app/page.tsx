@@ -612,7 +612,7 @@ export default function BoardPage() {
   // with its error notice either way.
   const loading = !board && !error
 
-  if (loading) return bootedOnce ? <SpinnerScreen /> : <BootScreen />
+  if (loading) return bootedOnce === true ? <SpinnerScreen /> : <BootScreen />
 
   return (
     <>

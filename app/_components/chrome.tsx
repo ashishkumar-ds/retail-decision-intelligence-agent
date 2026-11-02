@@ -48,13 +48,11 @@ function Footer({ extra, probe }: { extra?: string; probe?: boolean }) {
 
   return (
     <footer className="footer">
-      {/* Brand voice is dunnhumby's own copy (dunnhumby.com, fetched 2026-11-01):
-          the house strapline and the "Unlock the value of data" positioning line. */}
-      <span className="footer-brandline">
-        The science of serving every customer. Together. At scale.
-        <br />
-        Unlock the value of data · © 2026 dunnhumby limited
-      </span>
+      {/* Marketing lines retired (user, 2026-11-02): the strapline and the
+          positioning line competed with the board's own signal. The line the
+          footer does keep is the legal one. If a probe is live, it reads
+          quietly on the right. */}
+      <span className="footer-brandline">© 2026 dunnhumby limited</span>
       <span>{right}</span>
     </footer>
   )
@@ -138,8 +136,12 @@ export function BootScreen() {
 // round mark instead; a new tab (a new cold start) earns the stage again.
 const BOOT_SEEN_KEY = 'agent-booted'
 
-export function useBootedOnce(): boolean {
-  const [booted, setBooted] = useState(false)
+export function useBootedOnce(): boolean | null {
+  // null until the gate has been read on the client, so the very first render
+  // always matches the server's boot-stage output; the flag can only swap to
+  // the round mark after hydration has settled. Without this guard, a stale
+  // or persisted flag turns the hydration pass into a rebuild.
+  const [booted, setBooted] = useState<boolean | null>(null)
   useEffect(() => {
     setBooted(sessionStorage.getItem(BOOT_SEEN_KEY) === '1')
   }, [])
