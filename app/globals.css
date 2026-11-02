@@ -57,13 +57,7 @@ html { scrollbar-width: thin; scrollbar-color: #cfc9bb transparent }
 .store-id:hover, .detail-link:hover, .back:hover { text-decoration-color: color-mix(in srgb, var(--carbon) 60%, transparent) }
 
 /* --- the register masthead ------------------------------------------------ */
-/* Full-bleed indigo band; the green LED rail above it is the shelf edge's
-   power light. While the feed wakes, one register block STEPS across it -
-   never eases. */
-.topline { position: relative; overflow: hidden; height: 4px; background: var(--green) }
-.topline::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 22%; background: var(--indigo); opacity: 0; transition: opacity .05s steps(1, end) }
-.topline.is-loading::after { opacity: 1; animation: topline-step 1.4s steps(10, end) infinite }
-@keyframes topline-step { 0% { transform: translateX(-100%) } 100% { transform: translateX(454%) } }
+/* Full-bleed indigo band, the top of the register. */
 .brandband { background: var(--indigo); border-bottom: 4px solid var(--indigo-deep); color: #fff }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 32px }
 
@@ -239,9 +233,6 @@ body:has(dialog.approve-dialog[open]) { overflow: hidden }
 .skeleton-tile + .skeleton-tile { border-left: 0 }
 .skeleton-card { height: 210px }
 .loading-note { margin: 14px 0 0; font: 400 12px var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
-@media (prefers-reduced-motion: reduce) {
-  .topline.is-loading::after { animation: none; opacity: 0; transition: none }
-}
 
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11px }
 

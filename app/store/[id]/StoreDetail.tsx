@@ -219,10 +219,8 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
   const guard = data?.guard || {}
   const guardPassed = guard.numeric_grounding === 'passed' && guard.citations === 'passed'
   const waiting = phase.kind === 'loading' || phase.kind === 'waking'
-
   return (
     <AppChrome
-      loading={waiting}
       footerExtra="Read-only"
       navlinks={<><Link href="/">Overview</Link><span className="nav-status"><i aria-hidden="true" />Read-only</span></>}
     >

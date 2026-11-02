@@ -599,12 +599,11 @@ export default function BoardPage() {
   const buckets = board?.buckets || {}
   const anyEarlySignal = Object.values(buckets).some(rows =>
     (rows || []).some(row => row.directional_note))
-  // The brand rail is the one moving thing while the feed loads.
   const loading = !board && !error
 
   return (
     <>
-      <AppChrome loading={loading} probe={Boolean(board)} footerExtra="Approvals are recorded, never automatic">
+      <AppChrome probe={Boolean(board)} footerExtra="Approvals are recorded, never automatic">
 
         {/* Identity. Not a marketing hero: series context, the page name, and
             the data's freshness on the same line. Stated here only - never
