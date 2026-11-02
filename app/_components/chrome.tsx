@@ -142,6 +142,21 @@ export function BootScreen() {
   )
 }
 
+// Repeat visits: the boot stage is the session's first-load moment only.
+// Every later wait earns the register's small round mark - a standard ring
+// in register indigo over the stock ground, stepped not eased, with the
+// wait still stated in plain text.
+export function SpinnerScreen() {
+  return (
+    <section className="spinner-stage" aria-busy="true">
+      <span className="spinner-ring" aria-hidden="true" />
+      <p className="spinner-line" role="status">
+        Loading the board. Up to about a minute.
+      </p>
+    </section>
+  )
+}
+
 // Loading the store feed: a retail-shaped skeleton, not a blank page. Shared
 // because both pages wait on the same cold-start-prone API.
 export function LoadingCard({

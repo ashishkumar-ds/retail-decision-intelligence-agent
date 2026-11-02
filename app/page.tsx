@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { AppChrome, BootScreen } from './_components/chrome'
+import { AppChrome, BootScreen, SpinnerScreen } from './_components/chrome'
 import { actionLabel, api, display } from './_lib/api'
 import type { Board, BoardRow } from './types'
 
@@ -510,6 +510,19 @@ export default function BoardPage() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadedOnceRef = useRef(false)
 
+  // The indigo boot stage plays for the session's first load only: this flag
+  // flips on once the board has landed and is remembered in tab-scoped
+  // sessionStorage. Every later wait in the same tab takes the small round
+  // mark instead. Tab-scoped on purpose - a brand-new session faces the cold
+  // start again, so it gets the full boot stage back.
+  const [bootedOnce, setBootedOnce] = useState(false)
+  useEffect(() => {
+    setBootedOnce(sessionStorage.getItem('board-booted') === '1')
+  }, [])
+  useEffect(() => {
+    if (board) sessionStorage.setItem('board-booted', '1')
+  }, [board])
+
   // Cold start: free-tier services sleep after ~15 min idle, so on 502/504
   // wait 30s and retry once before showing an error
   // (docs/FRONTEND_CONTRACT.md "Poll").
@@ -599,12 +612,12 @@ export default function BoardPage() {
   const buckets = board?.buckets || {}
   const anyEarlySignal = Object.values(buckets).some(rows =>
     (rows || []).some(row => row.directional_note))
-  // The boot stage owns the cold-start wait: the free-tier API can take about
-  // a minute to wake, and the indigo boot screen carries it. Only real
-  // failures hand control back to the chrome with its error notice.
+  // The boot stage owns the first cold-start wait in a session; later waits
+  // get the small round mark. Real failures hand control back to the chrome
+  // with its error notice either way.
   const loading = !board && !error
 
-  if (loading) return <BootScreen />
+  if (loading) return bootedOnce ? <SpinnerScreen /> : <BootScreen />
 
   return (
     <>

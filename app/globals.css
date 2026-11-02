@@ -253,6 +253,18 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
 @media (prefers-reduced-motion: reduce) {
   .boot-lead span { display: none }
 }
+
+/* --- repeat-visit spinner: the small round mark ------------------------------*/
+/* The boot stage plays once per tab session; after that, waits show this -
+   a standard round loading mark in register indigo (16%-tinted track, the
+   arc in full ink), stepped rotation so even the spinner never eases. */
+.spinner-stage { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 32px; background: var(--stock) }
+.spinner-ring { width: 27px; height: 27px; border: 2px solid rgba(42, 27, 106, .16); border-top-color: var(--indigo); border-radius: 50%; animation: spinner-step 1s steps(12, end) infinite }
+@keyframes spinner-step { to { transform: rotate(360deg) } }
+.spinner-line { margin: 0; font: 400 13px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
+@media (prefers-reduced-motion: reduce) {
+  .spinner-ring { animation: none }
+}
 @media (max-width: 640px) {
   .boot { padding: 24px }
   .boot-lockup { flex-direction: column; gap: 15px; width: auto; text-align: center }
