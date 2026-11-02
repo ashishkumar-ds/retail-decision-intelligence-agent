@@ -69,7 +69,7 @@ img.brand-logo { display: block; height: 24px; width: auto; flex: none; filter: 
 .navlinks { display: flex; align-items: center; gap: 18px; color: rgba(255, 253, 248, .88); font-size: 13px; white-space: nowrap }
 .nav-status { display: flex; align-items: center; gap: 8px }
 /* Live indicator: a small teal dot with an outer ring reads as status at a glance. */
-.live-dot { width: 6px; height: 6px; border-radius: 50%; background: #2a9d8f; flex: none; box-shadow: 0 0 0 1.5px rgba(42,157,143,.35), 0 0 6px rgba(42,157,143,.45) }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: #2a9d8f; flex: none }
 .bucket-marker { display: none }
 
 /* --- register head: gate sentence + ruled count cells ---------------------- */
