@@ -52,7 +52,7 @@ function Footer({ extra, probe }: { extra?: string; probe?: boolean }) {
           positioning line competed with the board's own signal. The line the
           footer does keep is the legal one. If a probe is live, it reads
           quietly on the right. */}
-      <span className="footer-brandline">© 2026 dunnhumby limited</span>
+      <span className="footer-brandline">© 2026 Ashish Kumar</span>
       <span>{right}</span>
     </footer>
   )
