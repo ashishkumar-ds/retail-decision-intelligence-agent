@@ -244,20 +244,13 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
   .boot-lead span { display: none }
 }
 
-/* --- repeat-wait mark: three dots ---------------------------------------------*/
-/* The boot stage owns fresh documents; waits inside a loaded document show
-   this - a three-dot mark in register indigo. Each dot lights for a third of
-   the cycle on a stepped cadence (the retired LED rail's rhythm again), never
-   easing; colors ride CSS so the mark keeps the tokens in one place. */
+/* --- repeat-wait mark: indigo circle ------------------------------------------*/
 .spinner-stage { min-height: 100dvh; display: grid; place-content: center; justify-items: center; gap: 16px; padding: 32px; background: var(--stock) }
-.spinner-dots { display: inline-flex; gap: 9px }
-.spinner-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--indigo); opacity: .14; animation: dot-wait 1.5s steps(1, end) infinite }
-.spinner-dots i:nth-child(2) { animation-delay: .5s }
-.spinner-dots i:nth-child(3) { animation-delay: 1s }
-@keyframes dot-wait { 0% { opacity: 1 } 33.3% { opacity: .14 } }
+.spinner-circle { width: 34px; height: 34px; border: 3px solid color-mix(in srgb, var(--indigo) 18%, transparent); border-top-color: var(--indigo); border-radius: 50%; animation: circle-wait .9s linear infinite }
+@keyframes circle-wait { to { transform: rotate(360deg) } }
 .spinner-line { margin: 0; font: 400 13px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
 @media (prefers-reduced-motion: reduce) {
-  .spinner-dots i { animation: none; opacity: .45 }
+  .spinner-circle { animation: none }
 }
 @media (max-width: 640px) {
   .boot { padding: 24px }
