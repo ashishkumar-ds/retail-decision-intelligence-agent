@@ -228,11 +228,10 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
 
   // The wait states own the viewport entirely, like the board's: the chrome
   // prints with the payload (or the error / missing notices) that follows.
-  if (waiting) return bootedOnce ? <SpinnerScreen /> : <BootScreen />
+  if (waiting) return bootedOnce === true ? <SpinnerScreen /> : <BootScreen />
 
   return (
     <AppChrome
-      footerExtra="Read-only"
       navlinks={<><Link href="/">Overview</Link><span className="nav-status"><i aria-hidden="true" />Read-only</span></>}
     >
       <section className="hero">
