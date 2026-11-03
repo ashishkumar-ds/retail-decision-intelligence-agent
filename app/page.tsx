@@ -1,10 +1,5 @@
 'use client'
 
-// Force dynamic rendering so Vercel does not cache a stale static HTML shell.
-// The board data is fetched client-side with cache: 'no-store', so the page
-// must always be rendered fresh rather than served from the CDN cache.
-export const dynamic = 'force-dynamic'
-
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -48,7 +43,7 @@ const GROUP_NOTES: Record<string, string> = {
   insufficient_data:
     'No forecast signal reached these stores, so the campaign effect cannot be evaluated. No data is not zero - it is no verdict. Mark a store reviewed once its data gap is understood: use the Review button beside its id, or mark the visible set in one pass below.',
   needs_intervention:
-    'Approving records the recommended action. If the guardrails refuse it, the fallback runs instead.',
+    'Approving records the recommended action - or the fallback, if the guardrails refuse it.',
 }
 
 // Fallback only. The API serves `state` per row; this keeps an older API from

@@ -5,6 +5,8 @@ logs/
 *.egg-info/
 .env.local
 .venv/
+# Vercel output / deployment cache — never commit; forces fresh builds.
+.vercel/
 # Next.js board (app/) build output and local deps — regenerable via npm install.
 .next/
 node_modules/

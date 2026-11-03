@@ -7,8 +7,10 @@ const nextConfig = {
   // overlay on a stakeholder surface; compile errors still surface in the
   // terminal. See node_modules/next/dist/docs/.../devIndicators.md.
   devIndicators: false,
-  // Prevent Vercel CDN from caching the homepage so users always see the
-  // current board data instead of a stale cached shell.
+  // Keep the HTML document uncacheable so the page shell, the client bundle
+  // hash and (for tools like the video generator) the initial frame never come
+  // from a stale edge copy. Hashed _next/static assets already ship immutable
+  // from Next/Vercel, so they need no override here.
   async headers() {
     return [
       {
@@ -16,16 +18,12 @@ const nextConfig = {
         headers: [
           {
             key: "Cache-Control",
-            value: "no-cache, no-store, must-revalidate",
+            value: "no-cache, no-store, must-revalidate, max-age=0",
           },
-          {
-            key: "Pragma",
-            value: "no-cache",
-          },
-          {
-            key: "Expires",
-            value: "0",
-          },
+          { key: "Pragma", value: "no-cache" },
+          { key: "Expires", value: "0" },
+          { key: "Surrogate-Control", value: "no-store" },
+          { key: "CDN-Cache-Control", value: "no-store, max-age=0" },
         ],
       },
     ];
