@@ -4,9 +4,11 @@
 
 > **Part 3 of the Dunnhumby series** — [Part 1: Store Performance Analysis](https://github.com/ashishkumar-ds/data-science-projects/tree/main/dunnhumby-retail-performance-analysis) proved what works · [Part 2: Campaign Automation](https://github.com/ashishkumar-ds/retail-campaign-automation-with-n8n) scaled it across 85 stores · **this project decides what's next per store.**
 
+**In plain English:** it looks at an underperforming store, recommends one next action with the evidence, blocks anything risky behind human approval, and records the outcome so the next decision is better.
+
 **A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. A Groq LLM layer explains the evidence; it never decides.**
 
-[Live demo](#demo) · [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
+[Live demo](#demo) · [One-minute flow](#one-minute-version) · [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python 3.15](https://img.shields.io/badge/python-3.15-blue)](https://www.python.org)
@@ -77,24 +79,55 @@ Deploy with Docker: see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (always-on host
 
 ## How a decision is made
 
-Every store evaluation runs a fixed pipeline — `route → plan → score →
-verify → approval gate` — with each stage recorded in a `DecisionTrajectory`
-embedded in the recommendation record itself.
+One store at a time: store data goes in; the agent proposes one recommendation
+with its evidence; hard rules check it; a person approves anything risky; the
+decision is recorded, and the outcome feeds the next round. The decision path is
+pure code — the LLM is optional and never makes the call.
+
+### One-minute version
 
 ```mermaid
 flowchart LR
-    Route --> Plan --> Score --> Verify --> Gate
-    Gate -->|approval required| Human[Human decision]
-    Gate -->|informational| Log[(Append-only log)]
+    Data["Store data and evidence"] --> Decide["Agent proposes one recommendation"]
+    Decide --> Check["Hard rules check it"]
+    Check --> Gate{"Risky?"}
+    Gate -->|yes| Human["Human approves or rejects"]
+    Gate -->|no| Log[("Recorded decision")]
     Human --> Log
-    Log --> Why["/why — grounded explanation"]
-    Log --> Board["/board — stakeholder view"]
+    Log --> Measure["Outcome measured"]
+    Measure -.->|next round| Data
+    classDef human fill:#f8e9f1,stroke:#cf348d,stroke-width:2px,color:#a4285e;
+    classDef step fill:#fffdf8,stroke:#d9d3c6,color:#212048;
+    classDef record fill:#f2efe6,stroke:#d9d3c6,color:#212048;
+    class Human human;
+    class Data,Decide,Check,Gate,Measure step;
+    class Log record;
+    linkStyle 0,1,2,4,6 stroke:#0e7a55,stroke-width:2px;
+    linkStyle 3,5 stroke:#cf348d,stroke-width:2px;
+    linkStyle 7 stroke:#6f74a8,stroke-width:2px;
 ```
 
-The off-path LLM layer has two jobs: rephrase grounded, cited evidence for `/why/{store_id}`, and draft a human-gated triage suggestion for `/advisory/{store_id}`. The decision path itself is pure code with no model calls.
+*Example: a store misses target → the agent proposes extending its recovery plan
+→ hard rules check the evidence and spend → a manager approves if budget moves
+→ the next sweep measures the result.*
 
-![System architecture — deterministic, human-gated decision flow](docs/images/architecture.png?rev=register-2026-11-03)
-*Pure-code decision path → human gate → append-only log; the off-path LLM only rephrases evidence and drafts advisory notes. Decision path only — infra (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).*
+Internally the five stages are `route → plan → score → verify → approval gate`;
+the detailed map below adds memory, retrieval, evaluation, and the surfaces.
+
+### Detailed engineering map
+
+*This is the dense engineering view; start with the one-minute version above if
+you only need the shape of the system.*
+
+![Detailed system architecture — deterministic, human-gated decision flow](docs/images/architecture.png?rev=register-2026-11-03)
+**How to read it:** start at the left. Green arrows = main data path · dashed
+slate = evaluation or optional · magenta = human approval gate and guardrails ·
+amber = risk tiers · dark indigo = pure-code decision engine.
+
+*Infrastructure (Render, Supabase, disk) is in [Deployment](docs/DEPLOYMENT.md).
+The optional LLM only rewrites cited evidence for `/why/{store_id}` and drafts a
+human-gated advisory note for `/advisory/{store_id}`; without a key, the
+deterministic template answers.*
 
 
 ### The off-path LLM layer
