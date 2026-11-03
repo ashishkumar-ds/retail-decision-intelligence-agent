@@ -41,8 +41,6 @@ A deterministic retail decision agent for underperforming stores. The brain is p
 
 **Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited evidence and drafts human-gated advisory suggestions.
 
-**For data-science / AI-ML roles:** measurement over vibes — every claim carries a confidence and a citation, and model-style evals gate every change.
-
 ## What this demonstrates
 
 - Deterministic decision systems under uncertainty — pure-code engine, no model calls on the decision path
@@ -83,36 +81,6 @@ One store at a time: store data goes in; the agent proposes one recommendation
 with its evidence; hard rules check it; a person approves anything risky; the
 decision is recorded, and the outcome feeds the next round. The decision path is
 pure code — the LLM is optional and never makes the call.
-
-### One-minute version
-
-```mermaid
-flowchart LR
-    Data["Store data and evidence"] --> Decide["Agent proposes one recommendation"]
-    Decide --> Check["Hard rules check it"]
-    Check --> Gate{"Risky?"}
-    Gate -->|yes| Human["Human approves or rejects"]
-    Gate -->|no| Log[("Recorded decision")]
-    Human --> Log
-    Log --> Measure["Outcome measured"]
-    Measure -.->|next round| Data
-    classDef human fill:#f8e9f1,stroke:#cf348d,stroke-width:2px,color:#a4285e;
-    classDef step fill:#fffdf8,stroke:#d9d3c6,color:#212048;
-    classDef record fill:#f2efe6,stroke:#d9d3c6,color:#212048;
-    class Human human;
-    class Data,Decide,Check,Gate,Measure step;
-    class Log record;
-    linkStyle 0,1,2,4,6 stroke:#0e7a55,stroke-width:2px;
-    linkStyle 3,5 stroke:#cf348d,stroke-width:2px;
-    linkStyle 7 stroke:#6f74a8,stroke-width:2px;
-```
-
-*Example: a store misses target → the agent proposes extending its recovery plan
-→ hard rules check the evidence and spend → a manager approves if budget moves
-→ the next sweep measures the result.*
-
-Internally the five stages are `route → plan → score → verify → approval gate`;
-the detailed map below adds memory, retrieval, evaluation, and the surfaces.
 
 ### Detailed engineering map
 
