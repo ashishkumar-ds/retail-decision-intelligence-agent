@@ -272,6 +272,7 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
 }
 
 .footer { display: flex; justify-content: space-between; gap: 12px; padding-top: 22px; padding-bottom: 32px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 11px }
+.footer-brandline { color: inherit }
 
 /* --- store detail (/store/[id]) - the filed evidence sheet ------------------ */
 .hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; padding: 34px 0 30px; border-bottom: 2px solid var(--rule) }
@@ -316,6 +317,7 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
 .ask-preset:hover { background: var(--rose) }
 .ask-preset:disabled { opacity: .55 }
 .ask-preset:focus-visible { outline: 2px solid var(--indigo); outline-offset: 2px }
+.ask-form { margin: 0 }
 .ask-row { display: flex; gap: 9px }
 .ask-row .dialog-input { width: auto; flex: 1; min-width: 0 }
 .ask-status { margin: 14px 0 0; font: 400 12.5px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: var(--muted) }
