@@ -29,7 +29,7 @@ bash scripts/seed_demo.sh
 
 The hosted demo enables the off-path Groq layer with per-IP and daily caps.
 
-![Retail Decision Board — live stakeholder view: the human-review summary (stores waiting split by bucket) above the top three store cards, each showing its recommended action, alternative, commitment and the token-gated Approve](docs/images/decision-board-snapshot.png)
+![Retail Decision Board — live stakeholder view: the human-review summary (stores waiting split by bucket) above the top three store cards, each showing its recommended action, alternative, commitment and the token-gated Approve](docs/images/board-live-2026-11-03.png)
 
 Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full walkthrough: [DEMO.md](DEMO.md).
 
