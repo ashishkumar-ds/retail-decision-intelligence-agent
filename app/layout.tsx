@@ -41,6 +41,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://retail-decision-in
 const SITE_DESCRIPTION =
   'Unlock the value of data. Smarter decisions, stronger collaboration, sustainable growth - store recovery on live dunnhumby customer science.'
 
+// Force server-side rendering on every request so the HTML shell is never
+// served from a stale Vercel Edge / CDN cache (e.g. to a video generator).
+// Route segment config must live in a server component - app/page.tsx is a
+// Client Component, so its copy of this directive was silently ignored.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {

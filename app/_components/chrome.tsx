@@ -93,7 +93,7 @@ export function AppChrome({
 // official lockup at scale, and the print-head rule passing beneath. Nothing
 // here invents progress - it doesn't even speak. It plays for every wait a
 // fresh document produces - first visit or refresh; same-document route
-// changes take the three-dot mark.
+// changes take the round mark.
 export function BootScreen() {
   return (
     <section className="boot">
@@ -114,7 +114,7 @@ export function BootScreen() {
 // or a refresh - always takes the full boot stage, and the answer is
 // settled before first paint so the screen holds steady instead of
 // collapsing into the small mark mid-repaint. A route change inside the
-// same document ("back to board") takes the three-dot mark: the stage is a
+// same document ("back to board") takes the round mark: the stage is a
 // document-level moment, not a per-fetch one. Module state, not tab
 // storage - it resets with the document by definition, which is also what
 // keeps the server render and the first client paint identical.
@@ -133,14 +133,27 @@ export function useWaitScreen(): 'boot' | 'spinner' {
   return screen
 }
 
-// Repeat waits: a single indigo circle on the stock ground.
-// Screen readers still get the plain status line below.
+// Repeat waits: the standard round mark in register indigo on the stock
+// ground - one full track at 14% ink under a quarter arc in full ink, round-
+// capped and drawn on an SVG ring so the thicker stroke stays crisp. Stepped
+// rotation: even the spinner never eases. Status reads as plain text below.
 export function SpinnerScreen() {
   return (
     <section className="spinner-stage" aria-busy="true">
-      <span className="spinner-circle" aria-hidden="true" />
+      <svg className="spinner-ring" viewBox="0 0 32 32" aria-hidden="true">
+        <circle className="ring-track" cx="16" cy="16" r="13" fill="none" strokeWidth="3.5" />
+        <circle
+          className="ring-arc"
+          cx="16" cy="16" r="13"
+          fill="none"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeDasharray="20.4 61.7"
+          transform="rotate(-90 16 16)"
+        />
+      </svg>
       <p className="spinner-line" role="status">
-        loading...
+        Loading...
       </p>
     </section>
   )
