@@ -8,7 +8,7 @@
 
 **A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. A Groq LLM layer explains the evidence; it never decides.**
 
-[Live demo](#demo) · [One-minute flow](#one-minute-version) · [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
+[Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
 
 [![CI](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ashishkumar-ds/retail-decision-intelligence-agent/actions/workflows/ci.yml)
 [![Python 3.15](https://img.shields.io/badge/python-3.15-blue)](https://www.python.org)
@@ -84,8 +84,8 @@ pure code — the LLM is optional and never makes the call.
 
 ### Detailed engineering map
 
-*This is the dense engineering view; start with the one-minute version above if
-you only need the shape of the system.*
+*This is the dense engineering view; screenshots and the live board carry
+the stakeholder shape of the system.*
 
 ![Detailed system architecture — deterministic, human-gated decision flow](docs/images/architecture.png?rev=register-2026-11-03)
 **How to read it:** start at the left. Green arrows = main data path · dashed
