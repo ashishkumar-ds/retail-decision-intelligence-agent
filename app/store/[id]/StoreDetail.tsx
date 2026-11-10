@@ -239,11 +239,10 @@ export default function StoreDetail({ params }: { params: Promise<{ id: string }
         </div>
         {rec ? (
           <div className="hero-meta">
-            {/* The raw token never renders on a stakeholder surface: the board
-                says "Extend the intervention" via its *_label fields, so the
-                hero says the same sentence (the /why evidence carries no label
-                field, hence the client-side map in _lib/api.ts). */}
-            <div className="live-dot"><i aria-hidden="true" />{display(actionLabel(rec.recommendation))}</div>
+            {/* The live-dot status pill (dot + "Extend the intervention" sentence)
+                was retired from this page per review: no pulsing pill in the hero.
+                The same sentence still exists in the record and in the evidence
+                panel via the actionLabel map in _lib/api.ts. */}
             <strong>confidence {display(rec.confidence)}</strong>
             {rec.forecast_status && rec.forecast_status !== 'AVAILABLE' ? <span>forecast: {forecastText(rec.forecast_status)}</span> : null}
           </div>
