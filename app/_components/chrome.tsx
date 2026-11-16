@@ -106,6 +106,10 @@ export function BootScreen() {
           cadence the retired LED rail used - steps, never eases. Hidden from
           the status reading and parked for reduced motion. */}
       <div className="boot-lead" aria-hidden="true"><span /></div>
+      {/* The one line the boot stage speaks: what the wait is. Sentence case
+          (the register's voice), centered under the lead rule, and announced
+          politely like the spinner's status line. */}
+      <p className="boot-status" role="status">Loading data from the APIs</p>
     </section>
   )
 }

@@ -242,6 +242,7 @@ img.boot-mark { display: block; width: 188px; height: auto; flex: none; filter: 
 .boot-product { font: 500 15.5px var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .85); letter-spacing: .01em; white-space: nowrap }
 .boot-lead { position: relative; overflow: hidden; height: 2px; margin-top: 20px; background: rgba(255, 253, 248, .24) }
 .boot-lead span { position: absolute; inset: 0 auto 0 0; width: 22%; background: rgba(255, 253, 248, .85); animation: boot-step 1.4s steps(10, end) infinite }
+.boot-status { margin-top: 18px; font: 400 13px/1.5 var(--font-dh), var(--font-roboto), sans-serif; color: rgba(255, 253, 248, .62); text-align: center; letter-spacing: .01em }
 @keyframes boot-step { from { transform: translateX(-100%) } to { transform: translateX(454%) } }
 @media (prefers-reduced-motion: reduce) {
   .boot-lead span { display: none }
