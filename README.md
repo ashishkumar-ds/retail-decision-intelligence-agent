@@ -4,8 +4,6 @@
 
 > **Part 3 of the Dunnhumby series** — [Part 1: Store Performance Analysis](https://github.com/ashishkumar-ds/data-science-projects/tree/main/dunnhumby-retail-performance-analysis) proved what works · [Part 2: Campaign Automation](https://github.com/ashishkumar-ds/retail-campaign-automation-with-n8n) scaled it across 85 stores · **this project decides what's next per store.**
 
-**In plain English:** it looks at an underperforming store, recommends one next action with the evidence, blocks anything risky behind human approval, and records the outcome so the next decision is better.
-
 **A deterministic agent for retail store recovery. The brain is code, not a model call: every recommendation is recomputable by hand, citable by ID, and approved by a human before any budget moves. A Groq LLM layer explains the evidence; it never decides.**
 
 [Quickstart](#quickstart) · [API](#api-surface) · [Configuration](#configuration) · [Docs](#documentation)
@@ -145,18 +143,6 @@ All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a
 
 Full list with comments: [`.env.example`](.env.example) (a test fails if code reads an undocumented variable).
 
-## Documentation
-
-- [Whitepaper](docs/WHITEPAPER.md) — the P1 → P2 → P3 series and this agent's place in it
-- [Safety](docs/SAFETY.md) — every safety gate, its rule, and failure mode
-- [Hosted LLM: the two ceilings](docs/DEPLOYMENT.md#hosted-llm-the-two-ceilings) — Groq/Anthropic setup, grounding gates, fail-closed behavior, and spend caps
-- [LLM integration patterns](docs/LLM_INTEGRATION_PATTERNS.md) — reference checklist for keeping the LLM off the decision path
-- [Market benchmark](docs/market_benchmark_retail_di.md) — positioning against commercial retail-DI platforms
-- [Deployment](docs/DEPLOYMENT.md) — Render + Supabase setup, durable-storage trade-offs
-- [Frontend contract](docs/FRONTEND_CONTRACT.md) — board spec for the Vercel surface (reads plus one token-gated approve)
-- [Off-path classifiers — classifier.dev / Jev](https://classifier.dev) — keep-biased RAG pre-filter + root-cause tags, keyless; numbers redacted before egress, failures degrade safe ([ADR-0005](docs/adr/0005-redact-numbers-before-egress.md))
-
-Further depth lives in [`docs/`](docs/) unlinked (architecture decision records in `docs/adr/`, specs, deployment notes).
 
 ## Limitations
 
