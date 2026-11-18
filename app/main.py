@@ -157,7 +157,6 @@ logging.basicConfig(level=logging.INFO)
 # Skipped entirely when the RAG feature switch is off - the /why endpoint
 # refuses to serve anyway, so building the corpus would be wasted work on the
 # startup path.
-from rag.corpus import DEFAULT_CORPUS_PATH as _RAG_CORPUS_PATH  # noqa: E402
 from rag.corpus import build_corpus as _build_rag_corpus  # noqa: E402
 
 if rag_enabled():
