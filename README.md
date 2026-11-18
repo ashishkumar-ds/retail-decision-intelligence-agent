@@ -98,7 +98,7 @@ deterministic template answers.*
 
 ### The off-path LLM layer
 
-`/why/{store_id}` rephrases grounded, cited evidence; `/advisory/{store_id}` drafts a triage note from the engine's own closed vocabulary. Both are off-path and optional at runtime: without a key or with the flags off, they serve the deterministic template, and every failure degrades there too. Calls are capped per caller per hour and per account per day. The published demo uses Groq through the OpenAI-compatible adapter (`qwen/qwen3.8-27b`); set `LLM_PROVIDER=anthropic` for Claude. Groq needs no extra SDK — `httpx` is already a runtime dependency.
+`/why/{store_id}` rephrases grounded, cited evidence; `/advisory/{store_id}` drafts a triage note from the engine's own closed vocabulary. Both are off-path and optional at runtime: without a key or with the flags off, they serve the deterministic template, and every failure degrades there too. Calls are capped per caller per hour and per account per day. The default provider is Groq through the OpenAI-compatible adapter (`qwen/qwen3.8-27b`); set `LLM_PROVIDER=anthropic` for Claude. Groq needs no extra SDK — `httpx` is already a runtime dependency.
 
 ## API surface
 
@@ -137,12 +137,19 @@ All writes need `Authorization: Bearer <token>` from `APPROVAL_AUTH_TOKEN` (or a
 | `DATABASE_URL` | unset (SQLite) | `postgres://` URL selects Postgres (Supabase session pooler + `?sslmode=require`) for the pending-approval store — durable, multi-instance safe. JSONL audit logs still need the disk |
 | `SWEEP_ENABLED` / `SWEEP_INTERVAL_SECONDS` | off / `86400` | Opt-in background sweep scheduler |
 | `LLM_ADVISORY_ENABLED` / `LLM_EXPLANATIONS_ENABLED` | off / off (on in the published demo) | Off-path LLM layers; optional at runtime — without a key or with the flags off, both endpoints serve the deterministic template |
-| `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `anthropic` / — / `claude-sonnet-4-5` / unset | Provider for the off-path LLM. For Groq: `openai_compat` + `https://api.groq.com/openai/v1` + a Groq key. No key → deterministic template. `LLM_API_KEY` is a secret. |
+| `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY` | `openai_compat` / `https://api.groq.com/openai/v1` / `qwen/qwen3.8-27b` / unset | Provider for the off-path LLM — Groq by default; `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` for Claude. No key → deterministic template. `LLM_API_KEY` is a secret. |
 | `LLM_PER_IP_HOURLY_LIMIT` / `LLM_DAILY_CALL_BUDGET` | `20` / `250` | Spend caps for the two public LLM endpoints (`/why/{store_id}`, `/advisory/{store_id}`); `0` = unlimited |
 | `PORT` | `8001` | FastAPI listen port |
 
 Full list with comments: [`.env.example`](.env.example) (a test fails if code reads an undocumented variable).
 
+## Tools and Technologies
+
+- **Python**: FastAPI, Pydantic, Pytest, Ruff
+- **Board UI**: Next.js, React, TypeScript — scaffolded with v0 (Vercel)
+- **Data**: PostgreSQL (Supabase), JSONL audit log
+- **LLM and classifiers**: Groq API, classifier.dev (off-path only)
+- **Deployment**: Render, Vercel, Docker
 
 ## Limitations
 
@@ -153,6 +160,11 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 - **Confidence and the health score are heuristics, not calibrated probabilities**: `compute_health_score` uses hand-set weights and `_boundary_confidence` a fixed distance from the band edges, so `0.85` is a ranking device, not a frequency. No reliability curve or Brier score is computed yet — read the number as an ordering, not a probability.
 - **The treatment effect is one campaign in one retailer's data (n=1)**: the DiD prior is `+2.84%` with a 95% CI of `[−0.5, +6.2]`, which admits zero, so the guardrail blocks the spend instead of dressing the estimate up. More of the same data will not fix a power problem — randomization (the roadmap's experiment engine) will.
 - **Single-retailer scope**: JSONL audit log + optional Postgres suit one portfolio; multi-tenant use needs warehouse separation and forecast-call cost controls.
+
+## References
+
+1. Anthropic — [commerce-agents](https://github.com/anthropics/commerce-agents) (tool-use and guardrail patterns compared in `docs/LLM_INTEGRATION_PATTERNS.md`)
+2. Google Cloud — [Choose a design pattern for agentic AI systems](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system) (tool-using agent blueprint)
 
 ## Contributing
 
