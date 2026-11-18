@@ -163,8 +163,8 @@ Full list with comments: [`.env.example`](.env.example) (a test fails if code re
 
 ## References
 
-1. Anthropic — [commerce-agents](https://github.com/anthropics/commerce-agents) (tool-use and guardrail patterns compared in `docs/LLM_INTEGRATION_PATTERNS.md`)
-2. Google Cloud — [Choose a design pattern for agentic AI systems](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system) (tool-using agent blueprint)
+1. Anthropic — [commerce-agents](https://github.com/anthropics/commerce-agents) (tool-use and guardrail reference)
+2. Google Cloud — [agentic AI design patterns](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system) (tool-using agent blueprint)
 
 ## Contributing
 
