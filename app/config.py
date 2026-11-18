@@ -40,9 +40,10 @@ def llm_explanations_enabled() -> bool:
 
     Defaults to OFF (the only non-default flag): the deterministic template
     narrative is the safe baseline, and the LLM is a strictly additive,
-    gated rephrasing of it. Requires the optional ``anthropic`` dependency
-    and ``ANTHROPIC_API_KEY`` at call time; without them the endpoint
-    degrades to the template (fail-closed), never errors.
+    gated rephrasing of it. Requires a configured provider (Groq by
+    default; ``ANTHROPIC_API_KEY`` plus the optional ``anthropic`` package
+    for Claude); without one the endpoint degrades to the template
+    (fail-closed), never errors.
     """
     return _flag("LLM_EXPLANATIONS_ENABLED", default="false")
 
@@ -53,8 +54,8 @@ def llm_advisory_enabled() -> bool:
     Defaults to OFF, like llm_explanations: the advisory is a strictly
     additive layer. It is structurally inert either way (auto_applied is
     always False, requires_human_approval always True); this flag only
-    controls whether the LLM call happens at all. Without the anthropic
-    dependency or API key the endpoint degrades to the engine's own
+    controls whether the LLM call happens at all. Without a configured
+    provider or API key the endpoint degrades to the engine's own
     recommendation (fail-closed), never errors.
     """
     return _flag("LLM_ADVISORY_ENABLED", default="false")

@@ -42,7 +42,7 @@ from memory.history import read_log  # noqa: E402
 from rag.corpus import load_corpus  # noqa: E402
 from rag.llm_explainer import maybe_llm_narrative  # noqa: E402
 
-_provider = os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+_provider = os.getenv("LLM_PROVIDER", "openai_compat").strip().lower()
 _required_key = "LLM_API_KEY" if _provider == "openai_compat" else "ANTHROPIC_API_KEY"
 if not os.getenv(_required_key):
     print(f"ERROR: {_required_key} not set for LLM_PROVIDER={_provider} "

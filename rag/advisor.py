@@ -87,7 +87,7 @@ ADVISORY_SYSTEM_PROMPT = build_advisory_system()
 
 
 def _provider() -> str:
-    return os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+    return os.getenv("LLM_PROVIDER", "openai_compat").strip().lower()
 
 
 class AdvisoryUnavailableError(Exception):

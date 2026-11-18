@@ -30,10 +30,9 @@ DEFAULT_LLM_MODEL = "claude-sonnet-4-5"
 # the budget mid-thought and yield empty content. Override with LLM_MAX_TOKENS.
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "700"))
 
-# Provider selection: "anthropic" (default) or "openai_compat" for any
-# OpenAI-compatible endpoint (Groq, Google Gemini, OpenRouter, Ollama, ...).
+# Provider selection: "openai_compat" (default — Groq) or "anthropic" for Claude.
 # Env vars:
-#   LLM_PROVIDER      anthropic | openai_compat
+#   LLM_PROVIDER      openai_compat | anthropic
 #   LLM_MODEL         model name (provider-specific)
 #   LLM_BASE_URL      openai_compat only: e.g. https://api.groq.com/openai/v1
 #   LLM_API_KEY       openai_compat only (anthropic uses ANTHROPIC_API_KEY)
@@ -42,7 +41,7 @@ PROVIDER_ENV = "LLM_PROVIDER"
 BASE_URL_ENV = "LLM_BASE_URL"
 API_KEY_ENV = "LLM_API_KEY"
 DEFAULT_OPENAI_COMPAT_BASE_URL = "https://api.groq.com/openai/v1"
-DEFAULT_OPENAI_COMPAT_MODEL = "llama-3.3-70b-versatile"
+DEFAULT_OPENAI_COMPAT_MODEL = "qwen/qwen3.8-27b"
 
 def build_static_system() -> str:
     """The static system prompt (commerce-agents `prompt.build_static_system`).
@@ -185,7 +184,7 @@ def _model_name() -> str:
 
 
 def _provider() -> str:
-    return os.getenv(PROVIDER_ENV, "anthropic").strip().lower()
+    return os.getenv(PROVIDER_ENV, "openai_compat").strip().lower()
 
 
 def _http_post_json(url: str, headers: dict, payload: dict, timeout: float = 60.0) -> dict:

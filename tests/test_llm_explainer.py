@@ -30,13 +30,14 @@ from rag.llm_explainer import (
 
 @pytest.fixture(autouse=True)
 def _hermetic_llm_env(monkeypatch):
-    """Scrub ambient provider selection so tests always take the stubbed path.
+    """Pin the anthropic provider path and scrub ambient LLM settings.
 
     Also scrubs the enable flags: an operator shell with
     LLM_EXPLANATIONS_ENABLED/LLM_ADVISORY_ENABLED set must not flip the
     "defaults off" assertion below (tests that want them on set them).
     """
-    for var in ("LLM_PROVIDER", "LLM_API_KEY", "LLM_BASE_URL",
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    for var in ("LLM_API_KEY", "LLM_BASE_URL",
                 "LLM_EXPLANATIONS_ENABLED", "LLM_ADVISORY_ENABLED"):
         monkeypatch.delenv(var, raising=False)
 
@@ -233,7 +234,7 @@ def test_openai_compat_provider_success(monkeypatch):
     assert captured["url"].endswith("/chat/completions")
     assert captured["url"].startswith("https://api.groq.com/openai/v1")
     assert captured["headers"]["Authorization"] == "Bearer gsk-free-key"
-    assert captured["payload"]["model"] == "llama-3.3-70b-versatile"
+    assert captured["payload"]["model"] == "qwen/qwen3.8-27b"
     assert captured["payload"]["messages"][0]["role"] == "system"
     # Provider usage must reach the telemetry trail (the spend/cache signal),
     # normalised off the provider's own field names.
