@@ -132,7 +132,7 @@ token, a methodology chunk or a source list** on this page: `citations` and
 `methodology` are provenance for the operator `/ui/why` and the raw payload,
 not stakeholder evidence. One deliberate exception: the served
 `recommendation_id` prints as a quiet provenance line at the bottom of the
-evidence panel — the product's citable-verdict claim (PRODUCT.md) made visible,
+evidence panel — the product's citable-verdict claim made visible,
 still outside the narrative layer.
 
 ### `GET /advisory/{store_id}?question=...` — the store page's "Ask" panel

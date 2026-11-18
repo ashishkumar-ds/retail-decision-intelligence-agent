@@ -4,7 +4,7 @@
 // internal [rec:/event:/src:] citation markers stripped; the page never prints
 // a citation id, a retrieval chunk or a raw engine token from the citation
 // layer - the ONE deliberate exception is the served `recommendation_id`,
-// which the product positions as citable provenance (PRODUCT.md) and which
+// which the product positions as citable provenance and which
 // rides a quiet footer line under the evidence panel. Every figure is printed
 // as served. No client math, no rewriting, GET only - including the "Ask"
 // panel, whose advisory suggestion is an LLM reading of the same evidence,
