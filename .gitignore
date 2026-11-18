@@ -49,5 +49,3 @@ docs/agents/
 # agent-local tooling: the impeccable skill ships via npx, never in the repo
 .opencode/
 .impeccable/
-# impeccable's product schema (local context for the design agent, not repo content)
-PRODUCT.md
