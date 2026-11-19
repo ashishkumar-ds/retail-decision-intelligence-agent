@@ -1,0 +1,479 @@
+{
+  "entities": [
+    {
+      "tag": "Group",
+      "id": "tcj-flow-ground",
+      "x": 0,
+      "y": 0,
+      "width": 1400,
+      "height": 570,
+      "bgColor": "#f6f4ef",
+      "borderColor": "#f6f4ef",
+      "borderWidth": 0,
+      "cornerRadius": "sharp",
+      "styleMode": "plain"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-band",
+      "x": 0,
+      "y": 0,
+      "width": 1400,
+      "height": 96,
+      "bgColor": "#2a1b6a",
+      "borderColor": "#2a1b6a",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": ""
+        }
+      ]
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-keyline",
+      "x": 0,
+      "y": 96,
+      "width": 1400,
+      "height": 4,
+      "bgColor": "#1e134f",
+      "borderColor": "#1e134f",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": ""
+        }
+      ]
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-flow-title",
+      "x": 40,
+      "y": 18,
+      "width": 800,
+      "height": 24,
+      "text": "How a decision is made",
+      "fontSize": 26,
+      "color": "#fffdf8",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-flow-subtitle",
+      "x": 40,
+      "y": 56,
+      "width": 900,
+      "height": 24,
+      "text": "In plain English — one store, one recommendation, one human gate",
+      "fontSize": 14,
+      "color": "#c9c3e2",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-chip",
+      "x": 1210,
+      "y": 24,
+      "width": 150,
+      "height": 26,
+      "bgColor": "#fffdf8",
+      "borderColor": "#d9d3c6",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "one-minute version",
+          "fontSize": 12,
+          "color": "#2a1b6a"
+        }
+      ],
+      "borderWidth": 1
+    },
+    {
+      "tag": "Group",
+      "id": "tcj-flow-card",
+      "x": 28,
+      "y": 124,
+      "width": 1344,
+      "height": 410,
+      "bgColor": "#fffdf8",
+      "borderColor": "#d9d3c6",
+      "borderWidth": 1,
+      "cornerRadius": "sharp",
+      "styleMode": "plain"
+    },
+    {
+      "tag": "Shape",
+      "id": "data",
+      "x": 56,
+      "y": 250,
+      "width": 170,
+      "height": 80,
+      "bgColor": "#fffdf8",
+      "borderColor": "#d9d3c6",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Store data and evidence",
+          "fontSize": 16,
+          "color": "#212048"
+        }
+      ],
+      "borderWidth": 1,
+      "shape": "rectangle",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "agent",
+      "x": 286,
+      "y": 250,
+      "width": 200,
+      "height": 80,
+      "bgColor": "#fffdf8",
+      "borderColor": "#d9d3c6",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Agent proposes one recommendation",
+          "fontSize": 16,
+          "color": "#212048"
+        }
+      ],
+      "borderWidth": 1,
+      "shape": "rectangle",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "rules",
+      "x": 546,
+      "y": 250,
+      "width": 165,
+      "height": 80,
+      "bgColor": "#fffdf8",
+      "borderColor": "#d9d3c6",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Hard rules check it",
+          "fontSize": 16,
+          "color": "#212048"
+        }
+      ],
+      "borderWidth": 1,
+      "shape": "rectangle",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "risky",
+      "x": 770,
+      "y": 235,
+      "width": 130,
+      "height": 110,
+      "bgColor": "#f5e9b8",
+      "borderColor": "#8a5a12",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Risky?",
+          "fontSize": 16,
+          "color": "#8a5a12"
+        }
+      ],
+      "borderWidth": 1,
+      "shape": "diamond",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "recorded",
+      "x": 970,
+      "y": 250,
+      "width": 170,
+      "height": 80,
+      "bgColor": "#f2efe6",
+      "borderColor": "#d9d3c6",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Recorded decision",
+          "fontSize": 16,
+          "color": "#212048"
+        }
+      ],
+      "borderWidth": 1,
+      "shape": "cylinder",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "outcome",
+      "x": 1190,
+      "y": 250,
+      "width": 150,
+      "height": 80,
+      "bgColor": "#fffdf8",
+      "borderColor": "#d9d3c6",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Outcome measured",
+          "fontSize": 16,
+          "color": "#212048"
+        }
+      ],
+      "borderWidth": 1,
+      "shape": "rectangle",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "human",
+      "x": 960,
+      "y": 140,
+      "width": 210,
+      "height": 80,
+      "bgColor": "#f8e9f1",
+      "borderColor": "#cf348d",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": "Human approves or rejects",
+          "fontSize": 16,
+          "color": "#a4285e"
+        }
+      ],
+      "borderWidth": 2,
+      "shape": "rectangle",
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-wp-a",
+      "x": 1265,
+      "y": 440,
+      "width": 1,
+      "height": 1,
+      "bgColor": "#fffdf8",
+      "borderColor": "#fffdf8",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": ""
+        }
+      ],
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-wp-b",
+      "x": 141,
+      "y": 440,
+      "width": 1,
+      "height": 1,
+      "bgColor": "#fffdf8",
+      "borderColor": "#fffdf8",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": ""
+        }
+      ],
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-legend-green",
+      "x": 56,
+      "y": 495,
+      "width": 28,
+      "height": 2,
+      "bgColor": "#0e7a55",
+      "borderColor": "#0e7a55",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": ""
+        }
+      ],
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-flow-legend-green-text",
+      "x": 92,
+      "y": 483,
+      "width": 100,
+      "height": 24,
+      "text": "main path",
+      "fontSize": 12,
+      "color": "#5d6167",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Shape",
+      "id": "tcj-flow-legend-magenta",
+      "x": 230,
+      "y": 495,
+      "width": 28,
+      "height": 2,
+      "bgColor": "#a4285e",
+      "borderColor": "#a4285e",
+      "styleMode": "plain",
+      "cornerRadius": "sharp",
+      "texts": [
+        {
+          "text": ""
+        }
+      ],
+      "containerId": "tcj-flow-card"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-flow-legend-magenta-text",
+      "x": 266,
+      "y": 483,
+      "width": 110,
+      "height": 24,
+      "text": "human gate",
+      "fontSize": 12,
+      "color": "#5d6167",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-flow-legend-dots",
+      "x": 410,
+      "y": 481,
+      "width": 50,
+      "height": 24,
+      "text": "· · ·",
+      "fontSize": 16,
+      "color": "#6f74a8",
+      "hAlign": "left"
+    },
+    {
+      "tag": "Textbox",
+      "id": "tcj-flow-legend-dots-text",
+      "x": 460,
+      "y": 483,
+      "width": 110,
+      "height": 24,
+      "text": "next round",
+      "fontSize": 12,
+      "color": "#5d6167",
+      "hAlign": "left"
+    }
+  ],
+  "connections": [
+    {
+      "from": "data",
+      "to": "agent",
+      "color": "#0e7a55",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12
+    },
+    {
+      "from": "agent",
+      "to": "rules",
+      "color": "#0e7a55",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12
+    },
+    {
+      "from": "rules",
+      "to": "risky",
+      "color": "#0e7a55",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12
+    },
+    {
+      "from": "risky",
+      "to": "human",
+      "color": "#a4285e",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12,
+      "label": "yes"
+    },
+    {
+      "from": "human",
+      "to": "recorded",
+      "color": "#a4285e",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12
+    },
+    {
+      "from": "risky",
+      "to": "recorded",
+      "color": "#0e7a55",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12,
+      "label": "no"
+    },
+    {
+      "from": "recorded",
+      "to": "outcome",
+      "color": "#0e7a55",
+      "lineStyle": "solid",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12
+    },
+    {
+      "from": "outcome",
+      "to": "tcj-flow-wp-a",
+      "color": "#6f74a8",
+      "lineStyle": "dashed",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12,
+      "endArrowhead": null
+    },
+    {
+      "from": "tcj-flow-wp-a",
+      "to": "tcj-flow-wp-b",
+      "color": "#6f74a8",
+      "lineStyle": "dashed",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12,
+      "label": "next round",
+      "endArrowhead": null
+    },
+    {
+      "from": "tcj-flow-wp-b",
+      "to": "data",
+      "color": "#6f74a8",
+      "lineStyle": "dashed",
+      "lineWidth": 2.5,
+      "typeface": "clean",
+      "fontSize": 12
+    }
+  ]
+}

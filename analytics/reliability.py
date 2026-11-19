@@ -13,7 +13,7 @@ the uplift sitting in the same record re-uses the measurement to score itself.
 Pairing is therefore TIME-LAGGED: a record scored at time t only pairs with
 the first *measured* phase-2 ``evaluate`` event of the same store whose
 ``occurred_at`` is at least ``min_lag_days`` later. The lag approximates one
-56-day DiD cycle when the data allows it (the offline demo recordings span 21
+56-day DiD cycle when the data allows it (a short offline recording may span 21
 days, so pass ``--min-lag-days 0`` there and accept the verdict that says so).
 
 What is implemented - and the honesty boundary it carries (stdlib only):
@@ -295,7 +295,7 @@ def health_reliability_bins(pairs: Sequence[Mapping[str, Any]],
 def _verdict(paired_count: int) -> dict[str, str]:
     if paired_count == 0:
         return {"verdict": "no_lagged_measured_outcomes",
-                "verdict_note": ("no (score, later measured outcome) pairs - seed the demo, "
+                "verdict_note": ("no (score, later measured outcome) pairs - load a campaign audit log, "
                                  "run a sweep, and let interventions earn evaluate events")}
     if paired_count < DIRECTIONAL_AT:
         return {"verdict": "insufficient_evidence",

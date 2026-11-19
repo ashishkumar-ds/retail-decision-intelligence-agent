@@ -359,20 +359,6 @@ _undefined_classes = sorted(_used_classes - _defined_classes)
 check("frontend: every className the Next app applies is defined in globals.css",
       not _undefined_classes, f"undefined={_undefined_classes}")
 
-# 11e. The demo seeder reads .env.local as dotenv data, never as shell. `source`
-#      ran a pasted placeholder as a command ("LLM_API_KEY= PASTE_YOUR_KEY_HERE"
-#      executed PASTE_YOUR_KEY_HERE) and `set -e` then aborted the demo before it
-#      seeded anything: a file users are told to copy and paste into must not be
-#      able to run code. Comments are stripped, so the prose above it may still
-#      discuss `source` when explaining why the script does not use it.
-_seed_text = (ROOT / "scripts" / "seed_demo.sh").read_text(encoding="utf-8")
-_seed_code = "\n".join(line for line in _seed_text.splitlines()
-                       if line.strip() and not line.lstrip().startswith("#"))
-check("demo: seed_demo.sh parses .env.local as data (never sources or evals it)",
-      bool(_seed_code) and not re.search(r"(^|\s)(source|\.)\s+\S*\.env|\beval\b[^\n]*\.env",
-                                         _seed_code),
-      "one pasted placeholder in .env.local aborts the whole demo under `set -e`")
-
 # 12. No tracked file may carry a live-looking API key. 770654a committed a real
 #     Groq key into .env.example - the file every reader is told to copy to
 #     .env.local, in a public repo - and it was still valid when the next gate

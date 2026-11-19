@@ -291,7 +291,7 @@ Known intentional limitations are:
 - JSONL is the audit system of record (append-only, flock + fsync); it does not
   provide database-grade transactions — the pending-approval *cache* is SQLite/Postgres;
 - Campaign audit store universe requires `CAMPAIGN_AUDIT_API_URL` or
-  `CAMPAIGN_AUDIT_LOG_PATH` (shipped `demo/` fallback); without either,
+  `CAMPAIGN_AUDIT_LOG_PATH`; without either,
   `POST /recommendations/run` answers 400 and the sweep idles;
 - forecast is a single upstream (`FORECAST_API_URL`): `ERROR` (integration
   failure) vs `NO_DATA` (business gap) are distinguished per record and surfaced

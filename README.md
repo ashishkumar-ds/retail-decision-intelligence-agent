@@ -19,20 +19,6 @@
 
 </div>
 
-## Demo
-
-**Local demo:** no keys, no services — one command runs the whole loop on recorded data:
-
-```bash
-bash scripts/seed_demo.sh
-```
-
-The hosted demo enables the off-path Groq layer with per-IP and daily caps.
-
-![Retail Decision Board — live stakeholder view: the human-review summary (stores waiting split by bucket) above the top three store cards, each showing its recommended action, alternative, commitment and the token-gated Approve](docs/images/board-live-2026-11-03.png)
-
-Then open `/why/317` for a grounded, cited EXTEND_INTERVENTION, or `/board` for the full portfolio. Full walkthrough: [DEMO.md](DEMO.md).
-
 ## What it is
 
 A deterministic retail decision agent for underperforming stores. The brain is pure code, every recommendation is recomputable and citable, causal DiD evidence gates scale-up **and any spend move** (own-baseline lift alone never starts or moves spend — it is operational signal, not proof), and a human must approve any budget-moving action. Explanations ground every number in cited evidence, and 23 pinned golden scenarios gate any behavior change in CI.

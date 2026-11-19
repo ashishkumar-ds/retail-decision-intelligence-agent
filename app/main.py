@@ -1081,8 +1081,8 @@ def decision_quality_analytics(_auth: str = Depends(_require_approval_auth)):
     # Health/confidence reliability: same system of record, different question -
     # do the scores rank stores the way later measurements confirm? Time-lagged
     # pairing only (same-record outcome_evidence is an input to scoring, so a
-    # same-record join would be tautological). Lag is env-tunable: the offline
-    # demo recordings span 21 days, under the default 28-day half-cycle.
+    # same-record join would be tautological). Lag is env-tunable: a short offline
+    # recording may span 21 days, under the default 28-day half-cycle.
     from analytics.reliability import compute_health_reliability
 
     try:
