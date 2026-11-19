@@ -25,6 +25,8 @@ A deterministic retail decision agent for underperforming stores. The brain is p
 
 **Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited evidence and drafts human-gated advisory suggestions.
 
+![Retail Decision Board — 85 stores triaged into need a decision, needs review (no data) and no action needed, with per-store cards showing the recommended action, fallback, commitment and token-gated Approve](docs/images/board-live-2026-11-03.png)
+
 ## What this demonstrates
 
 - Deterministic decision systems under uncertainty — pure-code engine, no model calls on the decision path
