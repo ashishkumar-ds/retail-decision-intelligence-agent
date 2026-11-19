@@ -257,7 +257,7 @@ from evaluation.golden_cases import GOLDEN_CASES  # noqa: E402
 _golden_count = len(GOLDEN_CASES)
 
 # 11a. Every "<n> pinned|golden ..." count in the docs equals the real count.
-_claim_docs = [ROOT / "README.md", ROOT / "CONTEXT.md",
+_claim_docs = [ROOT / "README.md",
                ROOT / "docs" / "adr" / "0004-golden-cases-gate-behavior.md"]
 _golden_claims: dict[str, list[int]] = {}
 for _doc in _claim_docs:
@@ -276,7 +276,7 @@ check("docs: every '<n> pinned|golden' count matches GOLDEN_CASES",
 _iac_denials: list[str] = []
 if (ROOT / "render.yaml").exists():
     _denial = re.compile(r"\bno\s+`?render\.ya?ml`?", re.IGNORECASE)
-    _scan = [ROOT / "README.md", ROOT / "CONTEXT.md",
+    _scan = [ROOT / "README.md",
              *sorted((ROOT / "docs").rglob("*.md")),
              *sorted((ROOT / "scripts").glob("*.sh")),
              *sorted((ROOT / "scripts").glob("*.py"))]

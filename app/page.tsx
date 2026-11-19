@@ -86,7 +86,7 @@ function stateOf(row: BoardRow): string {
 // The series context a first-time visitor needs: which campaign and the plan's
 // fixed window. The campaign name is operator-set on the API when available;
 // otherwise it falls back to the series' locked Campaign 18 (Part 2). 60 days is
-// the recovery plan's fixed window (CONTEXT.md), not a client-side calculation.
+// the recovery plan's fixed window, not a client-side calculation.
 // The store count lives in the gate line, not here, so the header says 85 once.
 const CAMPAIGN_FALLBACK = 'Campaign 18'
 const RECOVERY_WINDOW = '60-day recovery'
