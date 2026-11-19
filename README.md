@@ -23,8 +23,6 @@
 
 A deterministic retail decision agent for underperforming stores. The brain is pure code, every recommendation is recomputable and citable, causal DiD evidence gates scale-up **and any spend move** (own-baseline lift alone never starts or moves spend — it is operational signal, not proof), and a human must approve any budget-moving action. Explanations ground every number in cited evidence, and 23 pinned golden scenarios gate any behavior change in CI.
 
-**Core invariant:** the LLM never decides, never changes numbers, and never bypasses the human gate — it only rephrases grounded, cited evidence and drafts human-gated advisory suggestions.
-
 ![Retail Decision Board — 85 stores triaged into need a decision, needs review (no data) and no action needed, with per-store cards showing the recommended action, fallback, commitment and token-gated Approve](docs/images/board-live-2026-11-03.png)
 
 ## What this demonstrates
