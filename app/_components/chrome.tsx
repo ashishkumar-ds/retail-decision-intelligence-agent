@@ -9,11 +9,12 @@ import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { api } from '../_lib/api'
+import dunnhumbyLogo from './dunnhumby.svg'
 
 export function Brand() {
   return (
     <Link href="/" className="brand">
-      <img src="/dunnhumby.svg" alt="dunnhumby" className="brand-logo" width={82} height={19} />
+      <img src={dunnhumbyLogo.src} alt="dunnhumby" className="brand-logo" width={82} height={19} />
       <span className="brand-divider" aria-hidden="true" />
       <span className="brand-product">retail decision intelligence agent</span>
     </Link>
@@ -98,7 +99,7 @@ export function BootScreen() {
   return (
     <section className="boot">
       <div className="boot-lockup">
-        <img src="/dunnhumby.svg" alt="dunnhumby" className="boot-mark" width={188} height={44} />
+        <img src={dunnhumbyLogo.src} alt="dunnhumby" className="boot-mark" width={188} height={44} />
         <span className="boot-divider" aria-hidden="true" />
         <span className="boot-product">retail decision intelligence agent</span>
       </div>
